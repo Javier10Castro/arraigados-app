@@ -1,0 +1,112 @@
+.shell { position: relative; min-height: 100dvh; isolation: isolate; color: var(--crema); }
+.sidebar { display: none; }
+.main { position: relative; z-index: 1; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + 28px); }
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: calc(26px + env(safe-area-inset-top, 0px)) 20px 16px;
+}
+/* Título de cada pantalla del panel: Pressio 35, grande (sin "PANEL ADMIN" encima:
+   ya se sabe que es el panel). */
+.title {
+  margin: 0;
+  font: 400 clamp(44px, 9vw, 64px)/0.9 var(--font-pressio);
+  font-synthesis: none;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: var(--crema);
+  text-shadow: 0 2px 14px rgba(8, 0, 32, 0.5);
+}
+.content { display: flex; flex-direction: column; gap: 14px; max-width: 1040px; margin: 0 auto; padding: 0 20px 24px; }
+.topbar.wide, .content.wide { max-width: 1440px; }
+
+/* Barra inferior (celular): mismo lenguaje que la del asistente */
+.bottom {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: 62px;
+  padding: 0 8px;
+  background: var(--crema);
+  border: 1px solid #ffffff80;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px #17004130;
+}
+.bottomItem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: #584582; font-size: 10px; font-weight: 500; }
+.bottomActive { color: var(--morado); }
+.bottomActive svg { stroke-width: 2.8; }
+.bottomSoon { opacity: 0.38; cursor: not-allowed; }
+
+/* "Más" (celular) */
+.moreList { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.moreRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  text-align: left;
+  font: inherit;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+.moreRow strong { flex: 1; font: 700 15px var(--font-body); }
+.moreRow > svg { color: var(--morado); }
+.moreRow em { font-style: normal; font-size: 11px; color: var(--text-3); }
+.moreSoon { opacity: 0.6; cursor: not-allowed; }
+.moreIcon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--morado); color: var(--crema); }
+.danger { background: #d4353c1f; color: #c0262c; }
+
+@media (min-width: 1024px) {
+  .bottom { display: none; }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-w);
+    padding: 36px 24px 24px;
+    color: var(--crema);
+    background: linear-gradient(165deg, #16053ff2, #17003adb), url('../assets/brand/flyer-texture.webp') center / cover;
+    border-right: 1px solid #f2f7d72b;
+    overflow-y: auto;
+  }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 0 2px 26px; border-bottom: 1px solid #f2f7d730; }
+  .brandMark { width: 100%; }
+  .brandRings { width: 62%; max-width: 150px; height: auto; }
+  .brandLabel { font: 600 15px var(--font-display); text-transform: uppercase; letter-spacing: 0.32em; padding-left: 0.32em; }
+  .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 22px; }
+  .navItem { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 16px; border-radius: 25px; font-size: 14px; color: #f2f7d7d9; }
+  a.navItem:hover { background: #f2f7d718; }
+  .navActive, a.navActive:hover { background: var(--crema); color: var(--morado); font-weight: 600; }
+  .navSoon { opacity: 0.5; cursor: not-allowed; }
+  .soon { margin-left: auto; font-style: normal; font-size: 10.5px; }
+  .navLabel { margin: 26px 16px 8px; font: 600 12px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: #f2f7d7a6; }
+  .staffLink { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 16px; border-radius: 25px; border: 1px solid #f2f7d750; font-size: 14px; }
+  .staffLink span { flex: 1; }
+  .staffLink:hover { background: #f2f7d718; }
+  .userCard { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 16px; border-top: 1px solid #f2f7d730; }
+  .avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--crema); color: var(--morado); font: 700 16px var(--font-display); }
+  .userInfo { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .userInfo strong { font-size: 12.5px; overflow-wrap: anywhere; }
+  .userInfo span { font: 600 11px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .iconBtn { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 1px solid #f2f7d750; border-radius: 50%; background: transparent; color: var(--crema); cursor: pointer; }
+  .iconBtn:hover { background: #f2f7d725; }
+  .main { margin-left: var(--sidebar-w); padding-bottom: 32px; }
+  .topbar, .content { padding-left: 44px; padding-right: 44px; }
+  .topbar { padding-top: 36px; }
+}

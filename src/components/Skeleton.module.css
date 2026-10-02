@@ -1,0 +1,25 @@
+/* Esqueletos de carga: brillo sutil y rápido sobre las superficies crema/blancas. */
+.sk {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  background: linear-gradient(90deg, rgba(30, 2, 99, 0.07) 25%, rgba(30, 2, 99, 0.13) 45%, rgba(30, 2, 99, 0.07) 65%);
+  background-size: 300% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; background: rgba(30, 2, 99, 0.09); }
+}
+
+.row td { vertical-align: middle; }
+.list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.listRow { display: flex; align-items: center; gap: 12px; padding: 8px 2px; }
+.lines { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+.noShrink { flex: none; }
+.value { margin: 4px 0 2px; }
+.chart { display: flex; align-items: flex-end; gap: 6px; padding-bottom: 20px; border-bottom: 1px solid rgba(30, 2, 99, 0.12); }
+.bar { flex: 1 1 0; max-width: 34px; }

@@ -1,0 +1,46 @@
+.cups {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cup {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 14px;
+}
+
+/* Disponible: vaso "lleno" en morado sobre fondo suave. */
+.available {
+  background: rgba(62, 7, 166, 0.1);
+  color: var(--morado);
+}
+
+.available svg {
+  fill: rgba(123, 91, 255, 0.28);
+}
+
+/* Canjeado: solo el contorno, punteado y apagado. */
+.used {
+  border: 1.5px dashed rgba(30, 2, 99, 0.28);
+  color: rgba(30, 2, 99, 0.42);
+}
+
+.used svg * {
+  stroke-dasharray: 2.2 2.6;
+}
+
+.dark .available {
+  background: rgba(242, 247, 215, 0.14);
+  color: var(--crema);
+}
+
+.dark .available svg {
+  fill: rgba(242, 247, 215, 0.25);
+}
+
+.dark .used {
+  border-color: rgba(242, 247, 215, 0.35);
+  color: rgba(242, 247, 215, 0.5);
+}

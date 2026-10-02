@@ -1,0 +1,204 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: linear-gradient(100deg, #1e0263dd, #3e07a670), url('../assets/brand/flyer-shapes.webp') center / cover;
+  border: 1px solid #f2f7d799;
+  color: #fff;
+  box-shadow: var(--shadow-pop);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--crema);
+  color: var(--morado);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  flex: 1;
+  min-width: 0;
+}
+
+.userInfo strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.userInfo span {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.register {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.register:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: var(--crema);
+  border-radius: var(--r-card);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 13px 15px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(62, 7, 166, 0.25);
+}
+
+.rowIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--morado);
+  color: var(--crema);
+}
+
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rowBody strong {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.rowBody span {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.chevron {
+  color: var(--text-3);
+}
+
+.logoutRow:hover {
+  border-color: rgba(214, 69, 69, 0.35);
+}
+
+.logoutIcon {
+  background: #ffe9e7;
+  color: #c9453f;
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 20px 30px;
+  border-radius: var(--r-card);
+  background: var(--crema);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.rings {
+  width: 72px;
+  color: var(--morado);
+}
+
+.aboutTitle {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aboutLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+.verse {
+  margin-top: 4px;
+  font-size: 17px;
+  color: var(--morado);
+}
+
+@media (max-width: 380px) {
+  .user { flex-wrap: wrap; }
+  .register { margin-left: auto; }
+  .section { padding: 14px; }
+}

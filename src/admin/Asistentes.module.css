@@ -1,0 +1,165 @@
+/* Admin -> Asistentes (Etapa 4). Usa las tarjetas/tabla de LoteDetalle.module.css;
+   aquí solo lo propio de la lista y el detalle. */
+
+/* ---------- Filtros ---------- */
+.filters { gap: 14px; }
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: var(--r-input);
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  background: #fff;
+  color: var(--text-2);
+}
+.search:focus-within { border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: 15px var(--font-body);
+  color: var(--ink);
+}
+.search button { display: grid; place-items: center; border: 0; background: none; color: var(--text-3); cursor: pointer; }
+
+.selects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.select { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.select span { font: 700 11px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.select select {
+  height: 40px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  background: #fff;
+  font: 14px var(--font-body);
+  color: var(--ink);
+}
+.select select:focus { outline: none; border-color: var(--morado); }
+
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: var(--r-pill);
+  border: 1.4px solid rgba(62, 7, 166, 0.28);
+  background: transparent;
+  color: var(--morado);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+.chipOn { background: var(--morado); border-color: var(--morado); color: var(--crema); }
+.clear {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: 600 12.5px var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- Tabla ---------- */
+.rowLink { cursor: pointer; }
+.rowLink:focus-visible td { background: rgba(62, 7, 166, 0.08); outline: none; }
+.name { display: block; font-weight: 600; color: var(--morado-oscuro); overflow-wrap: break-word; }
+.nameSub { display: none; font-size: 12px; color: var(--text-3); }
+.church { display: block; font-weight: 500; }
+.churchSub { display: block; font-size: 12px; color: var(--text-3); }
+.date { white-space: nowrap; color: var(--text-2); font-size: 12.5px; }
+.chev { color: var(--morado); }
+
+.drinks { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.cupOn { color: var(--morado); }
+.cupOff { color: rgba(30, 2, 99, 0.2); }
+.drinksNum { margin-left: 5px; font-size: 12px; font-weight: 700; color: var(--morado-oscuro); }
+.drinksOut { margin-left: 5px; font-size: 12px; font-weight: 700; color: #a1262c; }
+.noDrinks { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+/* Celular: iglesia bajo el nombre; se ocultan Iglesia, Edad y Registro. */
+@media (max-width: 759px) {
+  .wide { display: none; }
+  .nameSub { display: block; }
+}
+
+@media (min-width: 900px) {
+  .selects { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---------- Detalle ---------- */
+.who { display: flex; align-items: center; gap: 14px; }
+.whoAvatar {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--morado);
+  color: var(--crema);
+  font: 700 20px var(--font-display);
+}
+.whoName { margin: 0; font: 700 24px/1.1 var(--font-display); color: var(--morado-oscuro); text-transform: uppercase; overflow-wrap: break-word; }
+.whoSub { margin: 3px 0 0; font-size: 13px; color: var(--text-2); }
+.cardHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.who { min-width: 0; flex: 1 1 220px; }
+.cardHead > :last-child { flex: none; }
+
+.pulse {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #1e026320;
+}
+.pulseCode { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 15px; font-weight: 700; color: var(--morado-oscuro); }
+.pulseMeta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; color: var(--text-2); }
+.pulseMeta a { color: var(--morado); font-weight: 600; }
+.pulseOld { opacity: 0.75; }
+.pulseOld .pulseCode { text-decoration: line-through; text-decoration-color: rgba(161, 38, 44, 0.6); }
+.subTitle { margin: 4px 0 0; font: 700 11.5px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+
+.redeemList { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.redeemList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(30, 2, 99, 0.08);
+  font-size: 13.5px;
+}
+.redeemList li:last-child { border-bottom: 0; }
+.redeemList li > svg { color: var(--morado); flex: none; }
+.redeemList strong { font-weight: 600; }
+.redeemList em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+/* Formulario de corrección (modal) */
+.form { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.field input,
+.field select {
+  height: 44px;
+  width: 100%;
+  border-radius: var(--r-input);
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  background: #fff;
+  padding: 0 14px;
+  font: 15px var(--font-body);
+  color: var(--ink);
+}
+.field input:focus,
+.field select:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.formHint { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-2); font-weight: 400; }
+
+/* Carga inicial del detalle (esqueleto con las mismas tarjetas). */
+.skeletonStack { display: flex; flex-direction: column; gap: 14px; }

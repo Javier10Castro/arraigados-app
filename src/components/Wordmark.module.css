@@ -1,0 +1,18 @@
+.wordmark {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  aspect-ratio: 2.6;
+  overflow: hidden;
+}
+
+.art {
+  position: absolute;
+  top: -12.5%;
+  left: -12.5%;
+  display: block;
+  width: 125%;
+  height: 125%;
+  max-width: none;
+  object-fit: cover;
+}

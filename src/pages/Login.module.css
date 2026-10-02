@@ -1,0 +1,329 @@
+@font-face {
+  font-family: "Pressio";
+  src: url("/rcs/fonts/PressioTEST-No.35.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  color: var(--crema);
+  isolation: isolate;
+}
+
+.header {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: start;
+  gap: 8px;
+  padding: calc(30px + env(safe-area-inset-top, 0px)) 12px 20px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.back {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.back:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px; /* espacio para que el texto no se encime con el logo */
+}
+
+.mark {
+  width: 210px;
+  color: var(--crema);
+}
+
+.brandLabel {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(242, 247, 215, 0.75);
+}
+
+.spacer {
+  width: 40px;
+}
+
+.body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 16px 22px calc(30px + env(safe-area-inset-bottom, 0px));
+}
+
+.intro h1 {
+  font-family: "Pressio", sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #f2f7d7;
+  text-align: center;
+}
+
+.intro p {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(242, 247, 215, 0.78);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--crema);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--morado-oscuro);
+  backdrop-filter: blur(12px);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--morado-oscuro);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.control input {
+  width: 100%;
+  height: 50px;
+  border-radius: var(--r-input);
+  border: 1px solid #1e026338;
+  background: #ffffff50;
+  padding: 0 46px 0 44px;
+  color: var(--morado-oscuro);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+.control input::placeholder {
+  color: var(--text-3);
+}
+
+.control input:focus {
+  outline: none;
+  border-color: var(--morado);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.icon {
+  position: absolute;
+  left: 15px;
+  color: var(--morado);
+  pointer-events: none;
+}
+
+.toggle {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--morado);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: #3e07a610;
+  color: var(--morado-oscuro);
+}
+
+.error {
+  margin-top: -4px;
+  font-size: 12.5px;
+  color: #a3292f;
+}
+
+.demo {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(242, 247, 215, 0.1);
+  border: 1px dashed rgba(242, 247, 215, 0.4);
+}
+
+.demoHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.demoTag {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--crema);
+}
+
+.fill {
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fill:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.demo ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 13px;
+  color: rgba(242, 247, 215, 0.85);
+}
+
+.demo code {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.alt {
+  text-align: center;
+  font-size: 13.5px;
+  color: rgba(242, 247, 215, 0.75);
+}
+
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--crema);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.rings {
+  width: 74px;
+  color: rgba(242, 247, 215, 0.7);
+}
+
+.signedIn {
+  font-size: 14.5px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--morado-oscuro);
+}
+
+/* ---------- Crear / cambiar contraseña ---------- */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.rules li svg {
+  padding: 2px;
+  border-radius: 50%;
+  background: rgba(30, 2, 99, 0.1);
+  color: transparent;
+}
+
+.ruleOk {
+  color: #0d6e48;
+}
+
+.rules .ruleOk svg {
+  background: #16a06a;
+  color: #fff;
+}
+
+.showToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--morado);
+  cursor: pointer;
+}

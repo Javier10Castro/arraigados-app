@@ -1,0 +1,41 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Funciones de servidor (backend de Vite): rutas /api/* definidas en cada
+# archivo con `export const config = { path: ... }`.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Desarrollo local: `npm run dev` (= netlify dev) levanta Vite + funciones
+# juntos en http://localhost:8888 y carga las variables de .env.
+[dev]
+  framework = "#custom"
+  command = "npm run dev:vite"
+  targetPort = 5173
+  port = 8888
+  autoLaunch = false
+  functions = "netlify/functions"
+  envFiles = ["Congreso Arraigados/Version v2 _ 30 septiembre/Iglesia/arraigados-app/.env"]
+
+# SPA: todas las rutas caen en index.html (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

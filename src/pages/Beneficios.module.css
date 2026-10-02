@@ -1,0 +1,30 @@
+.page { display: flex; flex-direction: column; gap: 6px; }
+.packagePanel { display: flex; flex-direction: column; gap: 26px; padding: 22px 20px 28px; border: 1px solid #fff9; border-radius: var(--r-card); background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); }
+.priceCard { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 124px; width: 100%; max-width: 268px; align-self: center; padding: 18px 22px; border-radius: 50%; background: linear-gradient(110deg, #31028be0 20%, #3e07a666 72%, #f2f7d788), url('../assets/brand/flyer-shapes.webp') center / cover; color: var(--crema); transform: rotate(-5deg); }
+.code { font: 700 24px var(--font-display); text-transform: uppercase; }
+.price { font: 800 54px/0.95 var(--font-display); }
+.section { display: flex; flex-direction: column; gap: 14px; }
+.section + .section { padding-top: 18px; border-top: 1px solid #1e026320; }
+.includes { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.includes li { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.check { display: grid; place-items: center; width: 16px; height: 16px; flex: none; border-radius: 50%; background: var(--morado); color: var(--crema); }
+.check svg { width: 10px; }
+.qty { margin-right: -5px; }
+.digital { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; background: #fffffb5c; border-bottom: 1px solid #d8d9c1; border-radius: 12px; }
+.rowIcon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; color: var(--crema); background: var(--morado); }
+.rowBody { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.rowBody strong { font: 700 15px var(--font-body); letter-spacing: -0.01em; }
+.rowBody span { font-size: 11px; color: var(--text-2); }
+.chevron { color: var(--morado); }
+@media (min-width: 1024px) {
+  .packagePanel { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 32px; }
+  .priceCard { grid-column: 1 / -1; justify-self: center; width: 320px; max-width: 100%; min-height: 146px; }
+  .section + .section { padding: 0 0 0 28px; border-top: 0; border-left: 1px solid #1e026320; }
+  .includes { gap: 14px; }
+}
+.muted { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.muted svg { flex: none; margin-top: 2px; color: var(--morado); }
+.drinks { display: flex; flex-direction: column; gap: 10px; }
+.drinksCount { font-size: 14px; color: var(--morado-oscuro); }
+.drinksCount strong { font: 800 22px var(--font-display); color: var(--morado); }

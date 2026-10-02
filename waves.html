@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Animated Purple Waves</title>
+
+<style>
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    overflow: hidden;
+    background: #160052;
+}
+
+
+/* =========================================================
+   CONTENEDOR
+========================================================= */
+
+.animated-background {
+    position: fixed;
+    inset: 0;
+
+    width: 100%;
+    height: 100dvh;
+
+    overflow: hidden;
+    isolation: isolate;
+
+    background:
+        radial-gradient(
+            ellipse at 50% 42%,
+            #3515a4 0%,
+            #26058b 28%,
+            #1c006b 58%,
+            #110044 100%
+        );
+}
+
+
+/* =========================================================
+   SVG
+========================================================= */
+
+.background-svg {
+    position: absolute;
+
+    left: -3%;
+    top: -3%;
+
+    width: 106%;
+    height: 106%;
+
+    z-index: 1;
+}
+
+
+/* Por defecto mostramos móvil */
+
+.desktop-background {
+    display: none;
+}
+
+.mobile-background {
+    display: block;
+}
+
+
+/* =========================================================
+   MOVIMIENTO DE LAS ONDAS
+========================================================= */
+
+.wave {
+    transform-box: fill-box;
+    transform-origin: center;
+
+    will-change: transform;
+}
+
+.wave-a {
+    animation:
+        waveA 16s ease-in-out infinite alternate;
+}
+
+.wave-b {
+    animation:
+        waveB 21s ease-in-out infinite alternate;
+}
+
+.wave-c {
+    animation:
+        waveC 25s ease-in-out infinite alternate;
+}
+
+.wave-d {
+    animation:
+        waveD 19s ease-in-out infinite alternate;
+}
+
+
+@keyframes waveA {
+
+    0% {
+        transform:
+            translate3d(-1%, 0%, 0)
+            rotate(-0.6deg)
+            scale(1);
+    }
+
+    100% {
+        transform:
+            translate3d(2%, -1.5%, 0)
+            rotate(1deg)
+            scale(1.035);
+    }
+}
+
+
+@keyframes waveB {
+
+    0% {
+        transform:
+            translate3d(1%, -1%, 0)
+            rotate(0.5deg)
+            scale(1.01);
+    }
+
+    100% {
+        transform:
+            translate3d(-2%, 1.5%, 0)
+            rotate(-1deg)
+            scale(1.045);
+    }
+}
+
+
+@keyframes waveC {
+
+    0% {
+        transform:
+            translate3d(-1%, 1%, 0)
+            rotate(-0.4deg);
+    }
+
+    100% {
+        transform:
+            translate3d(1.8%, -1%, 0)
+            rotate(0.8deg);
+    }
+}
+
+
+@keyframes waveD {
+
+    0% {
+        transform:
+            translate3d(1%, 1%, 0)
+            rotate(0.4deg);
+    }
+
+    100% {
+        transform:
+            translate3d(-1.6%, -1%, 0)
+            rotate(-0.7deg)
+            scale(1.03);
+    }
+}
+
+
+/* =========================================================
+   TEXTURA
+========================================================= */
+
+.noise {
+    position: absolute;
+
+    inset: -40%;
+
+    width: 180%;
+    height: 180%;
+
+    z-index: 10;
+
+    opacity: 0.11;
+
+    pointer-events: none;
+
+    mix-blend-mode: soft-light;
+
+    animation:
+        noiseMove 0.25s steps(2) infinite;
+}
+
+
+@keyframes noiseMove {
+
+    0% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(1%, -1%);
+    }
+
+    50% {
+        transform: translate(-1%, 1%);
+    }
+
+    75% {
+        transform: translate(1%, 1%);
+    }
+
+    100% {
+        transform: translate(-1%, -1%);
+    }
+}
+
+
+/* =========================================================
+   VIGNETTE
+========================================================= */
+
+.vignette {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 8;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(10, 0, 45, .20),
+            transparent 18%,
+            transparent 75%,
+            rgba(8, 0, 40, .25)
+        );
+}
+
+
+/* =========================================================
+   DESKTOP
+========================================================= */
+
+@media (min-width: 768px) {
+
+    .mobile-background {
+        display: none;
+    }
+
+    .desktop-background {
+        display: block;
+    }
+}
+
+
+/* =========================================================
+   REDUCIR MOVIMIENTO
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .wave,
+    .noise {
+        animation: none !important;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+
+<div
+    class="animated-background"
+    id="animatedBackground"
+>
+
+
+<!-- ======================================================
+     MOBILE
+====================================================== -->
+
+<svg
+    class="background-svg mobile-background"
+    viewBox="0 0 430 932"
+    preserveAspectRatio="xMidYMid slice"
+>
+
+
+<defs>
+
+
+<!-- CREMA / AMARILLO -->
+
+<linearGradient
+    id="creamMobile"
+    x1="0"
+    y1="0"
+    x2="1"
+    y2="1"
+>
+
+    <stop
+        offset="0%"
+        stop-color="#FFFFD0"
+    />
+
+    <stop
+        offset="55%"
+        stop-color="#F4F6AD"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#B9AFFF"
+        stop-opacity=".45"
+    />
+
+</linearGradient>
+
+
+
+<!-- VIOLETA -->
+
+<linearGradient
+    id="purpleMobile"
+    x1="0"
+    y1="0"
+    x2="1"
+    y2="1"
+>
+
+    <stop
+        offset="0%"
+        stop-color="#9A88FF"
+        stop-opacity=".70"
+    />
+
+    <stop
+        offset="48%"
+        stop-color="#6543E5"
+        stop-opacity=".40"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#27007A"
+        stop-opacity=".05"
+    />
+
+</linearGradient>
+
+
+
+<!-- GLOW -->
+
+<radialGradient id="glowMobile">
+
+    <stop
+        offset="0%"
+        stop-color="#FFFFC1"
+        stop-opacity=".95"
+    />
+
+    <stop
+        offset="40%"
+        stop-color="#F5F5AE"
+        stop-opacity=".55"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#917FFF"
+        stop-opacity="0"
+    />
+
+</radialGradient>
+
+
+
+<!-- BLUR -->
+
+<filter
+    id="blurMobile"
+    x="-60%"
+    y="-60%"
+    width="220%"
+    height="220%"
+>
+
+    <feGaussianBlur
+        stdDeviation="18"
+    />
+
+</filter>
+
+
+
+<!-- DISTORSIÓN ORGÁNICA -->
+
+<filter
+    id="organicMobile"
+    x="-40%"
+    y="-40%"
+    width="180%"
+    height="180%"
+>
+
+    <feTurbulence
+        type="fractalNoise"
+        baseFrequency=".008 .014"
+        numOctaves="2"
+        seed="8"
+        result="noise"
+    >
+
+        <animate
+            attributeName="baseFrequency"
+
+            values="
+                .008 .014;
+                .010 .011;
+                .008 .014
+            "
+
+            dur="25s"
+
+            repeatCount="indefinite"
+        />
+
+    </feTurbulence>
+
+
+    <feDisplacementMap
+        in="SourceGraphic"
+        in2="noise"
+
+        scale="12"
+
+        xChannelSelector="R"
+        yChannelSelector="B"
+    />
+
+</filter>
+
+
+</defs>
+
+
+
+<!-- BASE -->
+
+<rect
+    width="430"
+    height="932"
+    fill="#18005F"
+/>
+
+
+<ellipse
+    cx="225"
+    cy="430"
+
+    rx="290"
+    ry="520"
+
+    fill="#3715A5"
+
+    opacity=".50"
+/>
+
+
+
+<!-- ======================================================
+     ARRIBA IZQUIERDA
+====================================================== -->
+
+<g
+    class="wave wave-a"
+    filter="url(#organicMobile)"
+>
+
+    <path
+        d="
+        M -90 70
+
+        C -5 22,
+          72 31,
+          118 83
+
+        C 168 139,
+          143 198,
+          81 228
+
+        C 31 252,
+          -30 241,
+          -83 203
+
+        Z
+        "
+
+        fill="url(#creamMobile)"
+
+        opacity=".96"
+    />
+
+
+    <path
+        d="
+        M -60 40
+
+        C 23 12,
+          100 41,
+          146 97
+
+        C 102 76,
+          58 78,
+          13 104
+
+        C -22 124,
+          -53 122,
+          -82 105
+
+        Z
+        "
+
+        fill="#8064ED"
+
+        opacity=".40"
+    />
+
+</g>
+
+
+
+<!-- ======================================================
+     ARRIBA DERECHA
+====================================================== -->
+
+<g class="wave wave-b">
+
+    <path
+        d="
+        M 300 -70
+
+        C 383 -25,
+          451 42,
+          485 125
+
+        C 444 113,
+          402 114,
+          369 133
+
+        C 328 155,
+          298 195,
+          275 237
+
+        C 294 143,
+          291 56,
+          300 -70
+
+        Z
+        "
+
+        fill="url(#creamMobile)"
+
+        opacity=".96"
+
+        filter="url(#organicMobile)"
+    />
+
+
+    <ellipse
+        cx="364"
+        cy="151"
+
+        rx="112"
+        ry="128"
+
+        fill="url(#glowMobile)"
+
+        filter="url(#blurMobile)"
+
+        opacity=".78"
+    />
+
+</g>
+
+
+
+<!-- ======================================================
+     VELO SUPERIOR
+====================================================== -->
+
+<path
+    class="wave wave-c"
+
+    d="
+    M -70 225
+
+    C 44 183,
+      130 187,
+      218 226
+
+    C 299 262,
+      360 259,
+      500 205
+
+    L 500 312
+
+    C 377 353,
+      298 340,
+      220 303
+
+    C 132 262,
+      47 272,
+      -70 330
+
+    Z
+    "
+
+    fill="url(#purpleMobile)"
+
+    opacity=".65"
+
+    filter="url(#organicMobile)"
+/>
+
+
+
+<!-- ======================================================
+     IZQUIERDA CENTRAL
+====================================================== -->
+
+<g class="wave wave-d">
+
+    <path
+        d="
+        M -90 342
+
+        C 6 299,
+          91 319,
+          124 390
+
+        C 157 462,
+          113 526,
+          38 549
+
+        C -22 568,
+          -67 548,
+          -100 511
+
+        Z
+        "
+
+        fill="url(#creamMobile)"
+
+        opacity=".87"
+
+        filter="url(#organicMobile)"
+    />
+
+
+    <path
+        d="
+        M -83 389
+
+        C 15 347,
+          83 369,
+          117 426
+
+        C 77 399,
+          37 404,
+          -2 425
+
+        C -36 444,
+          -61 449,
+          -91 440
+
+        Z
+        "
+
+        fill="#8D78F5"
+
+        opacity=".38"
+    />
+
+</g>
+
+
+
+<!-- ======================================================
+     DERECHA CENTRAL
+====================================================== -->
+
+<path
+    class="wave wave-a"
+
+    d="
+    M 492 324
+
+    C 381 325,
+      316 387,
+      310 469
+
+    C 303 557,
+      377 609,
+      491 586
+
+    L 500 485
+
+    C 431 496,
+      391 466,
+      389 425
+
+    C 386 383,
+      424 350,
+      492 348
+
+    Z
+    "
+
+    fill="url(#creamMobile)"
+
+    opacity=".76"
+
+    filter="url(#organicMobile)"
+/>
+
+
+
+<!-- ======================================================
+     CINTA CENTRAL/INFERIOR
+====================================================== -->
+
+<path
+    class="wave wave-b"
+
+    d="
+    M -80 625
+
+    C 60 571,
+      168 568,
+      260 618
+
+    C 330 656,
+      382 663,
+      500 622
+
+    L 500 735
+
+    C 387 775,
+      305 758,
+      231 713
+
+    C 150 665,
+      62 677,
+      -80 754
+
+    Z
+    "
+
+    fill="url(#purpleMobile)"
+
+    opacity=".60"
+
+    filter="url(#organicMobile)"
+/>
+
+
+
+<!-- ======================================================
+     ABAJO IZQUIERDA
+====================================================== -->
+
+<g class="wave wave-c">
+
+    <path
+        d="
+        M -75 730
+
+        C 29 680,
+          113 701,
+          145 775
+
+        C 179 854,
+          129 922,
+          58 963
+
+        L -80 970
+
+        Z
+        "
+
+        fill="url(#creamMobile)"
+
+        opacity=".96"
+
+        filter="url(#organicMobile)"
+    />
+
+
+    <ellipse
+        cx="70"
+        cy="820"
+
+        rx="115"
+        ry="170"
+
+        fill="url(#glowMobile)"
+
+        opacity=".45"
+
+        filter="url(#blurMobile)"
+    />
+
+</g>
+
+
+
+<!-- ======================================================
+     ABAJO DERECHA
+====================================================== -->
+
+<path
+    class="wave wave-d"
+
+    d="
+    M 188 960
+
+    C 210 830,
+      286 748,
+      390 718
+
+    C 431 707,
+      468 712,
+      501 729
+
+    L 501 970
+
+    Z
+    "
+
+    fill="url(#purpleMobile)"
+
+    opacity=".58"
+
+    filter="url(#organicMobile)"
+/>
+
+
+
+<!-- LUZ CENTRAL -->
+
+<ellipse
+    cx="205"
+    cy="525"
+
+    rx="85"
+    ry="220"
+
+    fill="url(#glowMobile)"
+
+    opacity=".18"
+
+    filter="url(#blurMobile)"
+/>
+
+
+</svg>
+
+
+
+<!-- ======================================================
+     DESKTOP
+====================================================== -->
+
+<svg
+    class="background-svg desktop-background"
+
+    viewBox="0 0 1920 1080"
+
+    preserveAspectRatio="xMidYMid slice"
+>
+
+
+<defs>
+
+
+<linearGradient
+    id="creamDesktop"
+    x1="0"
+    y1="0"
+    x2="1"
+    y2="1"
+>
+
+    <stop
+        offset="0%"
+        stop-color="#FFFFCC"
+    />
+
+    <stop
+        offset="55%"
+        stop-color="#F3F5A9"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#B9AEFF"
+        stop-opacity=".40"
+    />
+
+</linearGradient>
+
+
+
+<linearGradient
+    id="purpleDesktop"
+    x1="0"
+    y1="0"
+    x2="1"
+    y2="1"
+>
+
+    <stop
+        offset="0%"
+        stop-color="#927EFF"
+        stop-opacity=".65"
+    />
+
+    <stop
+        offset="50%"
+        stop-color="#5A35DA"
+        stop-opacity=".34"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#21006D"
+        stop-opacity=".04"
+    />
+
+</linearGradient>
+
+
+
+<radialGradient id="glowDesktop">
+
+    <stop
+        offset="0%"
+        stop-color="#FFFFBD"
+        stop-opacity=".95"
+    />
+
+    <stop
+        offset="40%"
+        stop-color="#F6F3A7"
+        stop-opacity=".52"
+    />
+
+    <stop
+        offset="100%"
+        stop-color="#907DFF"
+        stop-opacity="0"
+    />
+
+</radialGradient>
+
+
+
+<filter
+    id="blurDesktop"
+    x="-60%"
+    y="-60%"
+    width="220%"
+    height="220%"
+>
+
+    <feGaussianBlur
+        stdDeviation="50"
+    />
+
+</filter>
+
+
+
+<filter
+    id="organicDesktop"
+    x="-30%"
+    y="-30%"
+    width="160%"
+    height="160%"
+>
+
+    <feTurbulence
+        type="fractalNoise"
+
+        baseFrequency=".002 .006"
+
+        numOctaves="2"
+
+        seed="8"
+
+        result="noise"
+    >
+
+        <animate
+            attributeName="baseFrequency"
+
+            values="
+                .002 .006;
+                .003 .004;
+                .002 .006
+            "
+
+            dur="28s"
+
+            repeatCount="indefinite"
+        />
+
+    </feTurbulence>
+
+
+    <feDisplacementMap
+        in="SourceGraphic"
+        in2="noise"
+
+        scale="25"
+    />
+
+</filter>
+
+
+</defs>
+
+
+
+<!-- BASE -->
+
+<rect
+    width="1920"
+    height="1080"
+    fill="#17005D"
+/>
+
+
+<ellipse
+    cx="960"
+    cy="520"
+
+    rx="1050"
+    ry="760"
+
+    fill="#35149F"
+
+    opacity=".50"
+/>
+
+
+
+<!-- ======================================================
+     MASA IZQUIERDA
+====================================================== -->
+
+<g
+    class="wave wave-a"
+    filter="url(#organicDesktop)"
+>
+
+    <path
+        d="
+        M -180 40
+
+        C 135 -42,
+          375 24,
+          510 187
+
+        C 612 311,
+          530 416,
+          363 460
+
+        C 201 503,
+          39 441,
+          -170 329
+
+        Z
+        "
+
+        fill="url(#creamDesktop)"
+
+        opacity=".94"
+    />
+
+</g>
+
+
+
+<!-- ======================================================
+     MASA DERECHA
+====================================================== -->
+
+<g
+    class="wave wave-b"
+    filter="url(#organicDesktop)"
+>
+
+    <path
+        d="
+        M 2100 40
+
+        C 1785 -42,
+          1545 24,
+          1410 187
+
+        C 1308 311,
+          1390 416,
+          1557 460
+
+        C 1719 503,
+          1881 441,
+          2090 329
+
+        Z
+        "
+
+        fill="url(#creamDesktop)"
+
+        opacity=".94"
+    />
+
+</g>
+
+
+
+<!-- GLOWS -->
+
+<ellipse
+    cx="300"
+    cy="260"
+
+    rx="360"
+    ry="280"
+
+    fill="url(#glowDesktop)"
+
+    filter="url(#blurDesktop)"
+
+    opacity=".50"
+/>
+
+
+<ellipse
+    cx="1620"
+    cy="260"
+
+    rx="360"
+    ry="280"
+
+    fill="url(#glowDesktop)"
+
+    filter="url(#blurDesktop)"
+
+    opacity=".50"
+/>
+
+
+
+<!-- ======================================================
+     ONDA SUPERIOR
+====================================================== -->
+
+<path
+    class="wave wave-c"
+
+    d="
+    M -150 270
+
+    C 295 165,
+      585 194,
+      835 305
+
+    C 1060 407,
+      1272 399,
+      2070 205
+
+    L 2070 395
+
+    C 1542 536,
+      1210 542,
+      920 424
+
+    C 640 311,
+      340 332,
+      -150 474
+
+    Z
+    "
+
+    fill="url(#purpleDesktop)"
+
+    opacity=".64"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+
+<!-- ======================================================
+     GRAN ARCO IZQUIERDO
+====================================================== -->
+
+<path
+    class="wave wave-d"
+
+    d="
+    M -170 500
+
+    C 112 392,
+      328 423,
+      423 596
+
+    C 515 765,
+      366 915,
+      108 926
+
+    C -22 931,
+      -108 889,
+      -177 823
+
+    Z
+    "
+
+    fill="url(#creamDesktop)"
+
+    opacity=".82"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+
+<!-- ======================================================
+     GRAN ARCO DERECHO
+====================================================== -->
+
+<path
+    class="wave wave-a"
+
+    d="
+    M 2090 500
+
+    C 1808 392,
+      1592 423,
+      1497 596
+
+    C 1405 765,
+      1554 915,
+      1812 926
+
+    C 1942 931,
+      2028 889,
+      2097 823
+
+    Z
+    "
+
+    fill="url(#creamDesktop)"
+
+    opacity=".82"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+
+<!-- ======================================================
+     ONDA INFERIOR
+====================================================== -->
+
+<path
+    class="wave wave-b"
+
+    d="
+    M -150 820
+
+    C 292 680,
+      608 698,
+      855 835
+
+    C 1080 960,
+      1304 962,
+      2070 735
+
+    L 2070 947
+
+    C 1512 1110,
+      1172 1117,
+      885 978
+
+    C 596 840,
+      300 858,
+      -150 1045
+
+    Z
+    "
+
+    fill="url(#purpleDesktop)"
+
+    opacity=".60"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+
+<!-- ======================================================
+     FORMAS INFERIORES
+====================================================== -->
+
+<path
+    class="wave wave-c"
+
+    d="
+    M -120 1010
+
+    C 168 857,
+      388 872,
+      515 1017
+
+    L 565 1140
+    L -120 1140
+
+    Z
+    "
+
+    fill="url(#creamDesktop)"
+
+    opacity=".90"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+<path
+    class="wave wave-d"
+
+    d="
+    M 2040 1010
+
+    C 1752 857,
+      1532 872,
+      1405 1017
+
+    L 1355 1140
+    L 2040 1140
+
+    Z
+    "
+
+    fill="url(#creamDesktop)"
+
+    opacity=".90"
+
+    filter="url(#organicDesktop)"
+/>
+
+
+
+</svg>
+
+
+
+<!-- ======================================================
+     VIÑETA
+====================================================== -->
+
+<div class="vignette"></div>
+
+
+
+<!-- ======================================================
+     TEXTURA GRANULADA
+====================================================== -->
+
+<svg class="noise">
+
+    <filter id="noiseFilter">
+
+        <feTurbulence
+            type="fractalNoise"
+            baseFrequency=".72"
+            numOctaves="4"
+            stitchTiles="stitch"
+        />
+
+    </filter>
+
+
+    <rect
+        width="100%"
+        height="100%"
+
+        filter="url(#noiseFilter)"
+    />
+
+</svg>
+
+
+</div>
+
+
+
+<script>
+/* =========================================================
+   PARALLAX
+
+   Es intencionalmente MUY sutil.
+   No queremos destruir la composición del diseño.
+========================================================= */
+
+const background =
+    document.getElementById("animatedBackground");
+
+
+let targetX = 0;
+let targetY = 0;
+
+let currentX = 0;
+let currentY = 0;
+
+
+
+/* =========================================================
+   DESKTOP / MOUSE
+========================================================= */
+
+window.addEventListener(
+    "pointermove",
+    (event) => {
+
+        /*
+         * Convertimos posición del cursor
+         * a valores entre -1 y 1.
+         */
+
+        targetX =
+            (
+                event.clientX /
+                window.innerWidth
+                -
+                0.5
+            ) * 6;
+
+
+        targetY =
+            (
+                event.clientY /
+                window.innerHeight
+                -
+                0.5
+            ) * 6;
+
+    },
+    {
+        passive: true
+    }
+);
+
+
+
+window.addEventListener(
+    "pointerleave",
+    () => {
+
+        targetX = 0;
+        targetY = 0;
+
+    }
+);
+
+
+
+/* =========================================================
+   INTERPOLACIÓN SUAVE
+========================================================= */
+
+function animateBackground() {
+
+    currentX +=
+        (targetX - currentX)
+        * 0.035;
+
+
+    currentY +=
+        (targetY - currentY)
+        * 0.035;
+
+
+    background.style.transform =
+        `
+        translate3d(
+            ${currentX}px,
+            ${currentY}px,
+            0
+        )
+        scale(1.012)
+        `;
+
+
+    requestAnimationFrame(
+        animateBackground
+    );
+}
+
+
+
+animateBackground();
+</script>
+
+
+</body>
+</html>

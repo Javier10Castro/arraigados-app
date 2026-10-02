@@ -1,0 +1,96 @@
+.shell { position: relative; min-height: 100%; isolation: isolate; }
+.sidebar { display: none; }
+
+.main {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 18px);
+}
+
+.content {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0 20px 24px;
+}
+
+.bottom {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: 62px;
+  padding: 0 8px;
+  background: var(--crema);
+  border: 1px solid #ffffff80;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px #17004130;
+}
+
+.bottomItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #584582;
+}
+
+.bottomLabel { font-size: 10px; font-weight: 500; }
+.underline { position: absolute; bottom: 6px; width: 19px; height: 1px; background: transparent; }
+.bottomItemActive { color: var(--morado); }
+.bottomItemActive svg { stroke-width: 2.8; }
+.bottomItemActive .underline { background: var(--morado); }
+
+@media (min-width: 1024px) {
+  .bottom { display: none; }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-w);
+    padding: 36px 24px 24px;
+    color: var(--crema);
+    background: linear-gradient(165deg, #16053ff2, #17003adb), url('../assets/brand/flyer-texture.webp') center / cover;
+    border-right: 1px solid #f2f7d72b;
+    overflow-y: auto;
+  }
+  /* Misma estructura que el menú de Admin: ARRAIGADOS / círculos RJDT / texto. */
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 0 2px 30px; border-bottom: 1px solid #f2f7d730; }
+  .brand > a { display: block; width: 100%; }
+  .brandMark { width: 100%; }
+  .brandRings { width: 62%; max-width: 150px; height: auto; }
+  .brandLabel { font: 600 15px var(--font-display); text-transform: uppercase; letter-spacing: 0.32em; padding-left: 0.32em; }
+  .nav { display: flex; flex-direction: column; gap: 6px; margin-top: 26px; }
+  .navItem { display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 16px; border-radius: 25px; font-size: 14px; color: #f2f7d7d9; }
+  .navItem:hover, .quickItem:hover { background: #f2f7d718; }
+  .navItemActive, .navItemActive:hover { background: var(--crema); color: var(--morado); font-weight: 600; }
+  .quickLabel { margin: 30px 16px 10px; font: 600 12px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: #f2f7d7a6; }
+  .quick { display: flex; flex-direction: column; gap: 2px; }
+  .quickItem { display: flex; align-items: center; gap: 13px; min-height: 38px; padding: 0 16px; border-radius: 22px; font-size: 13px; }
+  .quickItemActive { background: #f2f7d720; }
+  .eventInfo { display: flex; flex-direction: column; gap: 12px; padding: 30px 16px; margin-top: auto; }
+  .eventInfo strong { font: 700 32px/0.95 var(--font-display); }
+  .eventInfo span { font-size: 10px; line-height: 1.5; color: #f2f7d7ba; }
+  .eventInfo span:first-child { font: 600 13px var(--font-display); text-transform: uppercase; }
+  .userCard { display: flex; align-items: center; gap: 10px; padding: 16px 0 0; border-top: 1px solid #f2f7d730; }
+  .avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--crema); color: var(--morado); font: 700 18px var(--font-display); }
+  .userInfo { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .userInfo strong { font-size: 12px; overflow-wrap: anywhere; }
+  .userInfo span { font: 500 11px var(--font-display); letter-spacing: 0.08em; opacity: 0.8; }
+  .logout { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 1px solid #f2f7d750; border-radius: 50%; background: transparent; color: var(--crema); cursor: pointer; }
+  .logout:hover { background: #f2f7d725; }
+  .main { margin-left: var(--sidebar-w); padding-bottom: 30px; }
+  .content { max-width: 1040px; padding: 16px 52px 40px; }
+}
+
+@media (min-width: 1440px) {
+  .content { padding: 28px 64px 48px; }
+}

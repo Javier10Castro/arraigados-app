@@ -1,0 +1,82 @@
+.background,
+.fallback,
+.layers,
+.vignette {
+  position: absolute;
+  inset: 0;
+}
+
+.background {
+  z-index: 0;
+  overflow: hidden;
+  background: #10085a;
+  isolation: isolate;
+}
+
+.fallback {
+  background:
+    radial-gradient(55% 34% at 82% 17%, rgba(232, 231, 247, 0.75), transparent 70%),
+    linear-gradient(135deg, #120958 0%, #504c86 56%, #cac9df 100%);
+}
+
+.layers {
+  position: absolute;
+  overflow: hidden;
+  inset: 0;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  user-select: none;
+}
+
+.ambientGlows {
+  animation: glowDrift 26s ease-in-out -9s infinite alternate;
+  transform-origin: 50% 50%;
+}
+
+.lensFlare {
+  opacity: 0.86;
+  mix-blend-mode: screen;
+  animation: flareDrift 24s ease-in-out -12s infinite alternate;
+  transform-origin: 80% 40%;
+}
+
+.surfaceWear {
+  opacity: 0.7;
+}
+
+.grain {
+  opacity: 0.58;
+  mix-blend-mode: soft-light;
+}
+
+.vignette {
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(7, 0, 46, 0.08), transparent 32%, rgba(7, 0, 46, 0.16)),
+    linear-gradient(90deg, rgba(7, 0, 46, 0.13), transparent 18%, transparent 82%, rgba(7, 0, 46, 0.13));
+}
+
+@keyframes glowDrift {
+  from { transform: translate3d(-0.4%, 0.25%, 0) scale(1); }
+  to { transform: translate3d(0.4%, -0.25%, 0) scale(1.008); }
+}
+
+@keyframes flareDrift {
+  from { transform: translate3d(-0.35%, 0.2%, 0); opacity: 0.76; }
+  to { transform: translate3d(0.35%, -0.2%, 0); opacity: 0.92; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambientGlows,
+  .lensFlare {
+    animation: none;
+  }
+}

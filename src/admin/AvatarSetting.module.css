@@ -1,0 +1,30 @@
+/* Admin → Usuarios → Apariencia de usuarios. Mismo lenguaje que las tarjetas crema del panel. */
+.card { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; padding: 16px; border-radius: var(--r-card); background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); }
+.head { display: flex; flex-direction: column; gap: 4px; }
+.title { font: 700 17px/1.1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.desc { font-size: 13px; color: var(--text-2); }
+
+.options { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (min-width: 640px) { .options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.option {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+  border: 1.6px solid rgba(62, 7, 166, 0.2); border-radius: 16px; background: #fff;
+  color: var(--morado-oscuro); text-align: left; font: inherit; cursor: pointer;
+}
+.option:hover:not(:disabled) { border-color: rgba(62, 7, 166, 0.45); }
+.option:disabled { cursor: progress; opacity: 0.75; }
+.optionOn { border-color: var(--morado); box-shadow: 0 0 0 3px rgba(62, 7, 166, 0.12); }
+
+.radio { display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid rgba(62, 7, 166, 0.4); color: var(--crema); }
+.optionOn .radio { background: var(--morado); border-color: var(--morado); }
+
+.preview { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; }
+.previewAvatar { width: 40px; height: 40px; font: 700 16px var(--font-display); background: var(--morado); color: var(--crema); }
+
+.text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.text strong { font: 700 16px var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.text span { font-size: 12.5px; color: var(--text-3); }
+
+.status { min-height: 18px; font-size: 12.5px; font-weight: 600; color: #0d6e48; }
+.error { color: #a1262c; }

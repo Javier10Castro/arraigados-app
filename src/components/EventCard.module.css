@@ -1,0 +1,30 @@
+.now {
+  position: relative;
+  overflow: hidden;
+  border: 6px solid var(--crema);
+  border-radius: 21px;
+  padding: 22px 22px 24px;
+  color: var(--crema);
+  background: linear-gradient(100deg, #21045de8, #250569aa 46%, #20046405), url('../assets/brand/flyer-contours.webp') 65% 32% / cover;
+  box-shadow: var(--shadow-pop), 0 0 0 1px rgba(242, 247, 215, 0.35);
+}
+.now::after { content: ''; position: absolute; inset: 0; background: url('../assets/brand/flyer-texture.webp') center / cover; mix-blend-mode: screen; opacity: 0.25; pointer-events: none; }
+.nowTop { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.nowKind { font: 600 14px var(--font-display); letter-spacing: 0.05em; }
+.nowTitle { position: relative; z-index: 1; max-width: 180px; margin-bottom: 20px; font: 600 36px/0.96 var(--font-display); text-transform: uppercase; }
+.nowMeta { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.nowMeta li { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.next { display: flex; align-items: flex-start; gap: 11px; padding: 15px 12px; background: #f8f9e9a8; border: 1px solid #d9dcc2; border-radius: 13px; }
+.nextIcon { display: grid; place-items: center; width: 25px; height: 25px; flex: none; border-radius: 50%; background: var(--morado); color: var(--crema); }
+.nextIcon svg { width: 15px; }
+.nextBody { min-width: 0; }
+.nextTitle { font: 700 15.5px/1.2 var(--font-body); letter-spacing: -0.01em; color: var(--morado-oscuro); }
+.nextVenue { margin-top: 5px; font-size: 12px; color: var(--text-2); }
+.nextTime { display: block; margin-top: 3px; font-size: 11px; color: var(--text-2); }
+@media (min-width: 1024px) {
+  .now { padding: 28px 32px; background-position: center 38%; }
+  .nowTitle { max-width: 260px; font-size: 52px; }
+  .nowMeta { flex-direction: row; gap: 24px; }
+  .nowMeta li { font-size: 13px; }
+  .next { padding: 18px; }
+}

@@ -1,0 +1,158 @@
+@font-face {
+  font-family: 'Antarctican';
+  src: url('/rcs/fonts/fonnts.com-Antarctican_Headline_Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Antarctican';
+  src: url('/rcs/fonts/fonnts.com-Antarctican_Headline_Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Antarctican';
+  src: url('/rcs/fonts/fonnts.com-Antarctican_Headline_Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Degular Text';
+  src: url('/rcs/fonts/DegularTextDemo-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Degular Text';
+  src: url('/rcs/fonts/DegularTextDemo-Semibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Degular Text';
+  src: url('/rcs/fonts/DegularTextDemo-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Pressio (versión TEST, núm. 35): títulos grandes. OJO: no trae acentos ni ñ;
+   esas letras salen en la fuente de respaldo. */
+@font-face {
+  font-family: 'Pressio';
+  src: url('/rcs/fonts/PressioTEST-No.35.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-pressio: 'Pressio', var(--font-flyer-display);
+  /* Paleta · Disenos (design system del mockup) */
+  --morado: #3e07a6;
+  --morado-oscuro: #1e0263;
+  --morado-claro: #7b5bff;
+  --crema: #f2f7d7;
+  --blanco: #ffffff;
+  --ink: #0b0f1a;
+
+  --app-bg: #13043f;
+  --surface: #f2f5dd;
+  --surface-2: #e9e8d5;
+  --line: rgba(30, 2, 99, 0.15);
+  --text: var(--morado-oscuro);
+  --text-2: #47405d;
+  --text-3: #686276;
+  --live: #e5312b;
+  --ok: #16a06a;
+
+  /* Radios */
+  --r-card: 18px;
+  --r-input: 12px;
+  --r-thumb: 9px;
+  --r-pill: 999px;
+
+  /* Tipografía */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-flyer-display: 'Antarctican', var(--font-display);
+  --font-flyer-body: 'Degular Text', var(--font-body);
+  --font-script: 'EB Garamond', Georgia, serif;
+  --font-handwritten: 'Caveat', 'EB Garamond', cursive;
+
+  --nav-h: 66px;
+  --sidebar-w: 272px;
+  --content-max: 760px;
+
+  --shadow-card: 0 2px 0 rgba(242, 247, 215, 0.24), 0 4px 12px rgba(14, 0, 47, 0.08);
+  --shadow-pop: 0 10px 32px rgba(14, 0, 47, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:focus-visible {
+  outline: 2px solid var(--morado-claro);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

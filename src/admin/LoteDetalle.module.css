@@ -1,0 +1,197 @@
+/* Admin -> Lotes -> un lote. Mismo lenguaje que Lotes/Usuarios: tarjetas crema
+   sobre el fondo morado, títulos en la tipografía display. */
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-top: -6px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid rgba(242, 247, 215, 0.45);
+  border-radius: var(--r-pill);
+  color: var(--crema);
+  font: 600 13px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.back:hover { background: rgba(242, 247, 215, 0.12); }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-card);
+}
+.cardTitle {
+  margin: 0;
+  font: 700 18px/1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+}
+.facts dt { color: var(--text-2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+
+/* Error de una descarga/copia: fuera de las tarjetas, sobre el morado. */
+.alert {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--crema);
+  color: #a1262c;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}
+
+/* Tabla de pulseras */
+.tableWrap { margin: 0 -4px; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.table th {
+  padding: 0 8px 8px;
+  text-align: left;
+  font: 700 11px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1.4px solid rgba(30, 2, 99, 0.16);
+}
+.table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(30, 2, 99, 0.08);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:nth-child(even) td { background: rgba(30, 2, 99, 0.025); }
+.table tbody tr:hover td { background: rgba(62, 7, 166, 0.06); }
+.num { width: 1%; white-space: nowrap; text-align: right !important; color: var(--text-3); font-weight: 700; }
+.act { width: 1%; padding-left: 2px !important; padding-right: 2px !important; }
+.code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font: 700 12px var(--font-body);
+  white-space: nowrap;
+}
+.ps_unclaimed { background: rgba(30, 2, 99, 0.05); border-color: rgba(30, 2, 99, 0.14); color: var(--text-2); }
+.ps_active { background: rgba(22, 160, 106, 0.14); border-color: rgba(13, 110, 72, 0.28); color: #0d6e48; }
+.ps_invalidated { background: rgba(212, 53, 60, 0.1); border-color: rgba(161, 38, 44, 0.28); color: #a1262c; }
+
+/* Kit: etiqueta pequeña */
+.kit {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(62, 7, 166, 0.08);
+  color: var(--morado);
+  font: 700 12px var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Usuario: iniciales + nombre, o "Sin asignar" */
+.user { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--morado);
+  color: var(--crema);
+  font: 700 12px var(--font-display);
+}
+.userName { font-weight: 600; color: var(--morado-oscuro); overflow-wrap: break-word; line-height: 1.25; }
+.noUser { color: var(--text-3); font-size: 12.5px; font-style: italic; }
+.replaced { color: var(--text-3); font-size: 12.5px; text-decoration: line-through; text-decoration-color: rgba(161, 38, 44, 0.5); }
+
+/* Avance del lote */
+.progress { display: flex; align-items: center; gap: 10px; }
+.progressBar {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: rgba(30, 2, 99, 0.1);
+  overflow: hidden;
+}
+.progressBar span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #16a06a, #0d6e48);
+  transition: width 0.4s ease;
+}
+.progressText { font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.progressText strong { color: #0d6e48; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Celular angosto: el código (opcional) se oculta para que la tabla quepa. */
+@media (max-width: 559px) {
+  .codeCol { display: none; }
+}
+
+/* Celular: el kit ya aparece arriba (todo el lote es del mismo kit). */
+@media (max-width: 479px) {
+  .kitCol { display: none; }
+  /* Sin el círculo de iniciales el nombre tiene espacio y no se parte a media palabra. */
+  .avatar { display: none; }
+  .userName { font-size: 13px; }
+  .status { gap: 4px; padding: 3px 8px 3px 6px; font-size: 11px; }
+  .table td { padding: 8px 5px; }
+  .table th { padding: 0 5px 8px; }
+}
+
+@media (min-width: 640px) {
+  .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card { padding: 20px 22px; }
+}
+
+/* Botón bloqueado (descargar una pulsera deshabilitada). */
+.blocked,
+.blocked:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.blocked:hover { background: transparent; }
+
+/* Búsqueda y filtro de estado de la tabla de pulseras (reusa estilos de Asistentes). */
+.pulseFilters { display: flex; flex-direction: column; gap: 10px; }
+.skeletonStack { display: flex; flex-direction: column; gap: 14px; }

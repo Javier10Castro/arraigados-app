@@ -1,0 +1,26 @@
+/* Paginación: compacta, sobre las tarjetas crema del panel. */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding-top: 4px; }
+.range { margin: 0; font-size: 12.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.range b { color: var(--morado-oscuro); }
+
+.size { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.size select { height: 32px; padding: 0 6px; border-radius: 10px; border: 1.4px solid rgba(11, 15, 26, 0.14); background: #fff; font: 600 13px var(--font-body); color: var(--ink); }
+.size select:focus { outline: none; border-color: var(--morado); }
+
+.pages { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.step, .num {
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  height: 32px; min-width: 32px; padding: 0 8px; border-radius: 10px;
+  border: 1.4px solid rgba(62, 7, 166, 0.25); background: transparent; color: var(--morado);
+  font: 700 13px var(--font-display); font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.step:hover:not(:disabled), .num:hover:not(:disabled) { background: rgba(62, 7, 166, 0.08); }
+.step:disabled { opacity: 0.4; cursor: not-allowed; }
+.on, .on:hover:not(:disabled) { background: var(--morado); border-color: var(--morado); color: var(--crema); cursor: default; }
+.gap { min-width: 16px; text-align: center; color: var(--text-3); font-weight: 700; }
+.stepText { display: none; }
+
+@media (min-width: 640px) {
+  .stepText { display: inline; }
+  .step { padding: 0 11px; }
+}

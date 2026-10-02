@@ -1,0 +1,231 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-top: 32px;
+}
+
+.top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #4b1bd6 0%, #1e0263 100%);
+  color: var(--crema);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  overflow: hidden;
+  border: 1px solid var(--crema);
+}
+
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.identityText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.hello {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--crema);
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.8), 0 2px 14px rgba(8, 0, 32, 0.5);
+}
+
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--crema);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.bell:hover {
+  background: var(--morado);
+  color: #fff;
+}
+
+.bellDot {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--live);
+  border: 2px solid #fff;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.current > h2 {
+  color: var(--crema);
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.85), 0 2px 14px rgba(8, 0, 32, 0.55);
+}
+.agenda { padding: 22px 16px; background: #f2f7d7e8; border: 1px solid #f2f7d7; border-radius: var(--r-card); }
+@media (min-width: 1024px) {
+  .page { padding-top: 16px; gap: 30px; }
+  .hello { font-size: 19px; }
+  .agenda { padding: 26px; }
+  .agenda .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--morado);
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: min(320px, calc(100vw - 32px));
+  padding: 14px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-pop);
+}
+
+.panelHead {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.panelList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panelItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #f7f5ff;
+}
+
+.panelIcon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: #ece8ff;
+  color: var(--morado);
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.panelBody strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.panelBody span {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.35;
+}
+
+.panelLive {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--live);
+}
+
+.panelClose {
+  width: 100%;
+  height: 36px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(62, 7, 166, 0.08);
+  color: var(--morado);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.panelClose:hover {
+  background: rgba(62, 7, 166, 0.16);
+}

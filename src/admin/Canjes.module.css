@@ -1,0 +1,45 @@
+.codeInput {
+  height: 40px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  font: 13.5px var(--font-body);
+  color: var(--text-1);
+}
+.codeInput:focus { outline: none; border-color: var(--morado); }
+
+.dates { display: flex; align-items: center; gap: 8px; }
+.dates input[type='date'] {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1.4px solid rgba(30, 2, 99, 0.16);
+  background: #fff;
+  font: 13.5px var(--font-body);
+  color: var(--text-1);
+}
+.dates span { color: var(--text-3); font-size: 12.5px; }
+
+.statusValid { color: #0d6e48; font-weight: 700; }
+.statusVoid { color: #a1262c; font-weight: 700; }
+.voidMeta { display: block; font-size: 11.5px; color: var(--text-3); font-weight: 400; margin-top: 2px; }
+
+.voidBtn { white-space: nowrap; }
+
+.reasonBox textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1.6px solid rgba(30, 2, 99, 0.16);
+  padding: 10px 12px;
+  font: 14px var(--font-body);
+  color: var(--text-1);
+}
+.reasonBox textarea:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.reasonCount { font-size: 11.5px; color: var(--text-3); text-align: right; }
+
+.summary { font-size: 13.5px; color: var(--text-2); margin: 0 0 10px; }
+.summary b { color: var(--text-1); }
