@@ -40,7 +40,7 @@ function initialView(status: NotesStatus, active: Note | null): View {
 }
 
 /** "se desvanece en 5 h" / "en 35 min" / "en menos de 1 min". */
-function remaining(expiresAt: string, now: number) {
+export function remaining(expiresAt: string, now: number) {
   const mins = Math.max(0, Math.round((new Date(expiresAt).getTime() - now) / 60000));
   if (mins < 1) return 'menos de 1 min';
   if (mins < 60) return `${mins} min`;
@@ -173,7 +173,10 @@ export default function NoteSheet({ status, error, active, now, onPublish, onRem
             <p className={styles.preview}>
               {active.text}
             </p>
-            <p className={styles.meta}>Se desvanece en {remaining(active.expiresAt, now)}</p>
+            <p className={styles.meta}>
+              Se desvanece en {remaining(active.expiresAt, now)}
+              {active.likeCount > 0 && ` · ♥ ${active.likeCount}`}
+            </p>
             {formError && <p className={styles.error} role="alert">{formError}</p>}
             <div className={styles.actionsRow}>
               <Button variant="outline" onClick={() => void removeNote()} disabled={removing}>

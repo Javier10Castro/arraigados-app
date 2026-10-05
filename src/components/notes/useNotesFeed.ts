@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { NoteFeedItem } from '../../../shared/api';
 
@@ -49,6 +49,35 @@ export function useNotesFeed(token: string) {
     };
   }, [load]);
 
+  // Likes: el corazón cambia al instante (optimista) y se concilia con lo que responde el
+  // servidor; si falla, vuelve a como estaba. Un solo envío a la vez por nota.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const pending = useRef(new Set<string>());
+  const patch = (id: string, fn: (n: NoteFeedItem) => NoteFeedItem) =>
+    setItems((list) => list.map((n) => (n.id === id ? fn(n) : n)));
+
+  /** mode 'like' = solo dar like (doble toque; si ya lo tenía no hace nada) · 'toggle' = el botón. */
+  const like = useCallback(
+    async (id: string, mode: 'like' | 'toggle') => {
+      const cur = itemsRef.current.find((n) => n.id === id);
+      if (!cur || pending.current.has(id)) return;
+      if (mode === 'like' && cur.likedByMe) return;
+      pending.current.add(id);
+      const target = !cur.likedByMe;
+      patch(id, (n) => ({ ...n, likedByMe: target, likeCount: Math.max(0, n.likeCount + (target ? 1 : -1)) }));
+      try {
+        const r = await api.toggleNoteLike(token, id);
+        patch(id, (n) => ({ ...n, likedByMe: r.liked, likeCount: r.likeCount }));
+      } catch {
+        patch(id, (n) => ({ ...n, likedByMe: cur.likedByMe, likeCount: cur.likeCount }));
+      } finally {
+        pending.current.delete(id);
+      }
+    },
+    [token],
+  );
+
   const visible = useMemo(() => items.filter((n) => new Date(n.expiresAt).getTime() > now), [items, now]);
-  return { status, items: visible, reload: load };
+  return { status, items: visible, reload: load, like };
 }

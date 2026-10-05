@@ -7,7 +7,7 @@
 .rail {
   display: flex;
   align-items: flex-end;           /* los avatares quedan alineados aunque las burbujas midan distinto */
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   padding: 14px 2px 6px;           /* aire arriba: la burbuja "salta" al aparecer y el scroll recortaría */
   list-style: none;
@@ -29,18 +29,60 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  width: 100px;
+  width: 176px; /* ancho para que una nota de ~55 caracteres quepa en 2 líneas */
   scroll-snap-align: start;
   animation: itemIn 0.46s cubic-bezier(0.2, 1.1, 0.3, 1) both;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
+.hit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* el doble toque no hace zoom */
+}
+.hit:active .avatarBox { transform: scale(0.96); }
+.avatarBox { position: relative; display: grid; place-items: center; transition: transform 0.15s ease; }
+
+/* Corazoncito en el avatar de las notas que ya te gustaron. */
+.likedBadge {
+  position: absolute;
+  right: 6px;
+  bottom: 8px;
+  color: var(--live);
+  filter: drop-shadow(0 1px 3px rgba(8, 0, 32, 0.6));
+}
+/* Corazón que sale con el doble toque. */
+.pop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -26px 0 0 -26px;
+  color: var(--live);
+  pointer-events: none;
+  filter: drop-shadow(0 6px 12px rgba(8, 0, 32, 0.4));
+  animation: heartPop 0.8s ease both;
+}
+.ownLikes { display: inline-flex; align-items: center; gap: 3px; margin-left: 7px; color: #ff8f8c; font-weight: 700; }
+
+.avatarBox,
+.avatarBtn,
+.ghostAvatar { margin-top: -16px; } /* el avatar sube hacia la burbuja (el SVG trae aire alrededor) */
+
 .bubbleSlot {
+  display: block;
   width: 100%;
   margin-bottom: 7px;              /* lugar para la colita */
 }
 
-.item > :is(span, button):not(.name):not(.ghostName) { margin-top: -16px; } /* el avatar sube hacia la burbuja (el SVG trae aire alrededor) */
 .avatarBtn {
   display: grid;
   place-items: center;
@@ -116,10 +158,18 @@
   .tray { --fade-l: 0px !important; --fade-r: 0px !important; } /* en escritorio las flechas ya avisan */
 }
 
+@keyframes heartPop {
+  0%   { opacity: 0; transform: scale(0.3); }
+  25%  { opacity: 1; transform: scale(1.2); }
+  60%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05) translateY(-16px); }
+}
 @keyframes itemIn {
   from { opacity: 0; transform: translateY(10px) scale(0.85); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .item { animation: none; }
+  .pop { animation: none; opacity: 0; }
+  .avatarBox { transition: none; }
 }

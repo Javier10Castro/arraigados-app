@@ -281,6 +281,7 @@ export default function Home() {
         onOpenOwn={() => setNoteOpen(true)}
         feedStatus={feed.status}
         feed={feed.items}
+        onLike={feed.like}
       />
 
       <section className={`${styles.section} ${styles.current}`}>

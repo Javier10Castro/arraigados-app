@@ -1,0 +1,89 @@
+/* Visor de la nota de otra persona. La hoja (fondo, agarradera, cerrar, texto) viene de
+   NoteSheet.module.css; aquí solo lo propio del visor. */
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--morado-oscuro);
+}
+
+.noteWrap {
+  position: relative;
+  touch-action: manipulation; /* el doble toque no hace zoom */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.text { text-align: center; }
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid rgba(30, 2, 99, 0.25);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--morado-oscuro);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.heart:active { transform: scale(0.95); }
+.liked {
+  background: var(--live);
+  border-color: var(--live);
+  color: #fff;
+}
+.liked svg { animation: heartBeat 0.35s cubic-bezier(0.2, 1.4, 0.3, 1); }
+
+.hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* Corazón grande que aparece sobre la nota con el doble toque. */
+.pop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -42px 0 0 -42px;
+  color: var(--live);
+  pointer-events: none;
+  filter: drop-shadow(0 6px 14px rgba(8, 0, 32, 0.35));
+  animation: heartPop 0.8s ease both;
+}
+
+@keyframes heartPop {
+  0%   { opacity: 0; transform: scale(0.3); }
+  25%  { opacity: 1; transform: scale(1.15); }
+  60%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05) translateY(-14px); }
+}
+@keyframes heartBeat {
+  0% { transform: scale(0.6); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop { animation: none; opacity: 0; }
+  .liked svg { animation: none; }
+  .heart { transition: none; }
+}

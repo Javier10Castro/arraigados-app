@@ -2431,6 +2431,20 @@ dueño ve su nota.
 - `NoteBubble` ahora es la burbuja chica del carrusel (la grande de antes ya no existe).
 - Probado con 300 asistentes: feed 40 notas, sin token → 401, sin desbordes horizontales.
 
+### Likes en las notas (5 oct 2026)
+- **Doble toque** sobre la nota/avatar de otra persona en el carrusel = like directo (corazón que
+  sale, y un corazoncito rojo queda en su avatar). **Un toque** abre el visor (`NoteViewer`): nota
+  completa, quién la escribió, botón de corazón (alterna) y doble toque sobre el texto. El doble toque
+  solo DA like (nunca lo quita); el botón alterna. El toque simple espera 260 ms por si llega el 2º.
+- Optimista: el corazón cambia al instante y se concilia con el servidor (`useNotesFeed.like`); si
+  falla, vuelve atrás. Un solo envío a la vez por nota.
+- `POST /api/notes/:id/like` (ya existía) ahora solo acepta notas PÚBLICAS, VIGENTES y de OTRA
+  persona: propia → 403, vencida/privada/inexistente → 404. El feed trae `likeCount` y `likedByMe`.
+- Tu propia nota muestra "♥ N" bajo "Tu nota" y en su panel (refresco silencioso cada minuto).
+- Burbujas: el texto se reparte en **dos líneas parejas y centradas** (`splitLines` en `NoteBubble.tsx`);
+  una sola palabra o un texto muy corto queda en una línea; lo que no quepa termina en «…». Ancho de
+  cada elemento del carrusel: 176 px.
+
 ### Admin → Notas (`/admin/notas`, solo ADMIN, solo lectura)
 - El asistente **ya no ve historial**; el historial completo se revisa aquí.
 - Endpoint `GET /api/admin/notes` (`netlify/functions/admin-notes.mts`, `listNotesAdmin` en

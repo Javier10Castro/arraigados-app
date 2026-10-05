@@ -164,9 +164,11 @@ export async function listNotesFeed(token: string): Promise<{ ok: true; notes: N
   const attendeeId = await resolveActiveAttendeeId(token);
   if (!attendeeId) return { ok: false, status: 'not_found' };
 
-  const { rows } = await query<{ id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; fullName: string }>(
+  const { rows } = await query<{ id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; fullName: string; likeCount: number; likedByMe: boolean }>(
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
-            a.id AS "attendeeId", a."fullName"
+            a.id AS "attendeeId", a."fullName",
+            (SELECT count(*)::int FROM "NoteLike" l WHERE l."noteId" = n.id) AS "likeCount",
+            EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."attendeeId" = $1) AS "likedByMe"
        FROM "Note" n
        JOIN "Attendee" a ON a.id = n."attendeeId"
       WHERE n."visibility" = 'PUBLIC' AND n."expiresAt" > ${NOW_UTC} AND n."attendeeId" <> $1
@@ -184,23 +186,31 @@ export async function listNotesFeed(token: string): Promise<{ ok: true; notes: N
       expiresAt: r.expiresAt,
       attendeeId: r.attendeeId,
       firstName: r.fullName.trim().split(/\s+/)[0] ?? '',
+      likeCount: Number(r.likeCount),
+      likedByMe: r.likedByMe,
     }));
   return { ok: true, notes };
 }
 
 /**
- * Alterna el like del dueño del token a una nota. No importa si la nota ya
- * expiró (dar like a una nota vieja no la "revive"; solo queda registrado).
+ * Alterna el like del dueño del token a una nota. Reglas (5 oct 2026): solo notas
+ * PÚBLICAS y VIGENTES de OTRA persona (no se da like a la propia, ni a una vencida,
+ * ni a una privada). Cualquier otro caso responde `note_not_found`, para no revelar
+ * si existe una nota que no puede ver.
  */
 export async function toggleNoteLike(
   token: string,
   noteId: string,
-): Promise<{ ok: true; liked: boolean; likeCount: number } | { ok: false; reason: 'invalid_session' | 'note_not_found' }> {
+): Promise<{ ok: true; liked: boolean; likeCount: number } | { ok: false; reason: 'invalid_session' | 'note_not_found' | 'own_note' }> {
   const attendeeId = await resolveActiveAttendeeId(token);
   if (!attendeeId) return { ok: false, reason: 'invalid_session' };
 
-  const exists = await query(`SELECT 1 FROM "Note" WHERE id = $1`, [noteId]);
-  if (exists.rowCount === 0) return { ok: false, reason: 'note_not_found' };
+  const note = await query<{ attendeeId: string }>(
+    `SELECT "attendeeId" FROM "Note" WHERE id = $1 AND "visibility" = 'PUBLIC' AND "expiresAt" > ${NOW_UTC}`,
+    [noteId],
+  );
+  if (note.rowCount === 0) return { ok: false, reason: 'note_not_found' };
+  if (note.rows[0].attendeeId === attendeeId) return { ok: false, reason: 'own_note' };
 
   const removed = await query(`DELETE FROM "NoteLike" WHERE "noteId" = $1 AND "attendeeId" = $2`, [noteId, attendeeId]);
   let liked = false;

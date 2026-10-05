@@ -16,20 +16,25 @@
   font-family: var(--font-flyer-display);
   font-size: 13.5px;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
   text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
 button.bubble { cursor: pointer; transition: transform 0.16s ease; }
 button.bubble:active { transform: scale(0.96); }
 
-/* Texto: máximo 4 líneas (60 caracteres caben), el resto se recorta. */
+/* Texto: DOS líneas centradas y parejas (las parte NoteBubble.tsx); si una no cabe, termina en «…». */
 .text {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+.line {
+  display: block;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Con nota: crema sólido, flota sobre el fondo morado. */

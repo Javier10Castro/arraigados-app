@@ -687,7 +687,17 @@ export type MyNotesResponse = { notes: Note[] };
  * (nunca la propia). Solo sale lo imprescindible para dibujar la burbuja: el id del asistente
  * (semilla del avatar, no da acceso a nada) y su PRIMER nombre; jamás el nombre completo.
  */
-export type NoteFeedItem = { id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; firstName: string };
+export type NoteFeedItem = {
+  id: string;
+  text: string;
+  createdAt: string;
+  expiresAt: string;
+  attendeeId: string;
+  firstName: string;
+  likeCount: number;
+  /** true si el asistente autenticado ya le dio like. */
+  likedByMe: boolean;
+};
 export type NotesFeedResponse = { notes: NoteFeedItem[] };
 
 /** DELETE /api/notes -- retira (hace expirar ya) la nota activa del asistente; la fila se conserva como historial. */

@@ -16,6 +16,7 @@ export default handler(async (req: Request, context: Context) => {
   const token = req.headers.get(PULSE_TOKEN_HEADER) ?? '';
   const result = await toggleNoteLike(token, id);
   if (!result.ok) {
+    if (result.reason === 'own_note') return apiError('No puedes darle like a tu propia nota.', 403);
     return result.reason === 'note_not_found'
       ? apiError('Esa nota no existe.', 404)
       : apiError('Esta pulsera no tiene una sesión activa.', 401, { status: 'not_found' });

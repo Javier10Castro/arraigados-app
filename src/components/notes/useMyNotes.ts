@@ -44,6 +44,15 @@ export function useMyNotes(token: string) {
     void load();
   }, [load]);
 
+  // Los "me gusta" de tu nota llegan con un refresco silencioso (sin parpadeo) cada minuto.
+  useEffect(() => {
+    if (!token) return;
+    const id = window.setInterval(() => {
+      api.myNotes(token).then((r) => setNotes(r.notes)).catch(() => {});
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [token]);
+
   // La burbuja desaparece sola cuando la nota activa expira (sin recargar).
   const active = useMemo(
     () => notes.find((n) => new Date(n.expiresAt).getTime() > now) ?? null,

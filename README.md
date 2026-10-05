@@ -63,6 +63,7 @@ Cada asistente puede publicar una nota de hasta 60 caracteres que dura 24 horas 
 - Una sola nota activa por persona: publicar otra reemplaza a la anterior, y "Quitar" la vence. Nunca se borra nada (queda como historial).
 - Las notas nuevas son públicas; el carrusel solo expone el primer nombre y el id del avatar.
 - Filtro de lenguaje en cliente y servidor (`shared/moderation.ts`); el servidor responde 422 si hay groserías.
+- Likes: doble toque sobre la nota de otra persona (o el corazón del visor al tocarla); no se puede dar like a la propia.
 - Revisión y filtros (estado, zona/iglesia, fechas, likes, paginación) en **Admin → Notas** (`/admin/notas`).
 - Endpoints: `GET/POST/DELETE /api/notes`, `GET /api/notes/feed`, `GET /api/admin/notes`. Requiere la migración `002_notes.sql`.
 
