@@ -84,7 +84,7 @@ function ScanStep() {
         {state.phase === 'ready' && (
           <div className={styles.already}>
             <span>Ya tienes una pulsera registrada en este celular.</span>
-            <Button size="sm" onClick={() => navigate('/inicio')}>
+            <Button size="sm" onClick={() => navigate('/home')}>
               Ir a mi inicio
             </Button>
           </div>
@@ -180,7 +180,7 @@ function PulseFlow({ token }: { token: string }) {
         if (cancelled) return;
         if (res.status === 'active') {
           setToken(token);
-          navigate('/inicio', { replace: true });
+          navigate('/home', { replace: true });
         } else if (res.status === 'unclaimed') {
           setFlow({ kind: 'form', pkg: res.package });
         } else if (res.status === 'invalidated') {
@@ -286,7 +286,7 @@ function RegisterForm({
         // already_active: otra persona (o un doble toque) la reclamó primero;
         // igual que el Next.js, se manda a la pantalla de la pulsera.
         setToken(token);
-        navigate('/inicio', { replace: true });
+        navigate('/home', { replace: true });
         return;
       }
       onUnavailable(res.outcome);

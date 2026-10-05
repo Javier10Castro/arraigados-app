@@ -301,6 +301,8 @@ Cualquier acción sensible nueva **debe** repetir la verificación de rol en su 
 
 ## 6. Rutas reales actuales — verificado en `src/App.tsx`
 
+> ⚠️ Tabla del 1–2 oct. Rutas añadidas después: `/home` (inicio real), `/home/mercancia`, `/admin/menu`, `/admin/merch`, `/menu-preview` y la redirección `/inicio → /home`. Ver §41–§45.
+
 > ⚠️ **Tabla histórica (antes de Lotes/Asistentes/Dashboard).** Rutas de Admin
 > vigentes, en este orden en `App.tsx` y todas antes del catch-all:
 > `/admin` → `ADMIN_HOME` (= **`/admin/dashboard`**, Dashboard) · `/admin/dashboard` ·
@@ -323,7 +325,7 @@ Cualquier acción sensible nueva **debe** repetir la verificación de rol en su 
 | 85 | `/admin/usuarios` | `RequireStaff` adminOnly | `admin/Usuarios.tsx` (monta `AdminShell`) |
 | 86 | `/admin/mas` | `RequireStaff` adminOnly | `AdminMas` de `admin/AdminShell.tsx:123` |
 | **87** | **`/admin/*`** | `RequireStaff` adminOnly | **`<Navigate to={ADMIN_HOME} replace />`** — catch-all |
-| 88 | `/inicio` | `RequireAttendee` + `AppShell` | `pages/Inicio.tsx` |
+| 88 | `/inicio` | redirige a `/home` desde el 5 oct 2026 (§41) | — (`pages/Inicio.tsx` sin uso) |
 | 89 | `/programa` | idem | `pages/Programa.tsx` |
 | 90 | `/beneficios` | idem | `pages/Beneficios.tsx` |
 | 91 | `/comida` | idem | `pages/Comida.tsx` |
@@ -966,8 +968,10 @@ equivalente.
 - `vite.config.js`, `vite.config.d.ts`, `tsconfig.tsbuildinfo`,
   `tsconfig.node.tsbuildinfo` ← artefactos de `tsc -b`
 
-**No hay `.git` en `Projects\` ni en `arraigados-app\`.** No hay control de versiones
-activo: cuidado al hacer cambios grandes.
+> ⚠️ **Obsoleto desde el 5 oct 2026.** Ya existe repositorio Git
+> (`github.com/Javier10Castro/arraigados-app`, rama `main`) y el estado real del
+> árbol está en **§45**. `waves.html`, `src/data/merch.ts` y `deno.lock` se
+> trataron ahí; los artefactos de `tsc -b` ahora están en `.gitignore`.
 
 ---
 
@@ -2274,3 +2278,175 @@ A pedido del usuario. Cambios:
 
 *Fin del handoff. Si algo de este documento contradice el código, el código gana:
 léelo, corrige este documento y sigue.*
+
+
+---
+
+## 41. `/home` es ahora la pantalla de inicio (5 oct 2026)
+
+Hasta el 4 oct, `/home` era una experiencia **experimental** que vivía junto a
+`/inicio` (§6 sigue describiendo `/inicio` como la home: está **desactualizado**).
+Desde el 5 oct 2026 **`/home` es la pantalla de inicio real del asistente**.
+
+Qué cambió (solo navegación; no se tocó diseño ni funcionalidad):
+
+| Archivo | Cambio |
+|---|---|
+| `src/App.tsx` | `/inicio` ahora es `<Navigate to="/home" replace />` (no rompe enlaces/marcadores viejos). Se quitó el import de `Inicio`. |
+| `src/components/AppShell.tsx` | La pestaña "Inicio" del menú y el logo apuntan a `/home`. |
+| `src/pages/Registro.tsx` | Tras reclamar pulsera / "Ir a mi inicio" navega a `/home`. |
+| `src/pages/Beneficios.tsx`, `src/pages/menu-preview/MenuPreview.tsx` | El botón "atrás" va a `/home`. |
+
+Notas:
+- `src/pages/Inicio.tsx` **no se borró**: quedó sin ruta y sin importaciones (código
+  muerto, conservado a propósito por si se quiere consultar). Se puede eliminar
+  cuando se decida.
+- `Ambient` (fondo) en `AppShell` usa la variante `home` solo si la ruta es
+  `/inicio`; como ahora redirige, `/home` sigue con el fondo `event` que ya tenía
+  (sin cambio visual). Si se quiere el fondo `home` para `/home`, cambiar esa
+  comparación.
+- `/menu-preview` sigue existiendo (propuesta visual con datos mock, sin enlace en
+  el menú). La vitrina real de `/home` usa `/api/menu`.
+
+### Qué muestra `/home` (`src/pages/home/Home.tsx`)
+Campana de notificaciones · **Ahora** (en vivo, calculado con
+`src/data/program.ts` y la hora real; `TZ_OFFSET = -07:00`, fechas 17 y 18 oct 2026)
+· **Mi kit** (paquete e incluidos) · carrusel **Menú** (`MenuCarousel`) ·
+carrusel **Mercancía** (`MerchCarousel`). "Próximos eventos" está oculto con
+`SHOW_UPCOMING_EVENTS = false` (se reactiva cambiando ese valor).
+
+---
+
+## 42. Menú de alimentos administrable (3 oct 2026)
+
+- **Migración** `migrations/003_menu.sql`: tablas `Venue` (catálogo **fijo** de dos
+  sedes: *12va IAFCJ* y *21ra IAFCJ*; sin CRUD) y `Dish` (platillos).
+- **Admin**: `/admin/menu` (`src/admin/Menu.tsx`). CRUD de platillos, selector de
+  sede, disponible/no disponible, foto (JPG/PNG/WebP ≤ 4 MB).
+- **Fotos**: Netlify Blobs, store `dish-photos`; en la base solo `Dish.imageKey`.
+- **Búsqueda automática de foto** (`server/openverseSearch.ts`): consulta la API
+  pública de Openverse (sin API key, sin filtro de licencia por decisión del
+  cliente: uso interno). Guarda licencia/autor/enlace solo para mostrarlos al admin.
+- **Endpoints** (`netlify/functions/`): `GET /api/menu` (público; solo platillos
+  disponibles), `GET|POST /api/admin/dishes`, `PATCH|DELETE /api/admin/dishes/:id`,
+  `POST /api/admin/dish-image-search`, `GET /api/dish-image/:key`.
+- **Lógica**: `server/dishes.ts`. Un platillo agotado se marca *no disponible*; el
+  DELETE real existe solo para corregir errores.
+- **Público**: carrusel en `/home` (`MenuCarousel.tsx`). Es **informativo**: no hay
+  pedidos, paquetes ni consumos asociados.
+
+---
+
+## 43. Mercancía oficial administrable (3–5 oct 2026)
+
+- **Migración** `migrations/004_merch.sql`: `MerchItem` y `MerchImage` (1 a N,
+  `ON DELETE CASCADE`). Catálogo **editorial**: la mercancía **no se vende en la
+  app** (sin inventario, carrito ni pedidos).
+- **Campos**: `name`, `description`, `price` (opcional; `NULL` = "Por definir"),
+  `availability` (`tbd` = por confirmar, `onsite` = disponible presencialmente),
+  `sortOrder`.
+- **Precio**: se guarda en **centavos** (igual que `Package.price`) y se muestra con
+  `formatPrice(cents)`. El formulario admin trabaja en **pesos enteros** (escribir
+  `100` = **$100 MXN**; sin decimales) y envía `pesos × 100`. *(Bug corregido el
+  5 oct: antes se enviaba sin multiplicar y quedaba guardado 100 veces menor.)*
+- **Fotos**: hasta **6** por artículo, JPG/PNG/WebP ≤ 4 MB, en Netlify Blobs
+  (store `merch-photos`). Patrón anti-huérfanos: subir → actualizar fila → borrar
+  lo viejo.
+- **Admin**: `/admin/merch` (`src/admin/Merch.tsx`): crear, editar, borrar,
+  reordenar, varias fotos.
+- **Endpoints**: `GET /api/merch` (público), `GET|POST /api/admin/merch`,
+  `PATCH|DELETE /api/admin/merch/:id`, `POST /api/admin/merch/:id/reorder`,
+  `GET /api/merch-image/:key`. Lógica en `server/merch.ts`.
+- **Público**:
+  - Carrusel en `/home` (`MerchCarousel.tsx`). Su leyenda *"Lleva contigo un
+    recuerdo de Arraigados 2K26."* usa la fuente Antarctican
+    (`var(--font-flyer-display)`, peso 400).
+  - **"Ver todo" → `/home/mercancia`** (`MerchGallery.tsx`): página completa en
+    mosaico estilo *lookbook* (tiles de tamaño alterno: cada 5.º grande, 1 de 3
+    alto; foto a sangre con degradado inferior). Reemplazó la hoja/modal anterior.
+    El **detalle sigue siendo un modal** (`MerchDetailModal`, exportado desde
+    `MerchCarousel.tsx`).
+- `src/data/merch.ts` (catálogo demo estático original) quedó **sin referencias**
+  al conectar los datos reales; ver §45.
+
+---
+
+## 44. Notas (backend listo, sin interfaz todavía)
+
+- **Migración** `migrations/002_notes.sql`: `Note` (≤ 60 caracteres, vigente 24 h;
+  la fila nunca se borra) y `NoteLike` (único por nota+asistente).
+- **Endpoints**: `GET|POST /api/notes` (usa el token de pulsera `x-pulse-token`; el
+  servidor nunca confía en un `attendeeId` enviado por el cliente) y
+  `POST /api/notes/:id/like`. Lógica en `server/notes.ts`; cliente en
+  `src/lib/api.ts` (`myNotes`, `createNote`, `toggleNoteLike`).
+- v1: todas las notas son `PRIVATE`; no existe "guardar/favoritos"; sin límite de
+  notas por asistente.
+- **Estado**: ningún componente de la app consume aún estas funciones.
+
+---
+
+## 45. Preparación para GitHub y despliegue (5 oct 2026)
+
+### Repositorio
+- Remoto `origin`: `https://github.com/Javier10Castro/arraigados-app.git`, rama
+  `main`. Había 2 commits previos (`babbc30`, `8e43aae`).
+- **Auditoría de historial**: en ningún commit se rastrearon `.env`, `.env.*`
+  (salvo `.env.example`), `respaldos/`, logs, claves ni volcados de la base. El
+  `.env.example` antiguo solo traía valores de relleno (no credenciales).
+
+### Archivos y configuración
+- `.gitignore` ignora: `node_modules/`, `dist/`, `.vite/`, `coverage/`,
+  `*.tsbuildinfo`, `/vite.config.js`, `/vite.config.d.ts`, `.env`, `.env.*`
+  (menos `.env.example`), `*.pem`, `*.key`, `.netlify/`, `respaldos/`, `*.log`,
+  `deno.lock`, `.DS_Store`, `Thumbs.db`.
+- **`vite.config.js` / `vite.config.d.ts`**: los genera `tsc -b` en la raíz
+  (`tsconfig.node.json` es *composite*). **Vite prioriza `vite.config.js` sobre
+  `.ts`**, así que una copia vieja le ganaría al `.ts`. La fuente es
+  `vite.config.ts`. Estaban versionados por error → quitar del índice con
+  `git rm --cached` (ver pasos abajo).
+- **`deno.lock`**: lo crea Netlify CLI (`netlify dev`) para el runtime de edge
+  functions (6 hashes de `edge.netlify.com`). El proyecto no usa Deno ni edge
+  functions; Netlify no lo necesita ni sirve para Cloudflare. Ignorado.
+- **`waves.html`**: prototipo suelto ("Animated Purple Waves") sin referencias en el
+  código → **se elimina** (`Remove-Item waves.html`).
+- **`src/data/merch.ts`**: sin importaciones → **se elimina** (`Remove-Item src\data\merch.ts`). Sus 4 imágenes
+  `src/assets/img/merch-{vaso,tote,stickers,pulsera}.webp` quedaron huérfanas
+  (no se borraron).
+- **`.env.example`** documenta las variables; **`README.md`** es la versión corta; las
+  notas históricas largas se conservan en `docs/NOTAS_DEL_PROYECTO.md`.
+
+### Variables de entorno (todas solo de servidor; el frontend no usa ninguna)
+| Variable | Obligatoria | Uso |
+|---|---|---|
+| `DATABASE_URL` | Sí | Neon PostgreSQL (endpoint *pooler*) |
+| `SESSION_SECRET` | Sí | Firma de sesiones Staff/Admin (≥ 32 caracteres aleatorios) |
+| `PUBLIC_BASE_URL` | Solo producción | Dominio de los QR (`{PUBLIC_BASE_URL}/p/{token}`); queda grabado en cada pulsera impresa |
+
+Netlify Blobs no necesita variables dentro del runtime de Netlify.
+
+### Fuentes (`public/rcs/fonts/`, 76 archivos)
+| Familia | Archivos | Origen | En uso |
+|---|---|---|---|
+| Antarctican Headline | 10 pesos | fonnts.com | Se cargan Book, Bold, Black y Ultrabold: portada (`Cover`) y `--font-flyer-display` (tagline de Mercancía) |
+| Pressio **TEST** | 20 (`No.21`–`No.55`) | no consta | Solo `No.35`: títulos del panel admin, cifras del Dashboard, fecha de portada. No tiene tildes/ñ |
+| Degular **Demo** (Text/Display/Mono) | 56 | no consta | Solo se declara Degular Text Regular/Semibold/Bold, y `--font-flyer-body` no la usa ningún componente |
+
+Google Fonts (`index.html`): Barlow Condensed y DM Sans (base), Caveat y EB Garamond
+(usos puntuales). **Pendiente**: confirmar licencias de Antarctican (fonnts.com),
+Pressio TEST y Degular Demo antes de publicar el repo (los archivos quedarían
+descargables) y decidir si se eliminan los no usados.
+
+### Netlify
+`netlify.toml` define build, redirect SPA y cabeceras. Si el sitio de Netlify está
+conectado a este repo, **cada push a la rama de producción dispara un deploy**
+automático. Antes del primer deploy con estos cambios:
+1. Las variables de arriba deben existir en *Site settings → Environment variables*.
+2. Las migraciones `002`, `003` y `004` deben estar aplicadas en la base de
+   producción (`npm run db:migrar`; son idempotentes). Si la base de producción es
+   la misma Neon que usa el desarrollo local, ya están.
+3. Probar con un *deploy preview* (rama distinta de `main`) antes de fusionar.
+
+### Pendiente para Cloudflare (no iniciado)
+38 Netlify Functions `.mts` con `config.path`, `@netlify/blobs` (fotos), `pg` por TCP
+(requiere Hyperdrive/driver serverless de Neon) y cabeceras de `netlify.toml`
+(→ `_headers`). `public/_redirects` (`/* /index.html 200`) ya es compatible.

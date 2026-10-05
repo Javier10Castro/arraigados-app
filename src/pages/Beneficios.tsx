@@ -26,7 +26,7 @@ export default function Beneficios() {
 
   return (
     <div className={`page-enter ${styles.page}`}>
-      <ScreenHeader title="Mi kit" back="/inicio" />
+      <ScreenHeader title="Mi kit" back="/home" />
 
       <div className={styles.packagePanel}>
         <section className={styles.priceCard}>

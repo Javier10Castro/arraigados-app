@@ -6,7 +6,6 @@ import Cover from './pages/Cover';
 import Registro from './pages/Registro';
 import Conocer from './pages/Conocer';
 import Login from './pages/Login';
-import Inicio from './pages/Inicio';
 import Programa from './pages/Programa';
 import Beneficios from './pages/Beneficios';
 import Comida from './pages/Comida';
@@ -108,9 +107,10 @@ export default function App() {
         <Route path="/admin/usuarios" element={admin(<Usuarios />)} />
         <Route path="/admin/mas" element={admin(<AdminMas />)} />
         <Route path="/admin/*" element={admin(<Navigate to={ADMIN_HOME} replace />)} />
-        <Route path="/inicio" element={shell(<Inicio />)} />
-        {/* Experiencia nueva e independiente en construcción (2 oct 2026): NO
-            reemplaza /inicio todavía. Ver docs/CLAUDE_HANDOFF.md. */}
+        {/* /home es la pantalla de inicio del asistente (5 oct 2026). La
+            pantalla anterior (pages/Inicio.tsx) ya no se muestra: /inicio
+            redirige aquí para no romper enlaces o marcadores guardados. */}
+        <Route path="/inicio" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={shell(<Home />)} />
         {/* "Ver todo" de la vitrina de Mercancía (4 oct 2026): página propia,
             no un modal/hoja -- ver nota en MerchCarousel.tsx. */}

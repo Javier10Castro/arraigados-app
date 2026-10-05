@@ -21,7 +21,7 @@ export default function MenuPreview() {
 
   return (
     <div className={`page-enter ${styles.page}`}>
-      <ScreenHeader title="Menú" back="/inicio" />
+      <ScreenHeader title="Menú" back="/home" />
 
       <p className={styles.intro}>
         Vista previa de diseño -- los platillos, precios y fotos son de ejemplo, no son el menú definitivo del Congreso.

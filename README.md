@@ -73,3 +73,7 @@ Netlify Functions             (netlify/functions/*.mts, una por ruta /api/*)
 - **Despliegue actual:** Netlify (`netlify.toml`: build, SPA con redirect a `index.html`, cabeceras).
 
 Documentación más detallada en [`docs/`](docs/) (`INFRASTRUCTURE.md`, `MIGRATION_TO_RED.md`, `CONEXION_NEON.md` y las notas históricas del proyecto en `NOTAS_DEL_PROYECTO.md`).
+
+## Despliegue (Netlify)
+
+Hoy el sitio vive en Netlify y se despliega desde este repositorio: un push a la rama de producción dispara el build (`npm run build`, publica `dist/`). Antes de desplegar: variables de entorno configuradas en Netlify y migraciones aplicadas (`npm run db:migrar`). Detalles en `docs/CLAUDE_HANDOFF.md` §45 y `docs/INFRASTRUCTURE.md`.

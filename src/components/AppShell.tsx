@@ -9,7 +9,7 @@ import UserAvatar from './UserAvatar';
 import { firstName, usePulseSession } from '../context/PulseSession';
 
 const primaryNav = [
-  { to: '/inicio', label: 'Inicio', Icon: Home },
+  { to: '/home', label: 'Inicio', Icon: Home },
   { to: '/programa', label: 'Programa', Icon: CalendarDays },
   { to: '/beneficios', label: 'Beneficios', Icon: Gift },
   { to: '/mas', label: 'Más', Icon: MoreHorizontal },
@@ -39,7 +39,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <NavLink to="/inicio" aria-label="Arraigados · Ir al inicio">
+          <NavLink to="/home" aria-label="Arraigados · Ir al inicio">
             <Wordmark className={styles.brandMark} variant="cream" />
           </NavLink>
           <RingsMark className={styles.brandRings} />

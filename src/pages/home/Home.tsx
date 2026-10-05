@@ -23,7 +23,8 @@ import styles from './Home.module.css';
 const SHOW_UPCOMING_EVENTS = false;
 
 /**
- * /home -- pantalla EXPERIMENTAL, independiente de /inicio (que no se toca).
+ * /home -- pantalla de inicio del asistente (desde el 5 oct 2026; antes era
+ * experimental y vivía junto a /inicio, que ahora redirige aquí).
  *
  * Esta edición (2 oct 2026) modifica ÚNICAMENTE la sección "Ahora": en vez
  * del evento fijo de ejemplo (`nowEvent` de data/app.ts), calcula en vivo --
