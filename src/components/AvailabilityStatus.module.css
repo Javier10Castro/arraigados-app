@@ -1,0 +1,33 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.available {
+  color: var(--ok);
+}
+
+.available .dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(22, 160, 106, 0.16);
+}
+
+.unavailable {
+  color: var(--text-3);
+}
+
+.unavailable .dot {
+  background: var(--text-3);
+}

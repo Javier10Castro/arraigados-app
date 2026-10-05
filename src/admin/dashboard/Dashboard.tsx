@@ -123,7 +123,7 @@ export default function Dashboard() {
         <div className={s.headRight}>
           <span className={`${s.live} ${live ? s.liveOn : s.liveOff}`}>
             <span className={s.liveDot} aria-hidden="true" />
-            {live ? 'En vivo' : error ? 'Sin conexión' : 'Conectando…'}
+            {live ? 'Datos cargados' : error ? 'Sin conexión' : 'Cargando…'}
           </span>
           <span className={s.updated} aria-live="polite">
             {updatedAt ? `Actualizado ${timeLabel(new Date(updatedAt).toISOString(), true)}` : ''}
@@ -211,7 +211,7 @@ function Body({
   if (nothingYet) {
     return (
       <section className={s.emptyState}>
-        <h2>Todavía no hay datos</h2>
+        <h2>Todavia no hay datos</h2>
         <p>
           Cuando se creen lotes de pulseras y los asistentes empiecen a registrarse, aquí aparecerán los registros, los kits,
           las aguas y la actividad en vivo.

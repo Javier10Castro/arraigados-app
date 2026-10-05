@@ -483,9 +483,6 @@ export type DashboardFilters = {
   packageId?: string;
 };
 
-/** Cada cuánto se refresca el Dashboard solo (ms). */
-export const DASHBOARD_REFRESH_MS = 60_000;
-
 /**
  * Umbrales de las alertas operativas. Están aquí (y documentados en el
  * handoff §34.6) para que no sean números mágicos dentro del código.
@@ -635,3 +632,234 @@ export function isAvatarMode(value: unknown): value is AvatarMode {
 export type AppSettings = { avatarMode: AvatarMode };
 /** PATCH /api/admin/settings (solo ADMIN). */
 export type UpdateSettingsRequest = Partial<AppSettings>;
+
+/* ------------------------------------------------------------------ */
+/* Notas (experiencia /home del asistente)                             */
+/*                                                                      */
+/* Concepto "Instagram Notes" adaptado a Arraigados: frases muy breves, */
+/* vigentes 24 horas, con like. Reemplaza el concepto anterior de       */
+/* "Instantáneas" (que sigue existiendo como maqueta local en           */
+/* /instantaneas -- NO se toca en esta etapa).                          */
+/*                                                                      */
+/* Decisiones explícitas (2 oct 2026):                                  */
+/*  - Autoría siempre resuelta en el servidor por x-pulse-token, nunca   */
+/*    por un id que mande el cliente.                                   */
+/*  - Sin límite de notas por asistente en v1.                          */
+/*  - Sin "guardar"/favoritos -- reemplazado por Likes.                 */
+/*  - expiresAt = createdAt + 24h; una nota expirada deja de aparecer    */
+/*    como activa, pero NUNCA se borra físicamente.                     */
+/*  - visibility existe en el modelo (PRIVATE | PUBLIC) pero esta v1     */
+/*    SOLO crea y expone PRIVATE de verdad. Cualquier "comunidad" que    */
+/*    se muestre en la UI es, por ahora, contenido de prueba (mock),     */
+/*    nunca notas reales de otros asistentes.                           */
+/* ------------------------------------------------------------------ */
+
+/** Máximo de caracteres por nota (Instagram Notes usa 60 -- misma referencia). */
+export const NOTE_MAX_LENGTH = 60;
+
+/** Horas que una nota permanece activa antes de dejar de mostrarse (no se borra). */
+export const NOTE_LIFETIME_HOURS = 24;
+
+export type NoteVisibility = 'PRIVATE' | 'PUBLIC';
+
+export type Note = {
+  id: string;
+  text: string;
+  /** ISO UTC. */
+  createdAt: string;
+  /** ISO UTC. createdAt + 24h. */
+  expiresAt: string;
+  visibility: NoteVisibility;
+  likeCount: number;
+  /** true si el asistente autenticado ya le dio like a esta nota. */
+  likedByMe: boolean;
+};
+
+/** POST /api/notes */
+export type CreateNoteRequest = { text: string };
+export type CreateNoteResponse = { note: Note };
+
+/** GET /api/notes -- únicamente las notas del asistente autenticado (activas y expiradas). */
+export type MyNotesResponse = { notes: Note[] };
+
+/** POST /api/notes/:id/like -- alterna el like del asistente autenticado a esa nota. */
+export type ToggleNoteLikeResponse = { liked: boolean; likeCount: number };
+
+/* ------------------------------------------------------------------ */
+/* Menú de alimentos (admin + consumo público) -- 3 oct 2026            */
+/*                                                                      */
+/* Ver migrations/003_menu.sql para el esquema y las decisiones de      */
+/* producto que modela. Resumen:                                       */
+/*  - "Venue" (sede del Congreso) es un catálogo FIJO de solo 2 filas    */
+/*    ('12va IAFCJ', '21ra IAFCJ'); no hay CRUD de sedes en ningún lado. */
+/*  - La foto de un platillo vive en Netlify Blobs (store "dish-photos"),*/
+/*    Postgres solo guarda "imageKey". create/update de un platillo van  */
+/*    por multipart/form-data (no JSON) para poder llevar el archivo.    */
+/* ------------------------------------------------------------------ */
+
+/** Sede del Congreso -- catálogo fijo de 2 filas, ver arriba. */
+export type Venue = { id: string; name: string };
+
+/** Un platillo tal como lo ve /admin/menu (incluye nombre de sede resuelto). */
+export type AdminDishRow = {
+  id: string;
+  name: string;
+  description: string;
+  /** Centavos, igual que el resto de la app -- se formatea con money()/formatPrice(). */
+  price: number;
+  available: boolean;
+  venueId: string;
+  venueName: string;
+  /** Key en Netlify Blobs, o null si el platillo no tiene foto todavía. */
+  imageKey: string | null;
+  sortOrder: number;
+  /** ISO UTC. */
+  createdAt: string;
+  /** ISO UTC. */
+  updatedAt: string;
+};
+
+/** GET /api/admin/dishes -- lista completa (disponibles y no) + catálogo de sedes para el selector. */
+export type AdminDishesResponse = { dishes: AdminDishRow[]; venues: Venue[] };
+
+/**
+ * POST /api/admin/dishes (crear) y PATCH /api/admin/dishes/:id (editar).
+ * El body es multipart/form-data, NO JSON (para poder llevar el archivo de
+ * imagen) -- este tipo documenta los nombres de campo esperados, el cliente
+ * los arma con FormData directamente (ver src/lib/api.ts).
+ *   name          texto
+ *   description   texto
+ *   price         número en CENTAVOS, como string
+ *   available     'true' | 'false'
+ *   venueId       uno de los ids de Venue
+ *   image         archivo (JPG/PNG/WebP, máx. 4 MB) -- opcional; al editar,
+ *                 solo se envía si se está REEMPLAZANDO la foto actual.
+ */
+export type DishFormFieldName = 'name' | 'description' | 'price' | 'available' | 'venueId' | 'image';
+
+export type AdminDishResponse = { dish: AdminDishRow };
+
+/** Un platillo tal como lo consume el público (menú/carrusel) -- solo los DISPONIBLES. */
+export type PublicDish = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  venueId: string;
+  venueName: string;
+  /** URL lista para usar en <img src>, o null si el platillo no tiene foto. */
+  imageUrl: string | null;
+};
+
+/** GET /api/menu -- público, sin autenticación. */
+export type PublicMenuResponse = { dishes: PublicDish[] };
+
+/**
+ * Búsqueda automática de foto (3 oct 2026) cuando el admin no sube una a
+ * mano. Fuente: Openverse, sin cuenta/API key -- cualquier licencia de su
+ * catálogo (uso interno, no hace falta restringirse a CC0/dominio público).
+ * Ver server/openverseSearch.ts.
+ */
+export type AutoImageSearchRequest = {
+  query: string;
+  /** Ids de Openverse (sourceId) ya mostrados -- "Buscar otra" los manda para no repetir foto. */
+  exclude?: string[];
+};
+
+export type AutoImageSearchResult = {
+  /** Key en Blobs -- se manda de vuelta como "useImageKey" al crear/editar si el admin la acepta. */
+  imageKey: string;
+  /** Lista para <img src>. */
+  previewUrl: string;
+  title: string;
+  creator: string | null;
+  license: string;
+  sourceUrl: string;
+  /** Id de Openverse -- se manda de vuelta en "exclude" en la siguiente búsqueda ("Buscar otra"). */
+  sourceId: string;
+};
+
+/** POST /api/admin/dish-image-search -- null = no se encontró ninguna foto utilizable. */
+export type AutoImageSearchResponse = { result: AutoImageSearchResult | null };
+
+/* ------------------------------------------------------------------ */
+/* Mercancía oficial (admin + consumo público) -- 3 oct 2026            */
+/*                                                                      */
+/* Ver migrations/004_merch.sql para el esquema y las decisiones de     */
+/* producto. Resumen:                                                  */
+/*  - Catálogo puramente EDITORIAL -- NUNCA se vende dentro de la app   */
+/*    (confirmado explícitamente por el cliente): sin carrito, sin      */
+/*    inventario, sin pedidos.                                         */
+/*  - "price" puede ser null ("Por definir"); "availability" es un      */
+/*    enum de texto ('tbd' | 'onsite'), no un boolean de stock.         */
+/*  - A diferencia de "Dish" (una sola foto), un artículo de Merch      */
+/*    puede tener VARIAS fotos -- por eso "images" es un arreglo.       */
+/*    create/update van por multipart/form-data (no JSON) para poder    */
+/*    llevar archivos.                                                 */
+/* ------------------------------------------------------------------ */
+
+export type MerchAvailability = 'tbd' | 'onsite';
+
+export const MERCH_AVAILABILITY_LABEL: Record<MerchAvailability, string> = {
+  tbd: 'Por definir',
+  onsite: 'Disponible presencialmente',
+};
+
+/** Una foto de un artículo, tal como la ve /admin/merch (incluye su id para poder borrarla/reordenarla). */
+export type AdminMerchImage = { id: string; imageUrl: string };
+
+/** Un artículo tal como lo ve /admin/merch. */
+export type AdminMerchItem = {
+  id: string;
+  name: string;
+  description: string;
+  /** Centavos, o null = "Por definir" (nunca se inventa un precio). */
+  price: number | null;
+  availability: MerchAvailability;
+  images: AdminMerchImage[];
+  sortOrder: number;
+  /** ISO UTC. */
+  createdAt: string;
+  /** ISO UTC. */
+  updatedAt: string;
+};
+
+/** GET /api/admin/merch -- lista completa. */
+export type AdminMerchResponse = { items: AdminMerchItem[] };
+
+/**
+ * POST /api/admin/merch (crear) y PATCH /api/admin/merch/:id (editar).
+ * Body multipart/form-data -- nombres de campo esperados (ver src/lib/api.ts
+ * para cómo se arma el FormData):
+ *   name              texto
+ *   description       texto
+ *   price             número en CENTAVOS como string, o vacío = "Por definir"
+ *   availability      'tbd' | 'onsite'
+ *   images            0 o más archivos (JPG/PNG/WebP, máx. 4 MB c/u) -- se
+ *                      agregan al final de la galería, en el orden enviado.
+ *   removeImageIds    (solo editar) JSON de AdminMerchImage.id a borrar.
+ *   imageOrder        (solo editar) JSON con el orden final COMBINADO de
+ *                      fotos existentes y nuevas: cada entrada es el id de
+ *                      una foto existente, o "new:N" para la N-ésima foto
+ *                      nueva (0-based, mismo orden que "images") -- así se
+ *                      pueden intercalar fotos recién subidas entre las que
+ *                      ya existían, no solo agregarlas al final.
+ */
+export type AdminMerchResponseSingle = { item: AdminMerchItem };
+
+/** POST /api/admin/merch/:id/reorder -- sube/baja un artículo una posición. */
+export type MerchReorderRequest = { dir: -1 | 1 };
+
+/** Un artículo tal como lo consume la vitrina pública de /home. */
+export type PublicMerchItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number | null;
+  availability: MerchAvailability;
+  /** URLs listas para <img src>, en orden de galería. Vacío = sin fotos todavía. */
+  images: string[];
+};
+
+/** GET /api/merch -- público, sin autenticación. */
+export type PublicMerchResponse = { items: PublicMerchItem[] };

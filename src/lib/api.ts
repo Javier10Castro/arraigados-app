@@ -39,6 +39,18 @@ import {
   type VoidRedemptionRequest,
   type VoidRedemptionResponse,
   type StaffHistoryResponse,
+  type CreateNoteRequest,
+  type CreateNoteResponse,
+  type MyNotesResponse,
+  type ToggleNoteLikeResponse,
+  type AdminDishesResponse,
+  type AdminDishResponse,
+  type PublicMenuResponse,
+  type AutoImageSearchResponse,
+  type AdminMerchResponse,
+  type AdminMerchResponseSingle,
+  type PublicMerchResponse,
+  type MerchReorderRequest,
 } from '../../shared/api';
 
 /** Error de la API con el código HTTP y, si aplica, el estado de la pulsera. */
@@ -90,6 +102,20 @@ export const api = {
     }),
   me: (token: string) => request<MeResponse>('/api/me', { headers: { [PULSE_TOKEN_HEADER]: token } }),
 
+  // Notas (experiencia /home)
+  myNotes: (token: string) => request<MyNotesResponse>('/api/notes', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  createNote: (token: string, body: CreateNoteRequest) =>
+    request<CreateNoteResponse>('/api/notes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [PULSE_TOKEN_HEADER]: token },
+      body: JSON.stringify(body),
+    }),
+  toggleNoteLike: (token: string, noteId: string) =>
+    request<ToggleNoteLikeResponse>(`/api/notes/${encodeURIComponent(noteId)}/like`, {
+      method: 'POST',
+      headers: { [PULSE_TOKEN_HEADER]: token },
+    }),
+
   // Staff / Admin (sesión por cookie httpOnly)
   login: (body: { email: string; password: string }) => postJson<StaffUser>('/api/auth/login', body),
   logout: () => postJson<{ ok: true }>('/api/auth/logout', {}),
@@ -127,6 +153,29 @@ export const api = {
     }),
   resetUserPassword: (id: string, temporaryPassword: string) =>
     postJson<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}/password`, { temporaryPassword }),
+
+  // Admin -> Menú (3 oct 2026). Crear/editar van por FormData (multipart),
+  // no JSON, porque pueden llevar el archivo de la foto -- ver shared/api.ts.
+  adminDishes: () => request<AdminDishesResponse>('/api/admin/dishes'),
+  adminCreateDish: (form: FormData) => postForm<AdminDishResponse>('/api/admin/dishes', form),
+  adminUpdateDish: (id: string, form: FormData) => patchForm<AdminDishResponse>(`/api/admin/dishes/${encodeURIComponent(id)}`, form),
+  adminDeleteDish: (id: string) => request<{ ok: true }>(`/api/admin/dishes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  adminSearchDishImage: (searchQuery: string, exclude: string[] = []) =>
+    postJson<AutoImageSearchResponse>('/api/admin/dish-image-search', { query: searchQuery, exclude }),
+  // Pública -- lista aquí para cuando el carrusel de /home la conecte (siguiente fase).
+  menu: () => request<PublicMenuResponse>('/api/menu'),
+
+  // Admin -> Mercancía (3 oct 2026). Igual patrón que Menú: crear/editar van
+  // por FormData porque pueden llevar fotos (varias, a diferencia de Menú) --
+  // ver shared/api.ts.
+  adminMerch: () => request<AdminMerchResponse>('/api/admin/merch'),
+  adminCreateMerch: (form: FormData) => postForm<AdminMerchResponseSingle>('/api/admin/merch', form),
+  adminUpdateMerch: (id: string, form: FormData) => patchForm<AdminMerchResponseSingle>(`/api/admin/merch/${encodeURIComponent(id)}`, form),
+  adminDeleteMerch: (id: string) => request<{ ok: true }>(`/api/admin/merch/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  adminReorderMerch: (id: string, dir: MerchReorderRequest['dir']) =>
+    postJson<{ ok: true }>(`/api/admin/merch/${encodeURIComponent(id)}/reorder`, { dir }),
+  // Pública -- la consume la vitrina de Merch en /home (MerchCarousel.tsx).
+  merch: () => request<PublicMerchResponse>('/api/merch'),
 
   // Admin -> Lotes (Etapa 3)
   adminBatches: () => request<AdminBatchesResponse>('/api/admin/batches'),
@@ -233,6 +282,14 @@ export async function downloadFile(
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** Como postJson, pero con un FormData (crear/editar platillo -- puede llevar un archivo). Sin header content-type: fetch lo arma solo con el boundary correcto. */
+function postForm<T>(path: string, form: FormData) {
+  return request<T>(path, { method: 'POST', body: form });
+}
+function patchForm<T>(path: string, form: FormData) {
+  return request<T>(path, { method: 'PATCH', body: form });
 }
 
 function postJson<T>(path: string, body: unknown) {

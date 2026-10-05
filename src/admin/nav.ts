@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, CupSoda, Images, LayoutDashboard, Package, UserCog, Users } from 'lucide-react';
+import { Boxes, ClipboardList, CupSoda, Images, LayoutDashboard, Package, ShoppingBag, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -42,6 +42,11 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/asistentes', label: 'Asistentes', Icon: Users, ready: true, primary: true },
   { to: '/admin/paquetes', label: 'Kits', Icon: Package, ready: false, stage: 'Etapa 5' },
   { to: '/admin/canjes', label: 'Canjes', Icon: CupSoda, ready: true },
+  { to: '/admin/menu', label: 'Menú', Icon: UtensilsCrossed, ready: true },
+  /* Mercancía (3 oct 2026, conectada a datos reales el mismo día): CRUD
+     completo de la vitrina de /home, mismo patrón que "Menú" -- Neon +
+     Netlify Blobs (ver migrations/004_merch.sql y server/merch.ts). */
+  { to: '/admin/merch', label: 'Mercancía', Icon: ShoppingBag, ready: true },
   { to: '/admin/usuarios', label: 'Usuarios', Icon: UserCog, ready: true },
   { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: false, stage: 'Etapa 8' },
   { to: '/admin/instantaneas', label: 'Instantáneas', Icon: Images, ready: false, stage: 'Etapa 9' },

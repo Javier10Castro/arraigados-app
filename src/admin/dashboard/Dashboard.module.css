@@ -48,6 +48,8 @@
 
 .errorBox { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: #4a0f2e; color: #ffe1e1; font-size: 13.5px; }
 .emptyState { padding: 28px 22px; border-radius: var(--r-card); background: var(--crema); color: var(--morado-oscuro); }
+/* Pressio (ver nota en AdminShell.module.css) no tiene tildes -- el texto de
+   este <h2> (Dashboard.tsx) debe escribirse sin acentos. */
 .emptyState h2 { font: 400 34px/1 var(--font-pressio); text-transform: uppercase; margin-bottom: 8px; }
 .emptyState p { max-width: 560px; color: var(--text-2); font-size: 14.5px; line-height: 1.5; }
 

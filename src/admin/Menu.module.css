@@ -1,0 +1,218 @@
+/* Admin -> Menú (3 oct 2026). Ver Menu.tsx. */
+
+.muted { color: rgba(242, 247, 215, 0.8); font-size: 14px; }
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--crema);
+  color: #a1262c;
+  font-size: 14px;
+}
+
+.venueSection { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.venueSection + .venueSection { margin-top: 22px; }
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: rgba(62, 7, 166, 0.1);
+  color: var(--morado);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+/* Búsqueda / filtros (3 oct 2026) --------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px;
+}
+
+.searchField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 180px;
+  min-width: 160px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-card);
+}
+.searchField svg { flex: none; opacity: 0.6; }
+.searchField input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: 13px var(--font-body);
+  color: inherit;
+}
+.searchField input:focus { outline: none; }
+.searchField input::-webkit-search-cancel-button { cursor: pointer; }
+
+.toolbar select {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  font: 600 12.5px var(--font-body);
+  box-shadow: var(--shadow-card);
+}
+
+.clearFilters {
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  color: rgba(242, 247, 215, 0.85);
+  font: 600 12.5px var(--font-body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Paginado por sede ------------------------------------------------------ */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.pageIndicator { font-size: 12px; font-weight: 600; color: rgba(242, 247, 215, 0.8); white-space: nowrap; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+.card:hover { outline: 2px solid rgba(62, 7, 166, 0.35); }
+
+.thumbWrap { flex: none; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: rgba(62, 7, 166, 0.08); }
+.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbEmpty { width: 100%; height: 100%; display: grid; place-items: center; color: var(--text-3); }
+
+.cardBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cardName { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardRow { display: flex; align-items: center; gap: 10px; }
+.cardPrice { font-weight: 800; color: var(--morado); font-size: 13.5px; }
+
+.editIcon { flex: none; color: var(--text-3); }
+
+.cardSkeleton { border-radius: 16px; height: 72px; }
+
+/* Formulario (modal) ------------------------------------------------- */
+
+.imagePicker { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 4px; }
+.imageButton {
+  width: 140px;
+  height: 140px;
+  border-radius: 20px;
+  border: 1.6px dashed rgba(62, 7, 166, 0.3);
+  background: rgba(62, 7, 166, 0.04);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+.imageButton:hover { border-color: var(--morado); }
+.imagePreview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.imagePlaceholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; font-weight: 600; }
+.hiddenFileInput { display: none; }
+
+.textarea {
+  min-height: 80px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  font: 13.5px/1.5 var(--font-body);
+  color: var(--text-1);
+  resize: vertical;
+}
+.textarea:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 select {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  font: 13.5px var(--font-body);
+  color: var(--text-1);
+  background: #fff;
+}
+
+.toggleRow { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--text-2); }
+.toggleRow input { width: 18px; height: 18px; accent-color: var(--morado); }
+
+.deleteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  margin-top: 4px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: #a1262c;
+  font: 600 12.5px var(--font-body);
+  cursor: pointer;
+}
+.deleteLink:hover { text-decoration: underline; }
+
+.dangerBtn { background: #a1262c !important; border-color: #a1262c !important; }
+
+/* Aviso "sin foto" / búsqueda automática (modal, ver DishModal) ------- */
+
+.nagActions { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+.nagPreviewWrap {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(62, 7, 166, 0.06);
+}
+.nagPreview { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.nagCaption { font-size: 12px; color: var(--text-3); line-height: 1.4; }

@@ -20,7 +20,10 @@
   port = 8888
   autoLaunch = false
   functions = "netlify/functions"
-  envFiles = ["Congreso Arraigados/Version v2 _ 30 septiembre/Iglesia/arraigados-app/.env"]
+  # Relativo a este archivo (la raíz del proyecto), funciona sin importar en qué
+  # carpeta/cuenta esté clonado el repo. (Antes tenía la ruta completa de
+  # carpetas personales del equipo de desarrollo original — no portable.)
+  envFiles = [".env"]
 
 # SPA: todas las rutas caen en index.html (React Router)
 [[redirects]]

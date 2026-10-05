@@ -1,0 +1,286 @@
+/* /menu-preview (3 oct 2026) -- propuesta visual aislada del Menú de
+   alimentos. Ver MenuPreview.tsx para el contexto completo. El fondo morado
+   degradado detrás de todo esto NO se define aquí: ya lo pone <Ambient
+   variant="event"> en AppShell.tsx para cualquier ruta que no sea /inicio
+   (incluida esta), así que esta hoja nunca toca ese fondo global. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.intro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--crema);
+  opacity: 0.75;
+}
+
+/* ------------------------------------------------------------------ */
+/* Cuadrícula: 1 columna en móvil, 2 en tablet, 4 en escritorio.        */
+/* ------------------------------------------------------------------ */
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 34px 20px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 40px 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 44px 24px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Tarjeta: toda ella es el botón clickeable. La foto/ícono y el panel  */
+/* inferior comparten un solo contenedor (overflow visible a propósito) */
+/* para que el platillo pueda sobresalir un poco encima del panel.      */
+/* ------------------------------------------------------------------ */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-4px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--crema);
+  outline-offset: 6px;
+  border-radius: var(--r-card);
+}
+
+.photoZone {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  padding: 6px 6px 0;
+}
+
+/* Las 8 fotos (4 ya existían en el proyecto + 4 de Pixabay agregadas el 3 oct
+   2026) se muestran igual: rectángulo con esquinas redondeadas, object-fit:
+   cover -- sin máscara/recorte orgánico (Javier prefirió esto a la primera
+   versión). Drop-shadow leve para separarlas del panel de abajo. */
+.dishPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--r-card);
+  filter: drop-shadow(0 10px 14px rgba(8, 0, 40, 0.35));
+}
+
+.dimmed {
+  filter: grayscale(55%) opacity(0.55);
+}
+
+/* Panel inferior -- glassmorphism SUTIL a propósito (según lo acordado):
+   bastante opaco (no transparencia excesiva), blur moderado, borde apenas
+   visible, sombra discreta. Nada de "vidrio brillante". */
+.glassPanel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 26px 14px 14px;
+  background: rgba(242, 247, 215, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--r-card);
+  box-shadow: 0 4px 16px rgba(10, 0, 40, 0.2);
+  color: var(--morado-oscuro);
+}
+
+.dishName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.panelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--morado);
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal de detalle -- misma mecánica/estilo que <RedeemModal> (ya        */
+/* existente en components/, sin tocarlo): backdrop fijo + diálogo con    */
+/* animación de entrada; prefers-reduced-motion ya se maneja globalmente  */
+/* en tokens.css, así que estas animaciones no necesitan nada aparte.     */
+/* ------------------------------------------------------------------ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(12, 2, 40, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: menuFadeIn 0.15s ease both;
+}
+
+@media (min-width: 640px) {
+  .backdrop {
+    place-items: center;
+  }
+}
+
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 24px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-pop);
+  outline: none;
+  animation: menuRise 0.2s ease both;
+}
+
+.dialogClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(30, 2, 99, 0.55);
+  color: var(--crema);
+  cursor: pointer;
+}
+
+.dialogClose:hover {
+  background: rgba(30, 2, 99, 0.75);
+}
+
+.dialogPhotoZone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  padding: 20px;
+  background: linear-gradient(165deg, #2e1268, #452199);
+}
+
+.dialogPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+  filter: drop-shadow(0 14px 18px rgba(8, 0, 40, 0.4));
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px 24px;
+}
+
+.dialogName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.dialogRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(30, 2, 99, 0.12);
+}
+
+.dialogPrice {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--morado);
+}
+
+.dialogDesc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.dialogVenue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes menuRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}

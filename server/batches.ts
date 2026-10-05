@@ -375,11 +375,20 @@ const INSERT_BATCH = `
   INSERT INTO "Batch" (id, code, "packageId", quantity, "createdById", status, "createdAt")
   VALUES ($1, $2, $3, $4, $5, 'ABIERTO', ${NOW_UTC})`;
 
-const INSERT_PULSE = `
+/**
+ * Alta de TODAS las pulseras del lote en una sola sentencia (antes: un INSERT
+ * por pulsera dentro del loop, hasta 500 round trips contra el pool de 3
+ * conexiones). `UNNEST` sobre 3 arrays alineados por posición arma las N filas
+ * en el servidor de Postgres; sigue dentro de la MISMA transacción, conserva
+ * IDs y códigos únicos generados en memoria y el mismo manejo de errores
+ * (una violación de unicidad sigue abortando toda la transacción igual que antes).
+ */
+const INSERT_PULSES_BULK = `
   INSERT INTO "Pulse"
     (id, "qrToken", "manualCode", "batchId", "packageId", status, "attendeeId", "claimedAt",
      "drinksUsed", "replacesId", "createdAt", "updatedAt")
-  VALUES ($1, $2, $3, $4, $5, 'UNCLAIMED', NULL, NULL, 0, NULL, ${NOW_UTC}, ${NOW_UTC})`;
+  SELECT t.id, t."qrToken", t."manualCode", $1, $2, 'UNCLAIMED', NULL, NULL, 0, NULL, ${NOW_UTC}, ${NOW_UTC}
+    FROM UNNEST($3::text[], $4::text[], $5::text[]) AS t(id, "qrToken", "manualCode")`;
 
 const INSERT_AUDIT = `
   INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
@@ -416,15 +425,9 @@ export async function createBatch(
 
         await tx.query(INSERT_BATCH, [batchId, code, packageId, quantity, createdById]);
 
-        for (const qrToken of tokens) {
-          await tx.query(INSERT_PULSE, [
-            newId(),
-            qrToken,
-            `${MANUAL_CODE_SENTINEL_PREFIX}${qrToken}`,
-            batchId,
-            packageId,
-          ]);
-        }
+        const ids = tokens.map(() => newId());
+        const manualCodes = tokens.map((t) => `${MANUAL_CODE_SENTINEL_PREFIX}${t}`);
+        await tx.query(INSERT_PULSES_BULK, [batchId, packageId, ids, tokens, manualCodes]);
 
         await tx.query(INSERT_AUDIT, [
           newId(),

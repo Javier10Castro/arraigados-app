@@ -1,0 +1,279 @@
+/* Carrusel "Menú" de /home (3 oct 2026). Ver MenuCarousel.tsx.
+   El look de tarjeta/panel/modal reutiliza el lenguaje visual aprobado en
+   /menu-preview (pages/menu-preview/MenuPreview.module.css), escalado a un
+   tamaño más compacto porque aquí es un widget de Home, no una página
+   dedicada al menú. */
+
+.track {
+  display: flex;
+  gap: 14px;
+  margin: 2px 0 0;
+  padding: 2px 2px 10px;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.track::-webkit-scrollbar { display: none; }
+
+.slide {
+  flex: none;
+  width: 132px;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .slide { width: 160px; }
+}
+@media (min-width: 1024px) {
+  .slide { width: 180px; }
+  .track { gap: 18px; }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-3px);
+}
+.card:focus-visible {
+  outline: 2px solid var(--crema);
+  outline-offset: 5px;
+  border-radius: var(--r-card);
+}
+
+.photoZone {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  padding: 5px 5px 0;
+}
+
+.dishPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--r-card);
+  filter: drop-shadow(0 8px 12px rgba(8, 0, 40, 0.35));
+}
+
+.photoPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-card);
+  background: rgba(242, 247, 215, 0.16);
+  color: rgba(242, 247, 215, 0.55);
+}
+
+.glassPanel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 20px 10px 10px;
+  background: rgba(242, 247, 215, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--r-card);
+  box-shadow: 0 4px 16px rgba(10, 0, 40, 0.2);
+  color: var(--morado-oscuro);
+}
+
+.dishName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--morado);
+}
+
+/* Skeleton (cargando) ------------------------------------------------- */
+
+.skeletonCard {
+  aspect-ratio: 3 / 4;
+  border-radius: var(--r-card);
+  background: linear-gradient(
+    100deg,
+    rgba(242, 247, 215, 0.1) 30%,
+    rgba(242, 247, 215, 0.22) 50%,
+    rgba(242, 247, 215, 0.1) 70%
+  );
+  background-size: 200% 100%;
+  animation: menuSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes menuSkeletonShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonCard { animation: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal de detalle -- misma mecánica/estilo que /menu-preview.          */
+/* ------------------------------------------------------------------ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(12, 2, 40, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: menuCarouselFadeIn 0.15s ease both;
+}
+
+@media (min-width: 640px) {
+  .backdrop { place-items: center; }
+}
+
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 24px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-pop);
+  outline: none;
+  animation: menuCarouselRise 0.2s ease both;
+}
+
+.dialogClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(30, 2, 99, 0.55);
+  color: var(--crema);
+  cursor: pointer;
+}
+.dialogClose:hover { background: rgba(30, 2, 99, 0.75); }
+
+.dialogPhotoZone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  padding: 20px;
+  background: linear-gradient(165deg, #2e1268, #452199);
+}
+
+.dialogPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+  filter: drop-shadow(0 14px 18px rgba(8, 0, 40, 0.4));
+}
+
+.dialogPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: rgba(242, 247, 215, 0.12);
+  color: rgba(242, 247, 215, 0.6);
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px 24px;
+}
+
+.dialogName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.dialogPrice {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--morado);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(30, 2, 99, 0.12);
+}
+
+.dialogDesc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.dialogVenue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+@keyframes menuCarouselFadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes menuCarouselRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}

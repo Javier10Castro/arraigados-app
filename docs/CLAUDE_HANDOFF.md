@@ -221,6 +221,16 @@ el proyecto), estas dos líneas se vuelven innecesarias y **`netlify deploy`
 empezaría a subir las funciones correctamente** (hoy subiría 0). Ese cambio es una
 decisión, no una urgencia. **Mientras tanto: no tocar.**
 
+> **Nota (2 oct 2026 — auditoría de portabilidad):** esta sección quedó
+> **desactualizada**. El proyecto ya tiene su propio `.git` en `arraigados-app`
+> (se inicializó y se subió a GitHub en una sesión posterior a la de este
+> handoff), así que el escenario descrito arriba ("no hay `.git` en ningún
+> lado") ya no aplica. `netlify.toml` se corrigió para usar `envFiles = [".env"]`
+> (relativo, sin la ruta personal de carpetas) — ver `docs/INFRASTRUCTURE.md` y
+> `docs/MIGRATION_TO_RED.md`. Se deja el texto original sin borrar por su valor
+> histórico (explica una decisión real del proyecto), pero no debe tomarse como
+> el estado actual.
+
 ### `.env` de `arraigados-app`
 
 Contiene: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `SEED_ADMIN_EMAIL`,

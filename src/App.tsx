@@ -21,9 +21,14 @@ import LoteDetalle from './admin/LoteDetalle';
 import Asistentes from './admin/Asistentes';
 import AsistenteDetalle from './admin/AsistenteDetalle';
 import Canjes from './admin/Canjes';
+import Menu from './admin/Menu';
+import Merch from './admin/Merch';
 import { AdminMas } from './admin/AdminShell';
 import { ADMIN_HOME } from './admin/nav';
 import Mas from './pages/Mas';
+import Home from './pages/home/Home';
+import MerchGallery from './pages/home/MerchGallery';
+import MenuPreview from './pages/menu-preview/MenuPreview';
 import { usePulseSession } from './context/PulseSession';
 import { useStaffSession } from './context/StaffSession';
 import SessionGate from './components/SessionGate';
@@ -98,10 +103,22 @@ export default function App() {
         <Route path="/admin/asistentes" element={admin(<Asistentes />)} />
         <Route path="/admin/asistentes/:id" element={admin(<AsistenteDetalle />)} />
         <Route path="/admin/canjes" element={admin(<Canjes />)} />
+        <Route path="/admin/menu" element={admin(<Menu />)} />
+        <Route path="/admin/merch" element={admin(<Merch />)} />
         <Route path="/admin/usuarios" element={admin(<Usuarios />)} />
         <Route path="/admin/mas" element={admin(<AdminMas />)} />
         <Route path="/admin/*" element={admin(<Navigate to={ADMIN_HOME} replace />)} />
         <Route path="/inicio" element={shell(<Inicio />)} />
+        {/* Experiencia nueva e independiente en construcción (2 oct 2026): NO
+            reemplaza /inicio todavía. Ver docs/CLAUDE_HANDOFF.md. */}
+        <Route path="/home" element={shell(<Home />)} />
+        {/* "Ver todo" de la vitrina de Mercancía (4 oct 2026): página propia,
+            no un modal/hoja -- ver nota en MerchCarousel.tsx. */}
+        <Route path="/home/mercancia" element={shell(<MerchGallery />)} />
+        {/* Propuesta visual aislada del Menú de alimentos (3 oct 2026): NO
+            reemplaza /comida todavía, ni está enlazada en el nav. Ver
+            data/menuPreview.ts y docs/CLAUDE_HANDOFF.md. */}
+        <Route path="/menu-preview" element={shell(<MenuPreview />)} />
         <Route path="/programa" element={shell(<Programa />)} />
         <Route path="/beneficios" element={shell(<Beneficios />)} />
         <Route path="/comida" element={shell(<Comida />)} />

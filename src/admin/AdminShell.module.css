@@ -12,7 +12,11 @@
   padding: calc(26px + env(safe-area-inset-top, 0px)) 20px 16px;
 }
 /* Título de cada pantalla del panel: Pressio 35, grande (sin "PANEL ADMIN" encima:
-   ya se sabe que es el panel). */
+   ya se sabe que es el panel).
+   OJO (3 oct 2026, pedido de Javier): esta fuente (Pressio) NO tiene tildes/ñ --
+   el prop "title" que le pasa cada pantalla a <AdminShell> debe escribirse SIN
+   acentos ("Menu", no "Menú"). El resto de la app (fuente normal/font-display)
+   sí lleva acentos con normalidad; esto es solo para este título grande. */
 .title {
   margin: 0;
   font: 400 clamp(44px, 9vw, 64px)/0.9 var(--font-pressio);

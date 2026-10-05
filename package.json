@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@blobatar/react": "^2.7.0",
+    "@netlify/blobs": "^8.2.0",
     "bcryptjs": "^3.0.3",
     "blobatar": "^2.7.0",
     "html5-qrcode": "^2.3.8",

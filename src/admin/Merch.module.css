@@ -1,0 +1,228 @@
+/* Admin -> Mercancía (3 oct 2026, conectada a datos reales el mismo día).
+   Ver Merch.tsx. El grueso de la tarjeta/modal reutiliza directamente las
+   clases de Menu.module.css (import `m`, igual que Menu.tsx reutiliza
+   Usuarios.module.css como `u`) para que el panel se sienta como una sola
+   herramienta. Aquí solo va lo específico de esta pantalla: los controles de
+   orden de la lista y la galería de varias fotos por artículo. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowSkeleton { border-radius: 16px; height: 72px; }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.pageIndicator { font-size: 12px; font-weight: 600; color: rgba(242, 247, 215, 0.8); white-space: nowrap; }
+
+/* El botón de la tarjeta (m.card) se reusa tal cual, pero aquí vive junto a
+   los controles de orden en vez de en una cuadrícula -- necesita estirarse
+   para ocupar el espacio restante de la fila. */
+.cardInRow {
+  flex: 1;
+  min-width: 0;
+}
+
+.orderControls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+
+.orderControls button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(242, 247, 215, 0.12);
+  color: rgba(242, 247, 215, 0.85);
+  cursor: pointer;
+}
+.orderControls button:hover:not(:disabled) {
+  background: rgba(242, 247, 215, 0.24);
+}
+.orderControls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Miniatura con contador de fotos -- m.thumbWrap (Menu.module.css) no es
+   position:relative por defecto (no le hace falta a /admin/menu), así que
+   se agrega aquí como clase extra en vez de tocar ese archivo compartido. */
+.thumbWrapPos { position: relative; }
+
+.thumbCount {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: rgba(30, 2, 99, 0.75);
+  color: var(--crema);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+/* Galería de fotos del formulario (crear/editar) -- 4 oct 2026, rediseñada
+   de cuadrícula horizontal a lista vertical con arrastrar-y-soltar (pedido
+   de Javier: el grid con controles solo-al-hover "no era intuitivo" y las
+   flechas no se veían centradas). Cada fila es alta y angosta a propósito
+   -- más fácil de agarrar con el mouse/dedo para arrastrar que una
+   miniatura chica, y dentro de una sola columna no hay ambigüedad de hacia
+   dónde cae un "más arriba". Las flechas siguen ahí como alternativa
+   accesible (teclado, o cuando arrastrar no es práctico), ahora sí
+   centradas verticalmente contra la fila completa. */
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.galleryList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.galleryRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid rgba(30, 2, 99, 0.12);
+  border-radius: 12px;
+  background: rgba(30, 2, 99, 0.03);
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.dragHandle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  color: var(--text-3);
+  cursor: grab;
+}
+.galleryRow:active .dragHandle { cursor: grabbing; }
+
+.galleryRowThumb {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid rgba(30, 2, 99, 0.14);
+}
+
+.galleryRowInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.galleryRowTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--morado-oscuro);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.galleryNewTag {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(30, 150, 90, 0.14);
+  color: rgb(20, 120, 72);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Controles de orden -- columna propia, centrada verticalmente contra TODA
+   la fila (antes vivían encimados sobre la miniatura, desalineados). */
+.galleryRowControls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+
+.galleryRowControls button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 17px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(30, 2, 99, 0.08);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.galleryRowControls button:hover:not(:disabled) { background: rgba(30, 2, 99, 0.16); }
+.galleryRowControls button:disabled { opacity: 0.3; cursor: default; }
+
+.galleryRemove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(200, 40, 50, 0.1);
+  color: rgb(185, 40, 50);
+  cursor: pointer;
+}
+.galleryRemove:hover { background: rgba(200, 40, 50, 0.2); }
+
+.galleryRowDragging { opacity: 0.4; }
+.galleryRowDragOver { border-color: var(--morado); background: rgba(62, 7, 166, 0.07); }
+
+.galleryAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  border: 1.5px dashed rgba(30, 2, 99, 0.3);
+  border-radius: 12px;
+  background: rgba(30, 2, 99, 0.04);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.galleryAdd:hover {
+  background: rgba(30, 2, 99, 0.08);
+}

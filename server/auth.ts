@@ -90,21 +90,49 @@ export function clearCookie(req: Request) {
   return `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(req)}`;
 }
 
-type UserRow = { id: string; email: string; name: string; role: StaffRole; active: boolean; passwordHash: string };
+type UserRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: StaffRole;
+  active: boolean;
+  passwordHash: string;
+  tempTemporary: string | null;
+  tempFp: string | null;
+};
 
-/** ¿La contraseña actual de la cuenta es una temporal puesta por Admin? */
-export async function isTemporaryPassword(userId: string, passwordHash: string) {
-  const { rows } = await query<{ temporary: string | null; fp: string | null }>(
-    `SELECT metadata->>'temporary' AS temporary, metadata->>'fp' AS fp
-       FROM "AuditLog"
-      WHERE "entityType" = 'User' AND "entityId" = $1
-        AND action IN ('user.create', 'user.password_reset', 'user.password_change')
-      ORDER BY "createdAt" DESC
-      LIMIT 1`,
-    [userId],
+/**
+ * Trae el usuario Y, en la MISMA consulta (LEFT JOIN LATERAL), el último
+ * evento de contraseña relevante (para saber si es temporal). Antes eran 2
+ * round trips separados (uno por "User", otro por "AuditLog") en CADA
+ * request autenticado de Staff/Admin; esta es la razón de combinarlos:
+ * reduce a la mitad las consultas de sesión sin quitar ningún chequeo de
+ * seguridad (mismas condiciones, mismo resultado).
+ */
+const USER_WITH_PASSWORD_FLAG_SELECT = `
+  SELECT u.id, u.email, u.name, u.role::text AS role, u.active, u."passwordHash",
+         al.metadata->>'temporary' AS "tempTemporary", al.metadata->>'fp' AS "tempFp"
+    FROM "User" u
+    LEFT JOIN LATERAL (
+      SELECT metadata
+        FROM "AuditLog"
+       WHERE "entityType" = 'User' AND "entityId" = u.id
+         AND action IN ('user.create', 'user.password_reset', 'user.password_change')
+       ORDER BY "createdAt" DESC
+       LIMIT 1
+    ) al ON true`;
+
+async function findUserWithPasswordFlag(whereSql: string, param: string, limit?: number): Promise<UserRow[]> {
+  const { rows } = await query<UserRow>(
+    `${USER_WITH_PASSWORD_FLAG_SELECT} WHERE ${whereSql}${limit ? ` LIMIT ${limit}` : ''}`,
+    [param],
   );
-  const last = rows[0];
-  return Boolean(last && last.temporary === 'true' && last.fp === passwordFingerprint(passwordHash));
+  return rows;
+}
+
+/** ¿La contraseña actual de la cuenta es una temporal puesta por Admin? (a partir de la fila ya traída). */
+function isTemporaryFromRow(row: Pick<UserRow, 'tempTemporary' | 'tempFp' | 'passwordHash'>): boolean {
+  return Boolean(row.tempTemporary === 'true' && row.tempFp === passwordFingerprint(row.passwordHash));
 }
 
 /**
@@ -118,10 +146,9 @@ export async function checkCredentials(
   const clean = email.trim();
   if (!clean || !password) return null;
   // El Next.js busca el correo exacto; aquí también se tolera mayúsculas/espacios al escribirlo.
-  const { rows } = await query<UserRow>(
-    `SELECT id, email, name, role::text AS role, active, "passwordHash" FROM "User" WHERE lower(email) = lower($1) LIMIT 2`,
-    [clean],
-  );
+  // lower(email) puede devolver 2 filas en casos raros de mayúsculas duplicadas; limit 2 + el
+  // find de abajo desempata por el correo EXACTO, igual que antes.
+  const rows = await findUserWithPasswordFlag('lower(u.email) = lower($1)', clean, 2);
   const row = rows.length === 1 ? rows[0] : rows.find((r) => r.email === clean);
   if (!row || !row.active) {
     // Compara contra un hash falso para que no se note por el tiempo si el correo existe.
@@ -129,9 +156,8 @@ export async function checkCredentials(
     return null;
   }
   if (!(await bcrypt.compare(password, row.passwordHash))) return null;
-  const mustChangePassword = await isTemporaryPassword(row.id, row.passwordHash);
   return {
-    user: { id: row.id, name: row.name, email: row.email, role: row.role, mustChangePassword },
+    user: { id: row.id, name: row.name, email: row.email, role: row.role, mustChangePassword: isTemporaryFromRow(row) },
     passwordHash: row.passwordHash,
   };
 }
@@ -146,15 +172,17 @@ export async function currentStaff(req: Request): Promise<(StaffUser & { passwor
   if (!token) return null;
   const payload = verify(token);
   if (!payload) return null;
-  const { rows } = await query<UserRow>(
-    `SELECT id, email, name, role::text AS role, active, "passwordHash" FROM "User" WHERE id = $1`,
-    [payload.uid],
-  );
-  const row = rows[0];
+  const row = (await findUserWithPasswordFlag('u.id = $1', payload.uid))[0];
   if (!row || !row.active) return null;
   if (passwordFingerprint(row.passwordHash) !== payload.ph) return null;
-  const mustChangePassword = await isTemporaryPassword(row.id, row.passwordHash);
-  return { id: row.id, name: row.name, email: row.email, role: row.role, mustChangePassword, passwordHash: row.passwordHash };
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    mustChangePassword: isTemporaryFromRow(row),
+    passwordHash: row.passwordHash,
+  };
 }
 
 /**

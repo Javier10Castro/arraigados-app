@@ -1,7 +1,37 @@
-node_modules
-dist
-.env
-.netlify
+# Dependencias
+node_modules/
+
+# Build, caché y cobertura
+dist/
+.vite/
+coverage/
 *.tsbuildinfo
-dev.log
-respaldos
+
+# Salida que `tsc -b` regenera en la raíz en cada build (tsconfig.node.json es
+# "composite"). OJO: Vite prioriza vite.config.js sobre vite.config.ts, así que
+# una copia vieja de vite.config.js le ganaría al .ts. La fuente es el .ts.
+/vite.config.js
+/vite.config.d.ts
+
+# Variables de entorno y secretos (la plantilla .env.example SÍ se versiona)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Netlify CLI: estado local (siteId, funciones compiladas, blobs de desarrollo)
+.netlify/
+
+# Respaldos de la base de datos (npm run db:respaldo): traen datos personales
+# de asistentes. Nunca deben llegar a GitHub.
+respaldos/
+
+# Logs y archivos del sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# Lo genera Netlify CLI (`netlify dev`) para el runtime de edge functions; el
+# proyecto no usa Deno ni edge functions, así que no se versiona.
+deno.lock

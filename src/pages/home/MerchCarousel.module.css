@@ -1,0 +1,448 @@
+/* Sección "Mercancía oficial" de /home (3 oct 2026, conectada a datos reales
+   y rediseñada el mismo día). Reutiliza la mecánica de carrusel/tarjeta/modal
+   de MenuCarousel.module.css. El encabezado NO vive aquí (ver
+   MerchCarousel.tsx: es un <h2 className="label"> hijo directo de la
+   <section>, para heredar el mismo color/sombra que "Menú" y "Mi kit" vía
+   `.current > h2` de Home.module.css). */
+
+/* Encabezado -------------------------------------------------------------
+   El "Ver todo" vive pegado a la derecha del título (4 oct 2026, pedido de
+   Javier) -- por eso el <h2> ya NO es hijo directo de la <section> (ver
+   MerchCarousel.tsx), sino que va dentro de este wrapper en fila. Eso
+   significa que ya NO hereda el color/sombra de `.current > h2` de
+   Home.module.css (ese selector exige hijo DIRECTO) -- se repite aquí esa
+   misma declaración, con el mismo valor exacto, para no perder el efecto. */
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.headingRow > h2 {
+  margin: 0;
+  color: var(--crema);
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.85), 0 2px 14px rgba(8, 0, 32, 0.55);
+}
+
+.viewAllBtn {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(242, 247, 215, 0.4);
+  border-radius: var(--r-pill);
+  background: rgba(242, 247, 215, 0.08);
+  color: var(--crema);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.viewAllBtn:hover,
+.viewAllBtn:focus-visible {
+  background: rgba(242, 247, 215, 0.18);
+  transform: translateY(-1px);
+}
+
+.viewAllCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: rgba(242, 247, 215, 0.22);
+  font-size: 10px;
+}
+
+/* En celular, "MERCANCÍA OFICIAL" (label) + el botón compiten por poco
+   ancho -- el botón se encoge a solo ícono + número para que ambos quepan
+   siempre en una sola fila, sin truncar el título. */
+@media (max-width: 374px) {
+  .viewAllBtn span:not(.viewAllCount) { display: none; }
+  .viewAllBtn { padding: 7px 9px; }
+}
+
+/* Carrusel ------------------------------------------------------------- */
+
+.track {
+  display: flex;
+  /* "safe center": centra los productos cuando ya caben todos en el ancho
+     disponible, pero cae solo a alineación normal en cuanto el contenido
+     desborda -- sin esto, centrar un contenedor con scroll-x recorta el
+     primer elemento y lo vuelve inalcanzable (scrollLeft no puede ser
+     negativo). Así funciona en cualquier breakpoint y para cualquier
+     cantidad de artículos (el catálogo crece desde /admin/merch). */
+  justify-content: safe center;
+  gap: 14px;
+  margin: 2px 0 0;
+  padding: 2px 2px 10px;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.track::-webkit-scrollbar { display: none; }
+
+.slide {
+  flex: none;
+  width: 172px;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .slide { width: 208px; }
+}
+@media (min-width: 1024px) {
+  .slide { width: 240px; }
+  .track { gap: 20px; }
+}
+
+/* Tarjeta --------------------------------------------------------------
+   Rediseñada el 3 oct 2026: más presencia (borde dorado-crema sutil, sombra
+   propia, foto cuadrada que ya no recorta el producto -- ver las fotos
+   reprocesadas en src/assets/img/merch-*.webp, recentradas sobre un lienzo
+   cuadrado en vez de forzarlas a un marco 3:4). */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 18px rgba(8, 0, 32, 0.35));
+}
+.card:focus-visible {
+  outline: 2px solid var(--crema);
+  outline-offset: 5px;
+  border-radius: var(--r-card);
+}
+
+.visualZone {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Cuadrada: coincide con el lienzo 900x900 de las fotos reprocesadas, así
+     object-fit: cover nunca recorta el producto (el margen ya quedó parejo
+     al recentrarlas). Antes era 3/4 -- ver nota arriba. */
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-card);
+  background: linear-gradient(165deg, #2e1268, #452199);
+  border: 1px solid rgba(242, 247, 215, 0.14);
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(8, 0, 32, 0.28);
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(242, 247, 215, 0.55);
+}
+
+.imageCount {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(12, 2, 40, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: var(--crema);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -14px;
+  padding: 20px 12px 12px;
+  background: rgba(242, 247, 215, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--r-card);
+  color: var(--morado-oscuro);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--morado);
+}
+
+.availabilityBadge {
+  margin-left: auto;
+}
+
+/* Presentación de cierre -------------------------------------------------
+   El tagline va después de los productos, grande y centrado (el botón
+   "Ver todo" ya NO vive aquí -- se movió junto al título, ver .headingRow
+   arriba, 4 oct 2026). */
+
+.closing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 4px 12px 0;
+  text-align: center;
+}
+
+.tagline {
+  margin: 0;
+  /* Fuente cambiada (pedido de Javier): 4 oct pasó de EB Garamond cursiva a
+     Caveat; 5 oct pasó a Antarctican (la fuente del flyer, ya cargada en
+     tokens.css). Mismo tamaño en todos los casos. */
+  font-family: var(--font-flyer-display);
+  font-weight: 400;
+  font-size: 20px;
+  color: var(--crema);
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.8), 0 2px 14px rgba(8, 0, 32, 0.5);
+}
+
+@media (min-width: 640px) {
+  .tagline { font-size: 23px; }
+}
+
+.note {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(242, 247, 215, 0.55);
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal de detalle -- misma mecánica que MenuCarousel.tsx, con galería  */
+/* de varias fotos agregada (flechas + puntos) cuando aplica.           */
+/* ("Ver todo" ya NO abre una hoja aquí -- navega a /home/mercancia,     */
+/* ver MerchGallery.module.css -- 4 oct 2026.)                          */
+/* ------------------------------------------------------------------ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(12, 2, 40, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: merchFadeIn 0.15s ease both;
+}
+
+@media (min-width: 640px) {
+  .backdrop { place-items: center; }
+}
+
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 24px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-pop);
+  outline: none;
+  animation: merchRise 0.2s ease both;
+}
+
+.dialogClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(30, 2, 99, 0.55);
+  color: var(--crema);
+  cursor: pointer;
+}
+.dialogClose:hover { background: rgba(30, 2, 99, 0.75); }
+
+.dialogVisualZone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(165deg, #2e1268, #452199);
+  overflow: hidden;
+}
+
+.galleryArrow {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(12, 2, 40, 0.55);
+  color: var(--crema);
+  cursor: pointer;
+}
+.galleryArrow:hover { background: rgba(12, 2, 40, 0.75); }
+.galleryArrowLeft { left: 10px; }
+.galleryArrowRight { right: 10px; }
+
+.galleryDots {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  transform: translateX(-50%);
+}
+
+.galleryDot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(242, 247, 215, 0.4);
+  cursor: pointer;
+}
+.galleryDotActive {
+  background: var(--crema);
+  width: 16px;
+  border-radius: var(--r-pill);
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px 24px;
+}
+
+.dialogName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.dialogMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(30, 2, 99, 0.12);
+}
+
+.dialogPrice {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--morado);
+}
+
+.dialogDesc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.dialogNote {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+}
+
+.skeletonCard {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--r-card);
+  background: linear-gradient(100deg, rgba(242, 247, 215, 0.06) 35%, rgba(242, 247, 215, 0.14) 50%, rgba(242, 247, 215, 0.06) 65%);
+  background-size: 200% 100%;
+  animation: merchSkeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes merchSkeleton {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes merchFadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes merchRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
