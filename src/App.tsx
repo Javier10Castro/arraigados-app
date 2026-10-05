@@ -22,6 +22,7 @@ import AsistenteDetalle from './admin/AsistenteDetalle';
 import Canjes from './admin/Canjes';
 import Menu from './admin/Menu';
 import Merch from './admin/Merch';
+import Notas from './admin/Notas';
 import { AdminMas } from './admin/AdminShell';
 import { ADMIN_HOME } from './admin/nav';
 import Mas from './pages/Mas';
@@ -104,6 +105,7 @@ export default function App() {
         <Route path="/admin/canjes" element={admin(<Canjes />)} />
         <Route path="/admin/menu" element={admin(<Menu />)} />
         <Route path="/admin/merch" element={admin(<Merch />)} />
+        <Route path="/admin/notas" element={admin(<Notas />)} />
         <Route path="/admin/usuarios" element={admin(<Usuarios />)} />
         <Route path="/admin/mas" element={admin(<AdminMas />)} />
         <Route path="/admin/*" element={admin(<Navigate to={ADMIN_HOME} replace />)} />

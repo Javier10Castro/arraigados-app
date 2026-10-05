@@ -54,7 +54,19 @@ npm run preview    # sirve dist/ localmente (solo frontend, sin /api)
 
 ## Base de datos
 
-Las migraciones SQL viven en `migrations/` y se aplican con `npm run db:migrar` (son idempotentes). Otros scripts de apoyo: `db:esquema`, `db:conteo`, `db:respaldo`, `db:restaurar`. Los respaldos se guardan en `respaldos/`, que está ignorado por Git porque contiene datos personales.
+Las migraciones SQL viven en `migrations/` y se aplican con `npm run db:migrar` (son idempotentes). Otros scripts de apoyo: `db:esquema`, `db:conteo`, `db:respaldo`, `db:restaurar`, y `db:notas-demo` (datos de demostración para Admin → Notas; `-- --limpiar` los borra). Los respaldos se guardan en `respaldos/`, que está ignorado por Git porque contiene datos personales.
+
+## Notas (carrusel de `/home`)
+
+Cada asistente puede publicar una nota de hasta 60 caracteres que dura 24 horas y se muestra en una burbuja sobre su avatar; las notas vigentes de los demás aparecen en un carrusel horizontal en `/home`. Reglas clave:
+
+- Una sola nota activa por persona: publicar otra reemplaza a la anterior, y "Quitar" la vence. Nunca se borra nada (queda como historial).
+- Las notas nuevas son públicas; el carrusel solo expone el primer nombre y el id del avatar.
+- Filtro de lenguaje en cliente y servidor (`shared/moderation.ts`); el servidor responde 422 si hay groserías.
+- Revisión y filtros (estado, zona/iglesia, fechas, likes, paginación) en **Admin → Notas** (`/admin/notas`).
+- Endpoints: `GET/POST/DELETE /api/notes`, `GET /api/notes/feed`, `GET /api/admin/notes`. Requiere la migración `002_notes.sql`.
+
+Detalle completo en `docs/CLAUDE_HANDOFF.md` §44.
 
 ## Arquitectura
 

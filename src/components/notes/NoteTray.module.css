@@ -1,0 +1,125 @@
+/* Carrusel de Notas (/home). Tokens de tokens.css; sin fuentes ni librerías nuevas. */
+
+.tray { position: relative; --fade-l: 0px; --fade-r: 0px; }
+.canPrev { --fade-l: 26px; }
+.canNext { --fade-r: 26px; }
+
+.rail {
+  display: flex;
+  align-items: flex-end;           /* los avatares quedan alineados aunque las burbujas midan distinto */
+  gap: 10px;
+  margin: 0;
+  padding: 14px 2px 6px;           /* aire arriba: la burbuja "salta" al aparecer y el scroll recortaría */
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* desvanecido en el borde donde aún hay más (variables que pone .tray) */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l, 0px), #000 calc(100% - var(--fade-r, 0px)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-l, 0px), #000 calc(100% - var(--fade-r, 0px)), transparent);
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail:focus-visible { outline: 2px solid var(--crema); outline-offset: 2px; border-radius: 12px; }
+
+.item {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100px;
+  scroll-snap-align: start;
+  animation: itemIn 0.46s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.bubbleSlot {
+  width: 100%;
+  margin-bottom: 7px;              /* lugar para la colita */
+}
+
+.item > :is(span, button):not(.name):not(.ghostName) { margin-top: -16px; } /* el avatar sube hacia la burbuja (el SVG trae aire alrededor) */
+.avatarBtn {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--crema);
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.8), 0 2px 12px rgba(8, 0, 32, 0.5);
+}
+.own { font-weight: 800; }
+
+/* Esqueleto mientras llegan las notas de los demás. */
+.ghostAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(242, 247, 215, 0.1);
+}
+.ghostName {
+  width: 44px;
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(242, 247, 215, 0.1);
+}
+
+.hint {
+  flex: none;
+  align-self: center;
+  max-width: 190px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: rgba(242, 247, 215, 0.7);
+}
+
+/* Flechas: solo en pantallas con ratón (en el celular se desliza con el dedo). */
+.nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: 0 6px 16px -4px rgba(8, 0, 32, 0.6);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+/* Sin nada hacia ese lado: la flecha se desvanece y no se puede tocar. */
+.tray:not(.canPrev) .prev,
+.tray:not(.canNext) .next { opacity: 0; pointer-events: none; transform: translateY(-50%) scale(0.8); }
+.prev { left: -12px; }
+.next { right: -12px; }
+@media (hover: hover) and (min-width: 768px) {
+  .nav { display: grid; }
+  .tray { --fade-l: 0px !important; --fade-r: 0px !important; } /* en escritorio las flechas ya avisan */
+}
+
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item { animation: none; }
+}

@@ -10,7 +10,10 @@ import beneficiosStyles from '../Beneficios.module.css';
 import { DRINK_LABEL, formatPrice, packageContent, upcomingEvents } from '../../data/app';
 import { SATURDAY_PROGRAM, SATURDAY_VENUE, SUNDAY_PROGRAM, SUNDAY_VENUE_BY_ZONE, resolveZoneForDisplay, type ProgramItem } from '../../data/program';
 import { firstName, usePulseSession } from '../../context/PulseSession';
-import UserAvatar from '../../components/UserAvatar';
+import NoteTray from '../../components/notes/NoteTray';
+import NoteSheet from '../../components/notes/NoteSheet';
+import { useMyNotes } from '../../components/notes/useMyNotes';
+import { useNotesFeed } from '../../components/notes/useNotesFeed';
 import MenuCarousel from './MenuCarousel';
 import MerchCarousel from './MerchCarousel';
 import styles from './Home.module.css';
@@ -186,9 +189,13 @@ function CountdownGrid({ target, now }: { target: Date; now: Date }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { me } = usePulseSession();
+  const { me, state: pulse } = usePulseSession();
   const fullName = me?.attendee.fullName ?? '';
   const [open, setOpen] = useState(false);
+  // Nota del asistente (burbuja sobre el avatar). Un fallo aquí nunca rompe /home.
+  const notes = useMyNotes(pulse.phase === 'ready' ? pulse.token : '');
+  const feed = useNotesFeed(pulse.phase === 'ready' ? pulse.token : '');
+  const [noteOpen, setNoteOpen] = useState(false);
   const [unread, setUnread] = useState(true);
   const now = useNow();
 
@@ -230,12 +237,9 @@ export default function Home() {
   return (
     <div className={`page-enter ${styles.page}`}>
       <header className={styles.top}>
-        <div className={styles.identity}>
-          <UserAvatar className={styles.avatar} attendeeId={me?.attendee.id} name={fullName} />
-          <div className={styles.identityText}>
-            <span className={styles.hello}>Hola, {firstName(fullName)}</span>
-            <Badge variant="tag">{me?.package.name ?? ''}</Badge>
-          </div>
+        <div className={styles.identityText}>
+          <span className={styles.hello}>Hola, {firstName(fullName)}</span>
+          <Badge variant="tag">{me?.package.name ?? ''}</Badge>
         </div>
         <button type="button" className={styles.bell} aria-label="Notificaciones" aria-expanded={open} onClick={toggleBell}>
           <Bell size={20} strokeWidth={2.1} />
@@ -269,6 +273,15 @@ export default function Home() {
           </div>
         )}
       </header>
+
+      <NoteTray
+        me={{ attendeeId: me.attendee.id, name: fullName }}
+        ownStatus={notes.status}
+        ownNote={notes.active}
+        onOpenOwn={() => setNoteOpen(true)}
+        feedStatus={feed.status}
+        feed={feed.items}
+      />
 
       <section className={`${styles.section} ${styles.current}`}>
         <h2 className="label">Ahora</h2>
@@ -474,6 +487,19 @@ export default function Home() {
             ))}
           </div>
         </section>
+      )}
+
+      {noteOpen && (
+        <NoteSheet
+          status={notes.status}
+          error={notes.error}
+          active={notes.active}
+          now={notes.now}
+          onPublish={notes.publish}
+          onRemove={notes.remove}
+          onReload={notes.reload}
+          onClose={() => setNoteOpen(false)}
+        />
       )}
     </div>
   );

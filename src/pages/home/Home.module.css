@@ -17,31 +17,6 @@
   gap: 14px;
 }
 
-.identity {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  flex: none;
-  border-radius: 50%;
-  background: linear-gradient(150deg, #4b1bd6 0%, #1e0263 100%);
-  color: var(--crema);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 20px;
-  overflow: hidden;
-  border: 1px solid var(--crema);
-}
-
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
-
 .identityText {
   display: flex;
   flex-direction: column;
@@ -50,8 +25,9 @@
 }
 
 .hello {
-  font-size: 15.5px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
   color: var(--crema);
   text-shadow: 0 1px 2px rgba(8, 0, 32, 0.8), 0 2px 14px rgba(8, 0, 32, 0.5);
 }
@@ -102,7 +78,7 @@
 .agenda { padding: 22px 16px; background: #f2f7d7e8; border: 1px solid #f2f7d7; border-radius: var(--r-card); }
 @media (min-width: 1024px) {
   .page { padding-top: 16px; gap: 30px; }
-  .hello { font-size: 19px; }
+  .hello { font-size: 28px; }
   .agenda { padding: 26px; }
   .agenda .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

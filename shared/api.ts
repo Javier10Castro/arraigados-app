@@ -104,7 +104,7 @@ export type MeResponse = {
 };
 
 /** Cuerpo de cualquier error de las funciones. */
-export type ApiError = { error: string; status?: PulseStatusResponse['status']; mustChangePassword?: boolean };
+export type ApiError = { error: string; status?: PulseStatusResponse['status']; mustChangePassword?: boolean; code?: string };
 
 /* ------------------------------------------------------------------ */
 /* Staff / Admin                                                        */
@@ -648,10 +648,10 @@ export type UpdateSettingsRequest = Partial<AppSettings>;
 /*  - Sin "guardar"/favoritos -- reemplazado por Likes.                 */
 /*  - expiresAt = createdAt + 24h; una nota expirada deja de aparecer    */
 /*    como activa, pero NUNCA se borra físicamente.                     */
-/*  - visibility existe en el modelo (PRIVATE | PUBLIC) pero esta v1     */
-/*    SOLO crea y expone PRIVATE de verdad. Cualquier "comunidad" que    */
-/*    se muestre en la UI es, por ahora, contenido de prueba (mock),     */
-/*    nunca notas reales de otros asistentes.                           */
+/*  - visibility (PRIVATE | PUBLIC): desde el 5 oct 2026 las notas NUEVAS */
+/*    se crean PUBLIC y las ven los demás asistentes en el carrusel de   */
+/*    /home (GET /api/notes/feed). Las notas PRIVATE anteriores siguen   */
+/*    privadas y nunca salen en el carrusel.                            */
 /* ------------------------------------------------------------------ */
 
 /** Máximo de caracteres por nota (Instagram Notes usa 60 -- misma referencia). */
@@ -681,6 +681,59 @@ export type CreateNoteResponse = { note: Note };
 
 /** GET /api/notes -- únicamente las notas del asistente autenticado (activas y expiradas). */
 export type MyNotesResponse = { notes: Note[] };
+
+/**
+ * GET /api/notes/feed -- carrusel de /home: notas PÚBLICAS y vigentes de OTROS asistentes
+ * (nunca la propia). Solo sale lo imprescindible para dibujar la burbuja: el id del asistente
+ * (semilla del avatar, no da acceso a nada) y su PRIMER nombre; jamás el nombre completo.
+ */
+export type NoteFeedItem = { id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; firstName: string };
+export type NotesFeedResponse = { notes: NoteFeedItem[] };
+
+/** DELETE /api/notes -- retira (hace expirar ya) la nota activa del asistente; la fila se conserva como historial. */
+export type RemoveNoteResponse = { removed: number };
+
+/* Admin -> Notas (5 oct 2026): solo lectura. */
+
+/** Una nota está ACTIVA mientras `expiresAt` no haya pasado; si no, VENCIDA (la fila nunca se borra). */
+export type AdminNoteStatus = 'ACTIVA' | 'VENCIDA';
+export type AdminNotesSort = 'recent' | 'likes';
+export type AdminNotesLikesFilter = 'with' | 'without';
+
+export type AdminNoteFilters = {
+  /** Cada palabra (sin acentos) debe aparecer en el texto de la nota O en el nombre del asistente. */
+  q?: string;
+  status?: AdminNoteStatus | '';
+  zoneId?: string;
+  presbyteryId?: string;
+  churchId?: string;
+  likes?: AdminNotesLikesFilter | '';
+  /** YYYY-MM-DD (hora de Tijuana), inclusive, sobre la fecha de publicación. */
+  from?: string;
+  to?: string;
+  sort?: AdminNotesSort;
+  page?: number;
+  pageSize?: PageSize;
+};
+
+export type AdminNoteRow = {
+  id: string;
+  text: string;
+  createdAt: string;
+  expiresAt: string;
+  status: AdminNoteStatus;
+  likeCount: number;
+  attendeeId: string;
+  attendeeName: string;
+  churchName: string;
+  zoneName: string;
+};
+
+/** Totales de TODAS las notas (no dependen de los filtros). */
+export type AdminNotesSummary = { total: number; active: number; expired: number; authors: number; likes: number };
+
+/** GET /api/admin/notes */
+export type AdminNotesResponse = { total: number; page: number; pageSize: number; rows: AdminNoteRow[]; summary: AdminNotesSummary };
 
 /** POST /api/notes/:id/like -- alterna el like del asistente autenticado a esa nota. */
 export type ToggleNoteLikeResponse = { liked: boolean; likeCount: number };

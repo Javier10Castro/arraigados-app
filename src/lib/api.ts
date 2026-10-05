@@ -42,6 +42,10 @@ import {
   type CreateNoteRequest,
   type CreateNoteResponse,
   type MyNotesResponse,
+  type NotesFeedResponse,
+  type RemoveNoteResponse,
+  type AdminNoteFilters,
+  type AdminNotesResponse,
   type ToggleNoteLikeResponse,
   type AdminDishesResponse,
   type AdminDishResponse,
@@ -110,6 +114,9 @@ export const api = {
       headers: { 'content-type': 'application/json', [PULSE_TOKEN_HEADER]: token },
       body: JSON.stringify(body),
     }),
+  removeMyNote: (token: string) =>
+    request<RemoveNoteResponse>('/api/notes', { method: 'DELETE', headers: { [PULSE_TOKEN_HEADER]: token } }),
+  notesFeed: (token: string) => request<NotesFeedResponse>('/api/notes/feed', { headers: { [PULSE_TOKEN_HEADER]: token } }),
   toggleNoteLike: (token: string, noteId: string) =>
     request<ToggleNoteLikeResponse>(`/api/notes/${encodeURIComponent(noteId)}/like`, {
       method: 'POST',
@@ -141,6 +148,14 @@ export const api = {
   redemptionsCatalog: () => request<AdminRedemptionsCatalog>('/api/admin/redemptions/catalog'),
   voidRedemption: (id: string, body: VoidRedemptionRequest) =>
     postJson<VoidRedemptionResponse>(`/api/admin/redemptions/${encodeURIComponent(id)}/void`, body),
+
+  // Admin -> Notas (solo lectura)
+  adminNotes: (f: AdminNoteFilters) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '' && v !== 0) qs.set(k, String(v));
+    const s = qs.toString();
+    return request<AdminNotesResponse>(`/api/admin/notes${s ? `?${s}` : ''}`);
+  },
 
   // Admin -> Usuarios
   adminUsers: () => request<AdminUserRow[]>('/api/admin/users'),

@@ -1,0 +1,83 @@
+/* Burbuja de Nota del carrusel. Paleta/radios de tokens.css; tipografía Antarctican
+   (--font-flyer-display), ya cargada por el proyecto. */
+
+.bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-height: 30px;
+  margin: 0;
+  padding: 6px 9px 7px;
+  border: 0;
+  border-radius: 16px;
+  font-family: var(--font-flyer-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+button.bubble { cursor: pointer; transition: transform 0.16s ease; }
+button.bubble:active { transform: scale(0.96); }
+
+/* Texto: máximo 4 líneas (60 caracteres caben), el resto se recorta. */
+.text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Con nota: crema sólido, flota sobre el fondo morado. */
+.filled {
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: 0 8px 20px -6px rgba(8, 0, 32, 0.55), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+/* Colita centrada hacia el avatar. */
+.filled::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 14px;
+  height: 9px;
+  margin-left: -7px;
+  background: var(--crema);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* Sin nota (solo tu avatar): invitación discreta con trazo punteado. */
+.invite {
+  color: var(--crema);
+  background: rgba(242, 247, 215, 0.1);
+  box-shadow: inset 0 0 0 1.5px rgba(242, 247, 215, 0.55);
+}
+button.invite:hover { background: rgba(242, 247, 215, 0.18); }
+
+.muted {
+  color: rgba(242, 247, 215, 0.7);
+  background: rgba(242, 247, 215, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(242, 247, 215, 0.25);
+  font-size: 12.5px;
+}
+
+.skeleton {
+  min-height: 34px;
+  background: linear-gradient(100deg, rgba(242, 247, 215, 0.08) 35%, rgba(242, 247, 215, 0.2) 50%, rgba(242, 247, 215, 0.08) 65%);
+  background-size: 200% 100%;
+  animation: noteShimmer 1.4s ease-in-out infinite;
+}
+@keyframes noteShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  button.bubble { transition: none; }
+}

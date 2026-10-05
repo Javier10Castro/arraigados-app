@@ -1,0 +1,44 @@
+/* Admin -> Notas. Reutiliza las clases de Lotes/LoteDetalle/Asistentes/Canjes;
+   aquí solo lo propio: tarjetas de totales, texto de la nota, estado y likes. */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 640px) { .kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--crema);
+  border: 1px solid rgba(30, 2, 99, 0.12);
+  color: var(--morado-oscuro);
+}
+.kpiLabel { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.kpiValue { font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1; }
+.kpiOk .kpiValue { color: #0d6e48; }
+
+.chipRows { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+
+.who { display: block; font-weight: 600; color: var(--morado-oscuro); overflow-wrap: anywhere; text-decoration: none; }
+.who:hover { text-decoration: underline; text-underline-offset: 3px; }
+.whoSub { display: block; font-size: 12px; color: var(--text-3); }
+
+.text { display: block; max-width: 34ch; overflow-wrap: anywhere; font-weight: 500; }
+
+.expired { color: var(--text-3); font-weight: 700; }
+
+.likesCol { width: 1%; white-space: nowrap; text-align: right !important; }
+.likes { display: inline-flex; align-items: center; gap: 4px; color: var(--text-3); font-weight: 700; }
+.likesOn { color: #c2337a; }
+.likesOn svg { fill: currentColor; }
+
+/* Rango de fechas: en móvil ocupa toda la fila y los inputs se encogen
+   (si no, el segundo input se sale de la tarjeta). */
+.dates { grid-column: 1 / -1; min-width: 0; }
+.dates input[type='date'] { flex: 1 1 0; min-width: 0; }

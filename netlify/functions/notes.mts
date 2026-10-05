@@ -1,5 +1,5 @@
 import type { Config } from '@netlify/functions';
-import { NoteValidationError, createNote, listMyNotes } from '../../server/notes';
+import { NoteValidationError, createNote, listMyNotes, removeMyActiveNote } from '../../server/notes';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
 import { PULSE_TOKEN_HEADER, type CreateNoteRequest } from '../../shared/api';
 
@@ -9,7 +9,10 @@ import { PULSE_TOKEN_HEADER, type CreateNoteRequest } from '../../shared/api';
  *                    prueba en el frontend, no este endpoint).
  * POST /api/notes -- crea una nota (siempre PRIVATE, máximo 60 caracteres,
  *                    vigente 24h). Identidad resuelta por x-pulse-token,
- *                    igual que /api/me -- nunca por un id del cliente.
+ *                    igual que /api/me -- nunca por un id del cliente. Reemplaza
+ *                    (hace expirar) la nota activa anterior.
+ * DELETE /api/notes -- "Quitar nota": hace expirar ya la nota activa (la fila
+ *                    queda como historial). Responde { removed }.
  */
 export default handler(async (req: Request) => {
   const token = req.headers.get(PULSE_TOKEN_HEADER) ?? '';
@@ -32,12 +35,18 @@ export default handler(async (req: Request) => {
       if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
       return json({ note: result.note });
     } catch (err) {
-      if (err instanceof NoteValidationError) return apiError(err.message, 400);
+      if (err instanceof NoteValidationError) return apiError(err.message, err.code === 'blocked_language' ? 422 : 400, { code: err.code });
       throw err;
     }
   }
 
-  return methodNotAllowed('GET, POST');
+  if (req.method === 'DELETE') {
+    const result = await removeMyActiveNote(token);
+    if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
+    return json({ removed: result.removed });
+  }
+
+  return methodNotAllowed('GET, POST, DELETE');
 });
 
 export const config: Config = { path: '/api/notes' };
