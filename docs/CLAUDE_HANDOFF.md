@@ -2371,110 +2371,118 @@ carrusel **Mercancía** (`MerchCarousel`). "Próximos eventos" está oculto con
 
 ---
 
-## 44. Notas — "mi nota" en `/home` (5 oct 2026)
+## 44. Notas — carrusel, likes y panel Admin (5 oct 2026)
 
-Concepto: una nota corta y personal asociada al avatar del asistente, inspirada en
-las Notes de Instagram pero **sin** feed, fotos, comentarios ni likes. Solo el
-dueño ve su nota.
+**Concepto.** Cada asistente puede publicar una nota corta (≤ 60 caracteres) que dura 24 h y se
+muestra en una burbuja sobre su avatar, al estilo de las Notes de Instagram. Las notas vigentes de
+los demás asistentes aparecen en un **carrusel horizontal en `/home`**; se les puede dar **like**
+(doble toque) y se revisan/filtran en **Admin → Notas**. No hay comentarios, fotos ni "historial"
+visible para el asistente (el historial se ve solo en Admin).
 
-### Backend (sin migraciones nuevas: se reutiliza `Note` de `002_notes.sql`)
-- **Tablas**: `Note` (≤ 60 caracteres, vigente 24 h, `expiresAt`; la fila **nunca se
-  borra**) y `NoteLike` (heredada; ya no se usa en la interfaz).
-- **Identidad**: siempre por `x-pulse-token` (pulsera ACTIVA). El servidor nunca
-  acepta un `attendeeId` del cliente.
-- **Endpoints** (`netlify/functions/notes.mts`, lógica en `server/notes.ts`):
-  | Método | Qué hace |
-  |---|---|
-  | `GET /api/notes` | Historial completo del asistente (activas y vencidas), la más reciente primero |
-  | `POST /api/notes` | Publica `{ text }`. **Reemplaza**: en la misma sentencia SQL (CTE) vence la nota activa anterior, así solo hay una activa |
-  | `DELETE /api/notes` | **Quitar nota**: hace expirar ya la(s) nota(s) activa(s) (`expiresAt = ahora`). Responde `{ removed }`; idempotente (`0` si no había) |
-  | `POST /api/notes/:id/like` | Heredado. **Sin uso**; se puede retirar junto con `NoteLike` |
-- "Quitar" y "reemplazar" son **vencer**, no borrar: la nota queda en el historial
-  (se revisa en Admin → Notas). SQL verificado contra Postgres real (PGlite): una sola activa tras
-  publicar, historial intacto tras quitar, otros asistentes sin afectar.
-- Tipos en `shared/api.ts` (`Note`, `RemoveNoteResponse`, …); cliente en
-  `src/lib/api.ts` (`myNotes`, `createNote`, `removeMyNote`).
+> **Cambio de producto del 5 oct:** al inicio las notas eran privadas (solo las veía su dueño).
+> Ahora las notas **nuevas son `PUBLIC`** y las ven los demás asistentes. Las `PRIVATE` anteriores
+> nunca salen en el carrusel. El panel de escribir avisa: "La verán los demás asistentes…".
 
-### Frontend (`src/components/notes/`)
-- `useMyNotes.ts`: carga el historial, deriva la **nota activa** (la más reciente con
-  `expiresAt > ahora`), la oculta sola al vencer y expone `publish` / `remove`.
-- `NoteBubble.tsx`: burbuja sobre el avatar en `/home` (carga, error, invitación
-  "¿Qué tienes en mente?", nota activa). Tipografía Antarctican Bold
-  (`--font-flyer-display`), sin comillas.
-- `NoteSheet.tsx`: panel (hoja inferior en celular, tarjeta ≥ 640 px) con vistas
-  vacía · nota actual (Cambiar / Quitar) · editor (contador `n / 60`)
-  · error. Bloquea el scroll del fondo mientras está abierto.
-- Integrado en `src/pages/home/Home.tsx` (bloque de identidad). Un fallo de Notas
-  nunca rompe `/home`.
-- **Lección aprendida**: `/home` se redibuja cada segundo (cuenta regresiva); un
-  efecto con `onClose` en sus dependencias le robaba el foco al campo de texto.
-  Ahora `onClose` va en un ref y los efectos corren una sola vez.
+### 44.1 Modelo de datos (migración `002_notes.sql`; no se agregó ninguna migración nueva)
+- `Note(id, attendeeId → Attendee ON DELETE CASCADE, text VARCHAR(60), visibility PRIVATE|PUBLIC,
+  createdAt, expiresAt)`. **La fila nunca se borra**: "quitar" y "reemplazar" = *vencer*
+  (`expiresAt = ahora`). Activa ⇔ `expiresAt > NOW_UTC`.
+- `NoteLike(noteId, attendeeId)` con índice único (un like por persona y nota).
+- **Regla**: una sola nota activa por persona. `POST` vence la anterior en la misma sentencia (CTE).
+- **Identidad**: siempre por `x-pulse-token` (pulsera ACTIVA). El servidor nunca acepta un
+  `attendeeId` del cliente en los endpoints del asistente.
 
-### Pendiente
-- Retirar `NoteLike` / `POST /api/notes/:id/like` (código y tabla) si ya no se
-  quieren likes; hoy no estorban.
-- Agregar `Note` a las tablas de los scripts de respaldo (`scripts/_db.mjs`).
-- Un endpoint "nota activa" (hoy se deriva en el navegador del historial).
+### 44.2 Endpoints
+| Método y ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/notes` | asistente | Sus notas (activas y vencidas) — de aquí se deriva "mi nota activa" y su `likeCount` |
+| `POST /api/notes` | asistente | Publica `{text}` (PUBLIC, 24 h). Reemplaza la activa. **400** vacío/largo · **422** `code:'blocked_language'` si hay groserías |
+| `DELETE /api/notes` | asistente | "Quitar nota": vence la(s) activa(s). Responde `{removed}`; idempotente |
+| `GET /api/notes/feed` | asistente | Carrusel: notas PUBLIC vigentes de **otros** (máx. 40, recientes primero). Solo `attendeeId` (semilla del avatar), **primer nombre**, `likeCount`, `likedByMe`. Vuelve a filtrar lenguaje |
+| `POST /api/notes/:id/like` | asistente | Alterna el like. Solo notas PUBLIC, vigentes y **de otra persona**: propia → **403**; vencida/privada/inexistente → **404** |
+| `GET /api/admin/notes` | ADMIN | Lista con filtros, orden, paginación y KPIs (ver 44.5) |
+
+Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes}.mts` · lógica en
+`server/notes.ts` · tipos en `shared/api.ts` · cliente en `src/lib/api.ts`.
+
+### 44.3 Filtro de lenguaje (`shared/moderation.ts`)
+- `hasBlockedLanguage(texto)` lo usan el **cliente** (bloquea "Publicar" y avisa en vivo, sin repetir
+  la palabra) y el **servidor** (barrera real, 422) y el **feed** (por si hay notas anteriores).
+- Normaliza acentos, leetspeak (`p3nd3j0`), letras repetidas (`puuuta`), letras separadas (`p u t a`)
+  y puntuación pegada (`culero!!`). Coincide por **palabra completa** o raíces largas, nunca por
+  subcadena corta (`computadora`, `reputación`, `Honra a tu madre` pasan). Se amplía en `WORDS`/`STEMS`.
+- Error encontrado en pruebas y corregido: `culero!!` pasaba porque `!` se leía como "i".
+
+### 44.4 Frontend (`src/components/notes/` + `src/pages/home/`)
+- **`/home`**: encabezado "Hola, Nombre" + campana; debajo, el carrusel (`NoteTray`).
+- `NoteTray.tsx`: fila deslizable (scroll-snap) de avatares con su nota en burbuja. El primero eres
+  tú ("Tu nota": tu nota o "¿Qué tienes en mente?"; abre `NoteSheet`; muestra "♥ N" si tienes likes).
+  Aparición escalonada, esqueleto de carga, flechas **solo en escritorio** (la izquierda se oculta al
+  inicio y la derecha al final), desvanecido solo del lado con más contenido. Mensaje "Aún no hay
+  notas de otros. ¡Sé el primero!" **solo si tú no tienes nota activa** (corregido el 5 oct 16:14).
+- `NoteBubble.tsx`: burbuja chica; reparte el texto en **dos líneas parejas y centradas**
+  (`splitLines`); una palabra o texto muy corto = una línea; lo que no quepa termina en «…».
+  Antarctican Bold (`--font-flyer-display`), sin comillas. Ancho de cada elemento: 176 px.
+- **Likes**: **doble toque** sobre la nota/avatar de otra persona = like directo (corazón que sale y
+  corazoncito rojo en su avatar; nunca quita). **Un toque** abre `NoteViewer` (nota completa, nombre,
+  botón de corazón que alterna, doble toque sobre el texto). El toque simple espera 260 ms por si
+  llega el segundo. Optimista (`useNotesFeed.like`): cambia al instante, se concilia con el servidor
+  y vuelve atrás si falla; un envío a la vez por nota.
+- `NoteSheet.tsx`: panel de tu nota (hoja inferior en celular, tarjeta ≥ 640 px): vacía · nota actual
+  (Cambiar / Quitar) · editor · error. **Contador** `n / 60`: ámbar con "QUEDAN N" en los últimos 10 y
+  rojo "LÍMITE" en 60. **Ya no hay "Mis notas"/historial para el asistente.**
+- Hooks: `useMyNotes` (tu nota activa; refresco silencioso cada minuto para tus likes),
+  `useNotesFeed` (carrusel; refresca cada minuto y al volver a la pestaña; oculta notas vencidas).
+- Respeta `prefers-reduced-motion`. Un fallo de Notas nunca rompe `/home`.
+- **Lección aprendida**: `/home` se redibuja cada segundo (cuenta regresiva). Un efecto con `onClose`
+  en sus dependencias le robaba el foco al campo de texto → `onClose` va en un ref y los efectos
+  corren una sola vez (`NoteSheet`, `NoteViewer`).
+
+### 44.5 Admin → Notas (`/admin/notas`, solo ADMIN, solo lectura)
+- KPIs: notas, activas ahora, vencidas, asistentes con notas, likes.
+- Filtros (en la URL): `q` (texto de la nota o nombre, sin acentos) · `estado` (`ACTIVA`/`VENCIDA`) ·
+  `zona`/`presbiterio`/`iglesia` · `likes` (con/sin) · `desde`/`hasta` · `orden` (recientes/likes) ·
+  `pagina`/`porPagina`. Tabla: publicada, asistente (enlace a su ficha), nota, estado, likes.
+- Estado: "Activa – vence en X" / "Vencida – hace X" / "quitada o reemplazada" (venció antes de 24 h).
+- Posible siguiente paso: acción "retirar nota" (moderación) para Admin.
+
+### 44.6 Datos demo (`npm run db:notas-demo`)
+- Crea asistentes demo (`id` con prefijo `demo-notas-`, nombre "… (demo)") con notas PUBLIC
+  activas/vencidas y likes; `-- --n=300` cambia la cantidad (máx. 500); `-- --limpiar` borra solo eso
+  (cascada). Si ya existen, solo se aseguran como PUBLIC. Muestra la base destino y pide escribir `SI`.
+  No crea lotes ni pulseras (no ensucia Lotes/kits). Aparecen en Admin → Asistentes.
+- **Cuidado**: si el `.env` apunta a la Neon de producción, los demo quedan visibles para asistentes
+  reales → correr `-- --limpiar` antes de publicar.
+
+### 44.7 Verificación realizada (entorno aislado: Postgres real vía PGlite + las funciones reales)
+- Prueba de carga con 300 asistentes con pulsera: 1,018 peticiones, 0 errores 5xx, 30/30 groserías
+  rechazadas, 0 asistentes con más de una nota activa, 0 groserías guardadas.
+- Likes: dar/quitar, propia 403, inexistente 404, sin token 401; doble toque envía 1 sola petición y
+  un segundo doble toque no repite; botón del visor alterna; Escape cierra.
+- UI revisada en celular (390 px) y escritorio (1280 px) sin desbordes horizontales. `npm run build`
+  y el type-check del servidor sin errores.
+- **No se pudo probar** la concurrencia real (PGlite acepta una conexión a la vez).
+
+### 44.8 Riesgos y pendientes
+- **Carrera conocida**: dos publicaciones simultáneas del mismo asistente podrían dejar 2 notas
+  activas (el CTE no bloquea filas nuevas). El cliente muestra la más reciente, así que se ve bien.
+  Arreglo si hace falta: `pg_advisory_xact_lock(hashtext(attendeeId))` dentro de una transacción.
+- Agregar `Note` y `NoteLike` a las tablas de los scripts de respaldo (`scripts/_db.mjs`).
+- Ampliar la lista de `shared/moderation.ts` con el uso real; valorar una acción de moderación en Admin.
+- La nota tarda ~0.26 s en abrirse al tocar (espera el posible 2º toque).
+- Antes de hacer el repo público: licencias de fuentes (Pressio TEST, Degular Demo, Antarctican).
+
+### 44.9 Despliegue de este módulo
+1. Aplicar `npm run db:migrar` a la Neon de **producción** (la `002` crea `Note`/`NoteLike`; es
+   idempotente y solo agrega). Sin ella `/api/notes` y el carrusel fallan.
+2. Limpiar datos demo si el `.env` apunta a producción (`npm run db:notas-demo -- --limpiar`).
+3. `git push origin main` → Netlify despliega solo. Commits: `28f6979` (carrusel, panel Admin, filtro,
+   demo; publicado 3:47 PM) y `73607a0` (likes, dos líneas, flechas, documentación).
+4. Probar en `/home` con pulsera real: publicar, ver la burbuja, quitar, y revisar en `/admin/notas`.
+5. Volver atrás si algo falla: Netlify → Deploys → deploy anterior → *Publish deploy* (las migraciones
+   solo agregan tablas; no hay que revertirlas).
 
 ---
-
-### Carrusel de Notas en `/home` (5 oct 2026)
-- Encabezado nuevo: "Hola, Nombre" + campana arriba; debajo, el carrusel (`NoteTray`): fila horizontal
-  de avatares con su nota en burbuja encima (estilo Instagram). Primero tú (tu nota, o "¿Qué tienes en
-  mente?"; toca para abrir el panel), luego las notas vigentes de los demás, más reciente primero.
-  Burbujas con aparición escalonada; respeta `prefers-reduced-motion`. Flechas solo en escritorio (con ratón): la izquierda se oculta al inicio y la derecha al final; en celular se desliza con el dedo y el desvanecido solo aparece del lado donde aún hay más.
-- **Cambio de producto:** las notas NUEVAS se crean `PUBLIC` (las ven los demás asistentes). Las
-  `PRIVATE` anteriores nunca salen en el carrusel. El panel de la nota avisa "La verán los demás asistentes".
-- `GET /api/notes/feed` (`notes-feed.mts`, `listNotesFeed`): token de pulsera ACTIVE; notas PUBLIC y
-  vigentes de OTROS (máx. 40); expone solo `attendeeId` (semilla del avatar) y PRIMER nombre. Vuelve a
-  pasar el filtro de lenguaje. `useNotesFeed`: refresca cada minuto y al volver a la pestaña.
-- `NoteBubble` ahora es la burbuja chica del carrusel (la grande de antes ya no existe).
-- Probado con 300 asistentes: feed 40 notas, sin token → 401, sin desbordes horizontales.
-
-### Likes en las notas (5 oct 2026)
-- **Doble toque** sobre la nota/avatar de otra persona en el carrusel = like directo (corazón que
-  sale, y un corazoncito rojo queda en su avatar). **Un toque** abre el visor (`NoteViewer`): nota
-  completa, quién la escribió, botón de corazón (alterna) y doble toque sobre el texto. El doble toque
-  solo DA like (nunca lo quita); el botón alterna. El toque simple espera 260 ms por si llega el 2º.
-- Optimista: el corazón cambia al instante y se concilia con el servidor (`useNotesFeed.like`); si
-  falla, vuelve atrás. Un solo envío a la vez por nota.
-- `POST /api/notes/:id/like` (ya existía) ahora solo acepta notas PÚBLICAS, VIGENTES y de OTRA
-  persona: propia → 403, vencida/privada/inexistente → 404. El feed trae `likeCount` y `likedByMe`.
-- Tu propia nota muestra "♥ N" bajo "Tu nota" y en su panel (refresco silencioso cada minuto).
-- Burbujas: el texto se reparte en **dos líneas parejas y centradas** (`splitLines` en `NoteBubble.tsx`);
-  una sola palabra o un texto muy corto queda en una línea; lo que no quepa termina en «…». Ancho de
-  cada elemento del carrusel: 176 px.
-
-### Admin → Notas (`/admin/notas`, solo ADMIN, solo lectura)
-- El asistente **ya no ve historial**; el historial completo se revisa aquí.
-- Endpoint `GET /api/admin/notes` (`netlify/functions/admin-notes.mts`, `listNotesAdmin` en
-  `server/notes.ts`). Filtros por URL: `q` (nombre o texto, sin acentos), `estado`
-  (`ACTIVA`/`VENCIDA`), `zona`/`presbiterio`/`iglesia`, `likes` (con/sin), `desde`/`hasta`,
-  `orden` (recientes/likes), `pagina`, `porPagina`.
-- Estado calculado en servidor con `expiresAt > NOW_UTC`; "quitada o reemplazada" = venció
-  antes de las 24 h. KPIs: notas, activas ahora, vencidas, asistentes con notas, likes.
-- Sin migración nueva. Verificado con PGlite (SQL real) + funciones reales + Playwright.
-- Posible siguiente paso: acción de moderación "retirar nota" para Admin.
-
-### Datos demo para Admin → Notas
-- `npm run db:notas-demo` (o `-- --n=300`) crea asistentes demo (`id` con prefijo `demo-notas-`,
-  nombre "… (demo)") con notas activas/vencidas y likes; `-- --limpiar` borra solo eso (cascada).
-  Muestra la base destino y pide escribir `SI`. No crea lotes ni pulseras. Requiere `db:migrar` (002).
-
-### Contador y filtro de lenguaje (5 oct 2026)
-- Contador del editor: normal `n / 60`; en los últimos 10 caracteres pasa a ámbar con
-  "QUEDAN N"; en el tope (60) rojo "LÍMITE".
-- `shared/moderation.ts` (`hasBlockedLanguage`): lista de groserías MX/EN, normaliza acentos,
-  leetspeak (`p3nd3j0`), letras repetidas (`puuuta`), letras separadas (`p u t a`) y puntuación
-  pegada (`culero!!`). Coincide por palabra completa o raíces largas, NO por subcadena corta
-  (`computadora`, `reputación`, `Honra a tu madre` pasan). Se amplía editando `WORDS`/`STEMS`.
-- Cliente: bloquea "Publicar" y muestra el aviso en vivo (sin repetir la palabra). Servidor
-  (`cleanNoteText`): la barrera real; `POST /api/notes` responde **422** `{code:'blocked_language'}`.
-- Prueba de carga (arnés local, 300 asistentes con pulsera ACTIVE): 1,018 peticiones, 0 errores 5xx,
-  30/30 groserías rechazadas, 0 asistentes con más de una nota activa.
-- Riesgo conocido, no corregido: dos publicaciones SIMULTÁNEAS del mismo asistente podrían dejar 2
-  notas activas (el CTE no bloquea filas nuevas). Hoy el cliente muestra la más reciente; arreglo
-  si hace falta: `pg_advisory_xact_lock(hashtext(attendeeId))` dentro de una transacción.
 
 ## 45. Preparación para GitHub y despliegue (5 oct 2026)
 
@@ -2499,8 +2507,8 @@ dueño ve su nota.
   functions (6 hashes de `edge.netlify.com`). El proyecto no usa Deno ni edge
   functions; Netlify no lo necesita ni sirve para Cloudflare. Ignorado.
 - **`waves.html`**: prototipo suelto ("Animated Purple Waves") sin referencias en el
-  código → **se elimina** (`Remove-Item waves.html`).
-- **`src/data/merch.ts`**: sin importaciones → **se elimina** (`Remove-Item src\data\merch.ts`). Sus 4 imágenes
+  código → **eliminado** (ya no existe en el repo).
+- **`src/data/merch.ts`**: sin importaciones → **eliminado**. Sus 4 imágenes
   `src/assets/img/merch-{vaso,tote,stickers,pulsera}.webp` quedaron huérfanas
   (no se borraron).
 - **`.env.example`** documenta las variables; **`README.md`** es la versión corta; las
@@ -2536,6 +2544,15 @@ automático. Antes del primer deploy con estos cambios:
    producción (`npm run db:migrar`; son idempotentes). Si la base de producción es
    la misma Neon que usa el desarrollo local, ya están.
 3. Probar con un *deploy preview* (rama distinta de `main`) antes de fusionar.
+
+### Estado al cierre del 5 oct 2026
+- Repo `Javier10Castro/arraigados-app`, rama `main`, conectado a Netlify (`redjuveniltijuana.com`);
+  cada push a `main` despliega solo. Deploys del día: `2ce87b5` (Home, Menú, Mercancía), `28f6979`
+  (Notas: carrusel, panel Admin, filtro, demo — publicado 3:47 PM) y `73607a0` (likes, dos líneas,
+  flechas, documentación). `deno.lock` y `vite.config.*` ya no están en Git; `waves.html` y
+  `src/data/merch.ts` ya no existen.
+- Los avisos "LF will be replaced by CRLF" de Git en Windows son normales y no afectan.
+- Detalle del módulo de Notas, su operación y sus pendientes: §44.
 
 ### Pendiente para Cloudflare (no iniciado)
 38 Netlify Functions `.mts` con `config.path`, `@netlify/blobs` (fotos), `pg` por TCP

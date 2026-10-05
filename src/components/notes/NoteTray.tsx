@@ -141,7 +141,7 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
         ))}
 
         {feedStatus === 'error' && <li className={styles.hint}>No pudimos cargar las notas de los demás.</li>}
-        {feedStatus === 'ready' && feed.length === 0 && <li className={styles.hint}>Aún no hay notas de otros. ¡Sé el primero!</li>}
+        {feedStatus === 'ready' && feed.length === 0 && !ownNote && <li className={styles.hint}>Aún no hay notas de otros. ¡Sé el primero!</li>}
       </ul>
 
       <button type="button" className={`${styles.nav} ${styles.next}`} aria-label="Ver más notas" tabIndex={edge.next ? 0 : -1} aria-hidden={!edge.next} onClick={() => scrollBy(1)}>
