@@ -2714,3 +2714,9 @@ Para dejar la app lista para entrega sin tener que usar scripts: dos botones en 
 - Archivos: `server/owner.ts`, `server/users.ts`, `server/packages.ts`, `server/audit.ts`, `netlify/functions/admin-user.mts`, `admin-packages.mts`, `shared/api.ts`, `shared/audit.ts` (acción `user.delete`; se quitó `audit.clear`), `src/lib/api.ts`, `src/admin/Usuarios.tsx`, `Kits.tsx` (+ css), `nav.ts`, `App.tsx`.
 - **Ruta de Kits (6 oct, tarde):** la pantalla vive en **`/admin/kits`** (entrada "Kits" del menú lateral). La ruta anterior `/admin/paquetes` ya no es una pantalla: redirige a `/admin/kits`. (Si en el menú aún se ve "Kits" deshabilitado con "Etapa 5", es que se está viendo una versión anterior: falta subir/reiniciar.)
 - **Texto de "Copiar datos" (6 oct, tarde):** al crear una cuenta o restablecer una contraseña, el texto copiado lleva el **rol real** (`Arraigados 2K26 · Admin` o `· Staff`; antes siempre decía Staff) y al final la liga `redjuveniltijuana.com/login`. Está en `Credentials` de `src/admin/Usuarios.tsx`.
+
+## 57. Documentación general (6 oct 2026)
+- **`README.md`** reescrito por completo: qué hace la app, glosario, arquitectura, estructura de carpetas, puesta en marcha, variables de entorno, base de datos y migraciones, roles/seguridad, mapa de pantallas, resumen de la API, reglas de negocio, scripts, respaldo/limpieza/entrega, despliegue, guía de operación y solución de problemas.
+- **`docs/API.md`** nuevo: referencia completa de los endpoints (convenciones, autenticación, cuerpos, respuestas, códigos y ejemplos curl). Los tipos exactos siguen en `shared/*.ts` (fuente de verdad).
+- `docs/RESPALDO_Y_LIMPIEZA.md` marcado como guía antigua (reemplazada por `PLAN_RESPALDO.md`).
+- Regla: al agregar/cambiar un endpoint, actualizar `docs/API.md` y la sección 10 del README (ver sección 6 de `docs/API.md`).

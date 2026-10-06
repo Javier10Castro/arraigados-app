@@ -1,3 +1,5 @@
+> ⚠️ **Guía antigua (REEMPLAZADA, 6 oct 2026).** Los comandos vigentes son `npm run db:respaldo-total`, `db:restaurar-total` y `db:limpiar-pruebas`; ver [`PLAN_RESPALDO.md`](PLAN_RESPALDO.md) y el [`README`](../README.md) §13. Lo de abajo se conserva solo como historia.
+
 # Respaldo y limpieza de datos de prueba
 
 Comandos para empezar "de cero" con las pulseras **sin perder nada**: primero se guarda
