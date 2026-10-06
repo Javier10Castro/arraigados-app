@@ -13,7 +13,7 @@ import type { PageSize } from './api';
  * muestra nunca, ni en el detalle genérico.
  */
 
-export type AuditCategory = 'usuarios' | 'lotes' | 'asistentes' | 'pulseras' | 'canjes' | 'notas' | 'avisos' | 'ajustes' | 'otros';
+export type AuditCategory = 'usuarios' | 'lotes' | 'asistentes' | 'pulseras' | 'canjes' | 'notas' | 'avisos' | 'iglesias' | 'ajustes' | 'otros';
 
 export const AUDIT_CATEGORIES: { id: AuditCategory; label: string }[] = [
   { id: 'usuarios', label: 'Usuarios' },
@@ -23,6 +23,7 @@ export const AUDIT_CATEGORIES: { id: AuditCategory; label: string }[] = [
   { id: 'canjes', label: 'Canjes' },
   { id: 'notas', label: 'Notas' },
   { id: 'avisos', label: 'Avisos' },
+  { id: 'iglesias', label: 'Iglesias' },
   { id: 'ajustes', label: 'Ajustes' },
 ];
 
@@ -41,6 +42,9 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'blocked_word.update': { label: 'Corrigió una palabra bloqueada', category: 'notas' },
   'announcement.create': { label: 'Publicó un aviso', category: 'avisos' },
   'announcement.retire': { label: 'Retiró un aviso', category: 'avisos' },
+  'church.create': { label: 'Agregó una iglesia', category: 'iglesias' },
+  'church.update': { label: 'Editó una iglesia', category: 'iglesias' },
+  'church.delete': { label: 'Eliminó una iglesia', category: 'iglesias' },
   'setting.update': { label: 'Cambió un ajuste', category: 'ajustes' },
 };
 
@@ -170,6 +174,24 @@ export function auditDetails(row: Pick<AdminAuditRow, 'action' | 'entityId' | 'm
         { label: 'Título', value: text(m.title) },
         { label: 'Para', value: m.audience === 'ALL' ? 'Todos' : text(m.audience) },
       ];
+    case 'church.create':
+      return [
+        { label: 'Iglesia', value: text(m.name) },
+        { label: 'Presbiterio', value: text(m.presbytery) },
+        { label: 'Zona', value: text(m.zone) },
+      ];
+    case 'church.update': {
+      const label: Record<string, string> = { name: 'Nombre', presbytery: 'Presbiterio', zone: 'Zona' };
+      return Object.entries(m).map(([k, v]) => {
+        const c = obj(v);
+        return { label: label[k] ?? k, value: `${text(c.from)} → ${text(c.to)}` };
+      });
+    }
+    case 'church.delete':
+      return [
+        { label: 'Iglesia', value: text(m.name) },
+        { label: 'Presbiterio', value: text(m.presbytery) },
+      ];
     case 'setting.update':
       return [
         { label: 'Ajuste', value: row.entityId === 'avatarMode' ? 'Tipo de avatar' : text(row.entityId) },
@@ -194,6 +216,8 @@ export function auditEntityLink(row: Pick<AdminAuditRow, 'entityType' | 'entityI
       return `/admin/lotes/${id}`;
     case 'User':
       return '/admin/usuarios';
+    case 'Church':
+      return '/admin/iglesias';
     default:
       return null;
   }

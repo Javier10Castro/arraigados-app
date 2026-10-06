@@ -943,3 +943,24 @@ export type PublicMerchItem = {
 
 /** GET /api/merch -- público, sin autenticación. */
 export type PublicMerchResponse = { items: PublicMerchItem[] };
+
+/* ------------------------------------------------------------------ */
+/* Admin -> Iglesias (CRUD de iglesias; presbiterios y zonas son fijos) */
+/* ------------------------------------------------------------------ */
+
+/** Una iglesia con su presbiterio y zona (la zona la hereda del presbiterio). `attendees` = asistentes registrados en ella. */
+export type AdminChurchRow = {
+  id: string;
+  name: string;
+  presbyteryId: string;
+  presbyteryName: string;
+  zoneName: string;
+  city: 'Tijuana' | 'Rosarito' | 'Tecate' | 'Otra';
+  attendees: number;
+};
+/** Presbiterio de solo lectura, para elegirlo al crear/mover una iglesia. */
+export type AdminPresbyteryOption = { id: string; name: string; zoneName: string };
+/** GET /api/admin/churches */
+export type AdminChurchesResponse = { churches: AdminChurchRow[]; presbyteries: AdminPresbyteryOption[]; nameMax: number };
+/** POST /api/admin/churches · PATCH /api/admin/churches/:id */
+export type ChurchInput = { name: string; presbyteryId: string };

@@ -57,6 +57,8 @@ import {
   type AdminNotesResponse,
   type AddBlockedWordResponse,
   type BlockedWordsResponse,
+  type AdminChurchesResponse,
+  type ChurchInput,
   type RetireNoteRequest,
   type RetireNoteResponse,
   type NoteLikersResponse,
@@ -205,6 +207,18 @@ export const api = {
     }),
   removeBlockedWord: (id: string) =>
     request<{ outcome: 'ok' }>(`/api/admin/blocked-words/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Admin -> Iglesias (CRUD; presbiterios y zonas son de solo lectura)
+  adminChurches: () => request<AdminChurchesResponse>('/api/admin/churches'),
+  createChurch: (body: ChurchInput) => postJson<{ id: string }>('/api/admin/churches', body),
+  updateChurch: (id: string, body: ChurchInput) =>
+    request<{ ok: true }>(`/api/admin/churches/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  deleteChurch: (id: string) =>
+    request<{ ok: true }>(`/api/admin/churches/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   // Admin -> Usuarios
   adminUsers: () => request<AdminUserRow[]>('/api/admin/users'),
