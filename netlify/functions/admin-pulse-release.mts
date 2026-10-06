@@ -19,7 +19,9 @@ export default handler(async (req: Request, context: Context) => {
     return json(await releasePulse(id));
   } catch (err) {
     if (err instanceof PulseReleaseError) return apiError(err.message, 400);
-    throw err;
+    // Herramienta solo para la cuenta dueña: se muestra el detalle real para poder diagnosticar.
+    console.error('[api] release', err);
+    return apiError(`No se pudo desvincular: ${err instanceof Error ? err.message : 'error desconocido'}`, 500);
   }
 });
 
