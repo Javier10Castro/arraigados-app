@@ -57,10 +57,9 @@ function FeedItem({ n, index, onOpen, onLike }: { n: NoteFeedItem; index: number
   return (
     <li className={styles.item} style={{ ['--i' as string]: Math.min(index + 1, 12) }}>
       <button type="button" className={styles.hit} onClick={tap} aria-label={`Nota de ${n.firstName}: ${n.text}. Toca para verla completa; doble toque para dar me gusta`}>
-        <span className={styles.bubbleSlot}><NoteBubble variant="filled" text={n.text} likes={n.likeCount} /></span>
+        <span className={styles.bubbleSlot}><NoteBubble variant="filled" text={n.text} liked={n.likedByMe} /></span>
         <span className={styles.avatarBox}>
           <UserAvatar size={AVATAR} attendeeId={n.attendeeId} name={n.firstName} />
-          {n.likedByMe && <Heart className={styles.likedBadge} size={20} fill="currentColor" strokeWidth={0} aria-label="Te gustó" />}
           {pop > 0 && <Heart key={pop} className={styles.pop} size={52} fill="currentColor" strokeWidth={0} aria-hidden="true" />}
         </span>
         <span className={styles.name}>{n.firstName}</span>

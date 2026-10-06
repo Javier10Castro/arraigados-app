@@ -1511,10 +1511,22 @@
   
   transition: transform 1.05s cubic-bezier(0.42, 0.02, 0.18, 1);
 }
-.hc .cred-card.is-turning{ animation: cred-turn-light 1.05s ease; }
+/* OJO: NO animar `filter` en .cred-card: un filtro aplana el contexto 3D, `backface-visibility` deja de
+   funcionar y durante el giro se ve el FRENTE al revés en lugar del reverso. El pulso de luz se hace con un
+   velo blanco (opacity) dentro de cada cara. */
+.hc .cred-face.badge-face::before{
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+}
+.hc .cred-card.is-turning .cred-face.badge-face::before{ animation: cred-turn-light 1.05s ease; }
 @keyframes cred-turn-light{
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.16); }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.14; }
 }
 .hc .cred-face.badge-face{
   position: absolute;
@@ -2073,7 +2085,7 @@
 .hc .try-landing-actions .try-btn{ width: 100%; }
 }
 @media (prefers-reduced-motion: reduce){.hc .cred-card.badge-3d-wrapper, .hc .cred-card.badge-3d-wrapper.flipped{ transition-duration: 0.01ms; }
-.hc .cred-card.is-turning{ animation: none; }
+.hc .cred-card.is-turning .cred-face.badge-face::before{ animation: none; }
 .hc .try-stage{ transition-duration: 0.01ms; }
 .hc .try-landing{ animation: none; }
 .hc .try-btn, .hc .try-stage{ transition-duration: 0.01ms; }

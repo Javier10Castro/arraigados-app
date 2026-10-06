@@ -82,7 +82,8 @@ export default function NoteViewer({ item, onClose, onLike }: Props) {
               aria-label={item.likedByMe ? 'Quitar me gusta' : 'Me gusta'}
               onClick={() => onLike(item.id, 'toggle')}
             >
-              <LikeBadge on={item.likedByMe} size={30} count={item.likeCount} label="Me gusta" />
+              {/* Solo el corazón: el contador es únicamente del dueño de la nota. */}
+              <LikeBadge on={item.likedByMe} size={30} label={item.likedByMe ? 'Te gusta' : 'Me gusta'} />
             </button>
             <span className={sheet.meta}>Se desvanece en {remaining(item.expiresAt, Date.now())}</span>
           </div>

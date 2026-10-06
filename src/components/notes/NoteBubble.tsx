@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Heart, Plus } from 'lucide-react';
 import styles from './NoteBubble.module.css';
 
@@ -37,19 +38,85 @@ type Props = {
   label?: string;
   /** Likes de la nota: pastilla con corazón y número pegada a la esquina de la burbuja (como Instagram). */
   likes?: number;
+  /** Nota de OTRA persona que ya te gustó: solo el corazón, sin número (el total es del dueño). */
+  liked?: boolean;
 };
 
-export default function NoteBubble({ variant, text, onClick, label, likes }: Props) {
+/**
+ * Texto de la burbuja que SE ADAPTA al ancho real:
+ *   1) cabe en una línea  -> una sola línea (burbuja baja);
+ *   2) no cabe            -> dos líneas parejas (`splitLines`);
+ *   3) aun así una línea se pasa -> dos líneas con letra un poco más chica (`tight`), para no cortar con "…".
+ * Se mide en el navegador (useLayoutEffect) y se vuelve a medir si cambia el ancho o cargan las fuentes.
+ */
+type Fit = 'one' | 'two' | 'tight';
+function BubbleText({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [fit, setFit] = useState<Fit>('one');
+  const [epoch, setEpoch] = useState(0); // sube cuando hay que volver a medir desde cero
+
+  const keyRef = useRef('');
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let width = el.getBoundingClientRect().width;
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (Math.abs(w - width) > 1) {
+        width = w;
+        setEpoch((n) => n + 1);
+      }
+    });
+    ro?.observe(el);
+    let alive = true;
+    document.fonts?.ready.then(() => alive && setEpoch((n) => n + 1)).catch(() => {});
+    return () => {
+      alive = false;
+      ro?.disconnect();
+    };
+  }, []);
+
+  // Medición. Si cambió el texto, el ancho o las fuentes se vuelve a empezar desde una sola línea;
+  // si no, y una línea se sale del ancho, se pasa al siguiente modo (one -> two -> tight).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const key = `${text}|${epoch}`;
+    if (keyRef.current !== key) {
+      keyRef.current = key;
+      if (fit !== 'one') {
+        setFit('one');
+        return;
+      }
+    }
+    const lines = Array.from(el.children) as HTMLElement[];
+    const over = lines.some((l) => l.scrollWidth > l.clientWidth + 0.5);
+    if (!over) return;
+    setFit((f) => (f === 'one' ? 'two' : f === 'two' ? 'tight' : f));
+  }, [fit, text, epoch]);
+
+  const lines = fit === 'one' ? [text.trim().replace(/\s+/g, ' ')] : splitLines(text);
+  return (
+    <span className={`${styles.text}${fit === 'tight' ? ` ${styles.tight}` : ''}`} ref={ref}>
+      {lines.map((line, i) => (
+        <span className={styles.line} key={i}>{line}</span>
+      ))}
+    </span>
+  );
+}
+
+export default function NoteBubble({ variant, text, onClick, label, likes, liked }: Props) {
   if (variant === 'loading') return <span className={`${styles.bubble} ${styles.skeleton}`} aria-hidden="true" />;
 
   const content = (
     <>
       {variant === 'invite' && <Plus size={13} strokeWidth={2.8} aria-hidden="true" />}
-      <span className={styles.text}>
-        {splitLines(text ?? '').map((line, i) => (
-          <span className={styles.line} key={i}>{line}</span>
-        ))}
-      </span>
+      <BubbleText text={text ?? ''} />
+      {variant === 'filled' && !likes && liked ? (
+        <span className={`${styles.likes} ${styles.likesOnly}`} aria-label="Te gusta">
+          <Heart size={11} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+        </span>
+      ) : null}
       {variant === 'filled' && likes ? (
         <span className={styles.likes} aria-label={`${likes} me gusta`}>
           <Heart size={11} fill="currentColor" strokeWidth={0} aria-hidden="true" />

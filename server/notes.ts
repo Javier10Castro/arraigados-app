@@ -178,7 +178,7 @@ export async function listNotesFeed(token: string): Promise<{ ok: true; notes: N
   const { rows } = await query<{ id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; fullName: string; likeCount: number; likedByMe: boolean }>(
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
             a.id AS "attendeeId", a."fullName",
-            (SELECT count(*)::int FROM "NoteLike" l WHERE l."noteId" = n.id) AS "likeCount",
+            0 AS "likeCount", -- el contador es SOLO del dueño de la nota: en las notas de otros nunca se envía
             EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."attendeeId" = $1) AS "likedByMe"
        FROM "Note" n
        JOIN "Attendee" a ON a.id = n."attendeeId"
@@ -236,8 +236,8 @@ export async function toggleNoteLike(
     liked = true;
   }
 
-  const { rows } = await query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM "NoteLike" WHERE "noteId" = $1`, [noteId]);
-  return { ok: true, liked, likeCount: Number(rows[0]?.count ?? 0) };
+  // El contador de likes es solo del dueño de la nota: quien da like NO recibe el total (siempre 0 aquí).
+  return { ok: true, liked, likeCount: 0 };
 }
 
 /** Quién le dio like a la nota vigente del dueño del token (solo la suya). */

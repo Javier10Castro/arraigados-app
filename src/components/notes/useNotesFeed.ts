@@ -65,12 +65,12 @@ export function useNotesFeed(token: string) {
       if (mode === 'like' && cur.likedByMe) return;
       pending.current.add(id);
       const target = !cur.likedByMe;
-      patch(id, (n) => ({ ...n, likedByMe: target, likeCount: Math.max(0, n.likeCount + (target ? 1 : -1)) }));
+      patch(id, (n) => ({ ...n, likedByMe: target }));
       try {
         const r = await api.toggleNoteLike(token, id);
-        patch(id, (n) => ({ ...n, likedByMe: r.liked, likeCount: r.likeCount }));
+        patch(id, (n) => ({ ...n, likedByMe: r.liked }));
       } catch {
-        patch(id, (n) => ({ ...n, likedByMe: cur.likedByMe, likeCount: cur.likeCount }));
+        patch(id, (n) => ({ ...n, likedByMe: cur.likedByMe }));
       } finally {
         pending.current.delete(id);
       }
