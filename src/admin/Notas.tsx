@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { FIXED_BLOCKED, compileBlockedWords, hasBlockedLanguage } from '../../shared/moderation';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Heart, Search, X } from 'lucide-react';
+import { Check, Heart, Pencil, ShieldBan, Search, X } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
+import AdminModal from './AdminModal';
 import { api } from '../lib/api';
 import {
   NOTE_LIFETIME_HOURS,
@@ -13,6 +15,7 @@ import {
   type AdminNotesLikesFilter,
   type AdminNotesResponse,
   type AdminNotesSort,
+  type BlockedWord,
 } from '../../shared/api';
 import Pagination from '../components/Pagination';
 import { Skeleton, SkeletonRows } from '../components/Skeleton';
@@ -21,13 +24,16 @@ import s from './Lotes.module.css';
 import d from './LoteDetalle.module.css';
 import a from './Asistentes.module.css';
 import c from './Canjes.module.css';
+import u from './Usuarios.module.css';
 import n from './Notas.module.css';
 
 /**
  * Admin -> Notas (5 oct 2026): las notas que escriben los asistentes en /home.
- * SOLO LECTURA: aquí el Admin las revisa; el asistente es quien publica o quita
- * la suya (una nota "quitada" o reemplazada solo queda vencida, nunca se borra,
- * así que aparece aquí como Vencida y el historial completo se conserva).
+ * Aquí el Admin las revisa y MODERA: puede retirar una nota activa (con motivo;
+ * queda Vencida, nunca se borra, y se registra en AuditLog) y administrar la lista
+ * de palabras bloqueadas (se suman a la lista fija de shared/moderation.ts). El
+ * asistente sigue publicando o quitando la suya; una nota quitada o reemplazada
+ * también queda Vencida, así que el historial completo se conserva.
  *
  * Mismo esqueleto que Canjes/Asistentes: filtros en la URL, filtros/orden/
  * paginación en el SERVIDOR, estados loading/empty/error con esqueleto.
@@ -40,7 +46,7 @@ import n from './Notas.module.css';
  *  - Los totales de arriba son de TODAS las notas, sin filtros.
  */
 
-const COL_CLASSES = [a.wide, undefined, undefined, undefined, n.likesCol];
+const COL_CLASSES = [a.wide, undefined, undefined, undefined, n.likesCol, d.act];
 
 const STATUS_FILTERS: { value: AdminNoteStatus | ''; label: string }[] = [
   { value: '', label: 'Todas' },
@@ -85,6 +91,7 @@ export default function Notas() {
   const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
+  const [retiring, setRetiring] = useState<AdminNoteRow | null>(null);
   const seq = useRef(0);
 
   const update = (changes: Record<string, string>, keepPage = false) => {
@@ -145,6 +152,8 @@ export default function Notas() {
         <Kpi label="Asistentes con notas" value={sum?.authors} />
         <Kpi label="Likes" value={sum?.likes} />
       </section>
+
+      <BlockedWordsPanel />
 
       <section className={`${d.card} ${a.filters}`} aria-label="Buscar y filtrar notas">
         <label className={a.search}>
@@ -254,17 +263,20 @@ export default function Notas() {
                   <th>Nota</th>
                   <th>Estado</th>
                   <th className={n.likesCol}>Likes</th>
+                  <th className={d.act}>
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {loading || !data ? (
                   <SkeletonRows
                     classNames={COL_CLASSES}
-                    cols={['70%', '75%', '90%', 80, 30]}
+                    cols={['70%', '75%', '90%', 80, 30, 60]}
                     rows={data && data.total > 0 ? Math.min(pageSize, Math.max(data.total - page * pageSize, 1)) : pageSize}
                   />
                 ) : (
-                  data.rows.map((r) => <NoteRow key={r.id} row={r} now={now} />)
+                  data.rows.map((r) => <NoteRow key={r.id} row={r} now={now} onRetire={() => setRetiring(r)} />)
                 )}
               </tbody>
             </table>
@@ -283,11 +295,22 @@ export default function Notas() {
           />
         )}
       </section>
+
+      {retiring && (
+        <RetireModal
+          row={retiring}
+          onClose={() => setRetiring(null)}
+          onDone={() => {
+            setRetiring(null);
+            setReload((x) => x + 1);
+          }}
+        />
+      )}
     </AdminShell>
   );
 }
 
-function NoteRow({ row, now }: { row: AdminNoteRow; now: number }) {
+function NoteRow({ row, now, onRetire }: { row: AdminNoteRow; now: number; onRetire: () => void }) {
   const created = new Date(row.createdAt).getTime();
   const expires = new Date(row.expiresAt).getTime();
   const active = row.status === 'ACTIVA';
@@ -314,7 +337,9 @@ function NoteRow({ row, now }: { row: AdminNoteRow; now: number }) {
         ) : (
           <span className={n.expired}>
             Vencida
-            <span className={c.voidMeta}>{early ? 'quitada o reemplazada' : `hace ${span(now - expires)}`}</span>
+            <span className={c.voidMeta}>
+              {row.retiredByAdmin ? 'retirada por Admin' : early ? 'quitada o reemplazada' : `hace ${span(now - expires)}`}
+            </span>
           </span>
         )}
       </td>
@@ -322,6 +347,13 @@ function NoteRow({ row, now }: { row: AdminNoteRow; now: number }) {
         <span className={`${n.likes} ${row.likeCount > 0 ? n.likesOn : ''}`}>
           <Heart size={14} strokeWidth={2.4} aria-hidden="true" /> {row.likeCount}
         </span>
+      </td>
+      <td className={d.act}>
+        {active && (
+          <Button size="sm" variant="outline" className={c.voidBtn} onClick={onRetire}>
+            Retirar
+          </Button>
+        )}
       </td>
     </tr>
   );
@@ -359,5 +391,301 @@ function Select({
         ))}
       </select>
     </label>
+  );
+}
+
+const REASON_MAX = 200;
+
+/** Retirar una nota activa: motivo obligatorio; la nota queda Vencida (no se borra) y se registra en AuditLog. */
+function RetireModal({ row, onClose, onDone }: { row: AdminNoteRow; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const trimmed = reason.trim();
+  const canSubmit = trimmed.length > 0 && trimmed.length <= REASON_MAX;
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) {
+      setError('Escribe el motivo para retirar la nota.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.retireNote(row.id, { reason: trimmed });
+      if (res.outcome === 'already_expired') {
+        setError('Esta nota ya había vencido o fue retirada (quizá en otra pestaña).');
+        setBusy(false);
+        return;
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo retirar la nota. Intenta de nuevo.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminModal title="Retirar nota" onClose={onClose} busy={busy}>
+      <form className={u.form} onSubmit={submit} noValidate>
+        <p className={c.summary}>
+          <b>{row.attendeeName}</b> · {row.churchName}
+        </p>
+        <p className={n.quote}>“{row.text}”</p>
+        <p className={u.hint}>
+          La nota deja de verse en el carrusel de inmediato y queda como <b>Vencida</b> (no se borra). El asistente puede publicar otra. Queda
+          registrado quién la retiró y por qué.
+        </p>
+        <div className={c.reasonBox}>
+          <label className={u.f}>
+            <span>Motivo</span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ej. Lenguaje ofensivo."
+              maxLength={REASON_MAX}
+              autoFocus
+            />
+          </label>
+          <p className={c.reasonCount}>
+            {reason.length}/{REASON_MAX}
+          </p>
+        </div>
+        {error && (
+          <p className={u.error} role="alert">
+            {error}
+          </p>
+        )}
+        <div className={u.actions}>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={busy || !canSubmit}>
+            {busy ? 'Retirando…' : 'Retirar nota'}
+          </Button>
+        </div>
+      </form>
+    </AdminModal>
+  );
+}
+
+/**
+ * Palabras bloqueadas que administra el Admin. Se SUMAN a la lista fija del
+ * código (shared/moderation.ts). Una palabra suelta coincide como palabra
+ * completa; varias palabras, como frase. Al agregar una, las notas ya
+ * publicadas que la contengan dejan de verse en el carrusel (el feed filtra
+ * en cada consulta); al publicar, el servidor la rechaza.
+ */
+function BlockedWordsPanel() {
+  // Abierto por defecto (5 oct 2026): antes iba colapsado y parecía que no había lista.
+  const [open, setOpen] = useState(true);
+  const [words, setWords] = useState<BlockedWord[] | null>(null);
+  const [max, setMax] = useState(40);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+  const [probe, setProbe] = useState('');
+  const [showFixed, setShowFixed] = useState(false);
+  const [fixedQ, setFixedQ] = useState('');
+
+  useEffect(() => {
+    if (!open || words) return;
+    api
+      .blockedWords()
+      .then((r) => {
+        setWords(r.words);
+        setMax(r.max);
+      })
+      .catch((err: Error) => setError(err.message));
+  }, [open, words]);
+
+  const reloadList = () => api.blockedWords().then((r) => setWords(r.words));
+
+  async function run(fn: () => Promise<unknown>, ok?: string) {
+    setBusy(true);
+    setError('');
+    setInfo('');
+    try {
+      await fn();
+      if (ok) setInfo(ok);
+      await reloadList();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo completar. Intenta de nuevo.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    const w = text.trim();
+    if (!w) return;
+    let exists = false;
+    const done = await run(async () => {
+      const res = await api.addBlockedWord(w);
+      exists = res.outcome === 'exists';
+    });
+    if (done) {
+      setInfo(exists ? 'Esa palabra ya estaba en la lista.' : 'Agregada.');
+      setText('');
+    }
+  }
+
+  async function saveEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    const done = await run(() => api.updateBlockedWord(editing.id, editing.value.trim()), 'Cambio guardado.');
+    if (done) setEditing(null);
+  }
+
+  // Probador: usa EL MISMO filtro del servidor (lista fija + las palabras de abajo).
+  const verdict = useMemo(() => {
+    if (!probe.trim()) return null;
+    return hasBlockedLanguage(probe, compileBlockedWords((words ?? []).map((w) => w.word)));
+  }, [probe, words]);
+
+  const fixedFiltered = useMemo(() => {
+    const q = fixedQ.trim().toLowerCase();
+    const f = (list: string[]) => (q ? list.filter((w) => w.includes(q)) : list);
+    return { words: f(FIXED_BLOCKED.words), stems: f(FIXED_BLOCKED.stems), phrases: f(FIXED_BLOCKED.phrases) };
+  }, [fixedQ]);
+
+  return (
+    <section className={d.card} aria-label="Palabras bloqueadas">
+      <button type="button" className={n.panelHead} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <ShieldBan size={18} aria-hidden="true" />
+        <span>Palabras bloqueadas</span>
+        <span className={n.panelHint}>
+          {words ? `${words.length} tuyas · ${FIXED_BLOCKED.words.length} de la app` : ''} {open ? '· Ocultar' : '· Mostrar'}
+        </span>
+      </button>
+
+      {open && (
+        <div className={n.panelBody}>
+          <p className={u.hint}>
+            El filtro detecta variantes solas: MAYÚSCULAS, números por letras (p3nd3j0), letras repetidas, separadas por espacios o puntos, un
+            carácter tachado (p*ta), letras de otro alfabeto, y k por c, v por b, ph por f. Funciona en español e inglés. Una palabra suelta
+            se bloquea completa (no afecta a otras que la contengan); si escribes varias, se bloquea la frase.
+          </p>
+
+          <h3 className={n.subHead}>Agregadas por ti</h3>
+          <form className={n.addRow} onSubmit={add}>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Palabra o frase a bloquear"
+              maxLength={max}
+              aria-label="Palabra o frase a bloquear"
+              autoComplete="off"
+            />
+            <Button type="submit" size="sm" disabled={busy || !text.trim()}>
+              Agregar
+            </Button>
+          </form>
+          {error && (
+            <p className={u.error} role="alert">
+              {error}
+            </p>
+          )}
+          {info && <p className={n.info}>{info}</p>}
+          {words === null && !error ? (
+            <Skeleton w={220} h={18} />
+          ) : words && words.length === 0 ? (
+            <p className={s.hint}>Todavía no has agregado ninguna. Usa el campo de arriba.</p>
+          ) : (
+            <ul className={n.wordList}>
+              {words?.map((w) => (
+                <li key={w.id} className={n.word} title={w.createdByName ? `Agregada por ${w.createdByName}` : undefined}>
+                  {editing?.id === w.id ? (
+                    <form className={n.editForm} onSubmit={saveEdit}>
+                      <input
+                        value={editing.value}
+                        onChange={(e) => setEditing({ id: w.id, value: e.target.value })}
+                        maxLength={max}
+                        aria-label={`Editar ${w.word}`}
+                        autoFocus
+                      />
+                      <button type="submit" aria-label="Guardar cambio" disabled={busy || !editing.value.trim()}>
+                        <Check size={14} />
+                      </button>
+                      <button type="button" aria-label="Cancelar edición" onClick={() => setEditing(null)}>
+                        <X size={14} />
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <span>{w.word}</span>
+                      <button type="button" aria-label={`Editar ${w.word}`} disabled={busy} onClick={() => setEditing({ id: w.id, value: w.word })}>
+                        <Pencil size={13} />
+                      </button>
+                      <button type="button" aria-label={`Quitar ${w.word}`} disabled={busy} onClick={() => run(() => api.removeBlockedWord(w.id))}>
+                        <X size={14} />
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h3 className={n.subHead}>Probar un texto</h3>
+          <input
+            className={n.probe}
+            value={probe}
+            onChange={(e) => setProbe(e.target.value)}
+            placeholder="Escribe aquí para ver si se bloquearía (ej. con números o espacios)"
+            aria-label="Probar un texto"
+            autoComplete="off"
+          />
+          {verdict !== null && (
+            <p className={verdict ? n.probeBad : n.probeOk} role="status">
+              {verdict ? 'Se bloquearía.' : 'Se permitiría.'}
+            </p>
+          )}
+
+          <button type="button" className={n.fixedToggle} aria-expanded={showFixed} onClick={() => setShowFixed((v) => !v)}>
+            Lista de la app: {FIXED_BLOCKED.words.length} palabras, {FIXED_BLOCKED.stems.length} raíces, {FIXED_BLOCKED.phrases.length} frases (solo lectura){' '}
+            {showFixed ? '· Ocultar' : '· Ver'}
+          </button>
+          {showFixed && (
+            <div className={n.fixedBox}>
+              <p className={u.hint}>
+                Contiene lenguaje ofensivo. No se edita aquí: para quitar o cambiar una de estas, se modifica en el código (<code>shared/moderation.ts</code>).
+              </p>
+              <input
+                className={n.probe}
+                value={fixedQ}
+                onChange={(e) => setFixedQ(e.target.value)}
+                placeholder="Buscar en la lista de la app"
+                aria-label="Buscar en la lista de la app"
+                autoComplete="off"
+              />
+              <ul className={n.wordList}>
+                {fixedFiltered.words.map((w) => (
+                  <li key={`w-${w}`} className={`${n.word} ${n.wordFixed}`}>
+                    <span>{w}</span>
+                  </li>
+                ))}
+                {fixedFiltered.stems.map((w) => (
+                  <li key={`s-${w}`} className={`${n.word} ${n.wordFixed}`} title="Raíz: bloquea toda palabra que empiece así">
+                    <span>{w}…</span>
+                  </li>
+                ))}
+                {fixedFiltered.phrases.map((w) => (
+                  <li key={`p-${w}`} className={`${n.word} ${n.wordFixed}`}>
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

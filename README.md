@@ -67,7 +67,7 @@ Cada asistente puede publicar una nota de hasta 60 caracteres que dura 24 horas 
 - Revisión y filtros (estado, zona/iglesia, fechas, likes, paginación) en **Admin → Notas** (`/admin/notas`).
 - Endpoints: `GET/POST/DELETE /api/notes`, `GET /api/notes/feed`, `GET /api/admin/notes`. Requiere la migración `002_notes.sql`.
 
-Detalle completo en `docs/CLAUDE_HANDOFF.md` §44.
+Detalle completo en `docs/CLAUDE_HANDOFF.md` §44. Admin puede **retirar** notas y administrar **palabras bloqueadas** (`docs/MODERACION.md`).
 
 ## Arquitectura
 
@@ -85,7 +85,7 @@ Netlify Functions             (netlify/functions/*.mts, una por ruta /api/*)
 - **Backend:** una Netlify Function por endpoint; la lógica compartida está en `server/`.
 - **Despliegue actual:** Netlify (`netlify.toml`: build, SPA con redirect a `index.html`, cabeceras).
 
-Documentación más detallada en [`docs/`](docs/) (`INFRASTRUCTURE.md`, `MIGRATION_TO_RED.md`, `CONEXION_NEON.md` y las notas históricas del proyecto en `NOTAS_DEL_PROYECTO.md`).
+Documentación más detallada en [`docs/`](docs/) (`INFRASTRUCTURE.md`, `MIGRATION_TO_RED.md`, `CONEXION_NEON.md` y las notas históricas del proyecto en `NOTAS_DEL_PROYECTO.md`). Para saber **qué falta por hacer**: `PLAN_PENDIENTES.md`; moderación de Notas: `MODERACION.md`; limpieza pendiente: `CODIGO_SIN_USO.md`.
 
 ## Despliegue (Netlify)
 

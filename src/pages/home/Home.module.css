@@ -63,6 +63,7 @@
   border-radius: 50%;
   background: var(--live);
   border: 2px solid #fff;
+  pointer-events: none;
 }
 
 .section {
@@ -145,53 +146,26 @@
   list-style: none;
 }
 
-.panelItem {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 14px;
-  background: #f7f5ff;
-}
 
-.panelIcon {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border-radius: 50%;
-  background: #ece8ff;
-  color: var(--morado);
-}
 
-.panelBody {
+
+
+
+.panelList { max-height: min(60vh, 360px); overflow-y: auto; }
+
+
+.panelEmpty {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: #f7f5ff;
+  text-align: center;
 }
-
-.panelBody strong {
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.panelBody span {
-  font-size: 12px;
-  color: var(--text-3);
-  line-height: 1.35;
-}
-
-.panelLive {
-  flex: none;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
-  color: var(--live);
-}
+.panelEmpty strong { font-size: 13.5px; font-weight: 600; }
+.panelEmpty span { font-size: 12px; color: var(--text-3); line-height: 1.4; }
 
 .panelClose {
   width: 100%;

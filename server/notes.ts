@@ -1,5 +1,6 @@
-import { NOW_UTC, newId, query } from './db';
-import { BLOCKED_LANGUAGE_MESSAGE, hasBlockedLanguage } from '../shared/moderation';
+import { NOW_UTC, newId, query, withTransaction } from './db';
+import { getExtraBlocked } from './blockedWords';
+import { BLOCKED_LANGUAGE_MESSAGE, hasBlockedLanguage, type ExtraBlocked } from '../shared/moderation';
 import {
   EVENT_TIMEZONE,
   NOTE_MAX_LENGTH,
@@ -65,14 +66,15 @@ function toNote(r: NoteRow): Note {
 }
 
 /** Normaliza y valida el texto de una nota. Lanza NoteValidationError si no cumple. */
-function cleanNoteText(raw: unknown): string {
+function cleanNoteText(raw: unknown, extra?: ExtraBlocked): string {
   const text = String(raw ?? '').trim();
   if (text.length === 0) throw new NoteValidationError('Escribe algo antes de publicar.');
   if (text.length > NOTE_MAX_LENGTH) {
     throw new NoteValidationError(`Tu nota no puede tener más de ${NOTE_MAX_LENGTH} caracteres.`);
   }
   // Filtro de lenguaje: la barrera real está aquí (el del cliente es solo cortesía).
-  if (hasBlockedLanguage(text)) throw new NoteValidationError(BLOCKED_LANGUAGE_MESSAGE, 'blocked_language');
+  // `extra` = palabras que agregó el Admin (tabla BlockedWord); se suman a la lista fija.
+  if (hasBlockedLanguage(text, extra)) throw new NoteValidationError(BLOCKED_LANGUAGE_MESSAGE, 'blocked_language');
   return text;
 }
 
@@ -94,18 +96,27 @@ export async function createNote(
   const attendeeId = await resolveActiveAttendeeId(token);
   if (!attendeeId) return { ok: false, status: 'not_found' };
 
-  const text = cleanNoteText(rawText);
+  const text = cleanNoteText(rawText, await getExtraBlocked());
   const id = newId();
-  const { rows } = await query<NoteRow>(
-    `WITH retired AS (
-       UPDATE "Note" SET "expiresAt" = ${NOW_UTC}
-        WHERE "attendeeId" = $2 AND "expiresAt" > ${NOW_UTC}
-     )
-     INSERT INTO "Note" (id, "attendeeId", "text", "visibility", "createdAt", "expiresAt")
-     VALUES ($1, $2, $3, 'PUBLIC', ${NOW_UTC}, ${NOW_UTC} + INTERVAL '24 hours')
-     RETURNING id, "text", "visibility", "createdAt", "expiresAt", 0 AS "likeCount", false AS "likedByMe"`,
-    [id, attendeeId, text],
-  );
+  // Candado por asistente (pg_advisory_xact_lock, se suelta solo al terminar la
+  // transacción): dos publicaciones SIMULTÁNEAS de la misma persona (doble toque,
+  // dos pestañas) se ejecutan una tras otra. Sin él, ambas podían leer "no hay
+  // nota activa" a la vez y dejar DOS notas vigentes. La CTE corre en una
+  // sentencia posterior al candado, así que ya ve lo que la primera confirmó.
+  const rows = await withTransaction(async (tx) => {
+    await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`note:${attendeeId}`]);
+    const res = await tx.query<NoteRow>(
+      `WITH retired AS (
+         UPDATE "Note" SET "expiresAt" = ${NOW_UTC}
+          WHERE "attendeeId" = $2 AND "expiresAt" > ${NOW_UTC}
+       )
+       INSERT INTO "Note" (id, "attendeeId", "text", "visibility", "createdAt", "expiresAt")
+       VALUES ($1, $2, $3, 'PUBLIC', ${NOW_UTC}, ${NOW_UTC} + INTERVAL '24 hours')
+       RETURNING id, "text", "visibility", "createdAt", "expiresAt", 0 AS "likeCount", false AS "likedByMe"`,
+      [id, attendeeId, text],
+    );
+    return res.rows;
+  });
   return { ok: true, note: toNote(rows[0]) };
 }
 
@@ -176,8 +187,9 @@ export async function listNotesFeed(token: string): Promise<{ ok: true; notes: N
       LIMIT ${FEED_MAX * 2}`,
     [attendeeId],
   );
+  const extra = await getExtraBlocked();
   const notes = rows
-    .filter((r) => !hasBlockedLanguage(r.text))
+    .filter((r) => !hasBlockedLanguage(r.text, extra))
     .slice(0, FEED_MAX)
     .map((r) => ({
       id: r.id,
@@ -228,6 +240,25 @@ export async function toggleNoteLike(
   return { ok: true, liked, likeCount: Number(rows[0]?.count ?? 0) };
 }
 
+/** Quién le dio like a la nota vigente del dueño del token (solo la suya). */
+export async function listMyNoteLikers(
+  token: string,
+): Promise<{ ok: true; likers: { attendeeId: string; firstName: string }[] } | { ok: false }> {
+  const attendeeId = await resolveActiveAttendeeId(token);
+  if (!attendeeId) return { ok: false };
+  const { rows } = await query<{ attendeeId: string; fullName: string }>(
+    `SELECT a.id AS "attendeeId", a."fullName"
+       FROM "Note" n
+       JOIN "NoteLike" l ON l."noteId" = n.id
+       JOIN "Attendee" a ON a.id = l."attendeeId"
+      WHERE n."attendeeId" = $1 AND n."expiresAt" > ${NOW_UTC}
+      ORDER BY l."createdAt" DESC
+      LIMIT 50`,
+    [attendeeId],
+  );
+  return { ok: true, likers: rows.map((r) => ({ attendeeId: r.attendeeId, firstName: r.fullName.trim().split(/\s+/)[0] ?? '' })) };
+}
+
 /* ------------------------------------------------------------------ */
 /* Admin -> Notas (solo lectura): filtros, orden y paginación en el     */
 /* servidor, misma receta que Asistentes/Canjes.                        */
@@ -243,6 +274,7 @@ type AdminNoteDbRow = {
   createdAt: string;
   expiresAt: string;
   active: boolean;
+  retired: boolean;
   likeCount: number;
   attendeeId: string;
   attendeeName: string;
@@ -291,6 +323,7 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
   const { rows } = await query<AdminNoteDbRow>(
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
             (n."expiresAt" > ${NOW_UTC}) AS active, lk.likes AS "likeCount",
+            EXISTS (SELECT 1 FROM "AuditLog" al WHERE al."entityType" = 'Note' AND al."entityId" = n.id AND al.action = 'note.retire') AS retired,
             a.id AS "attendeeId", a."fullName" AS "attendeeName", c.name AS "churchName", z.name AS "zoneName"
        ${from}
       ORDER BY ${order}
@@ -316,10 +349,49 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
     expiresAt: r.expiresAt,
     status: r.active ? 'ACTIVA' : 'VENCIDA',
     likeCount: Number(r.likeCount),
+    retiredByAdmin: r.retired,
     attendeeId: r.attendeeId,
     attendeeName: r.attendeeName,
     churchName: r.churchName,
     zoneName: r.zoneName,
   }));
   return { total, page, pageSize, rows: out, summary: sum };
+}
+
+/**
+ * Moderación: el Admin RETIRA una nota activa (expiresAt = ahora; la fila no se
+ * borra, queda como Vencida y se conserva para el historial). Deja AuditLog
+ * 'note.retire' con el motivo y el autor. Idempotente: si ya estaba vencida
+ * responde `already_expired` sin escribir nada.
+ */
+export const RETIRE_REASON_MAX = 200;
+
+export class NoteRetireError extends Error {}
+
+export async function retireNoteAsAdmin(
+  noteId: string,
+  actorId: string,
+  rawReason: unknown,
+): Promise<{ outcome: 'ok' | 'not_found' | 'already_expired' }> {
+  const reason = String(rawReason ?? '').trim();
+  if (!reason) throw new NoteRetireError('Escribe el motivo para retirar la nota.');
+  if (reason.length > RETIRE_REASON_MAX) throw new NoteRetireError(`El motivo no puede pasar de ${RETIRE_REASON_MAX} caracteres.`);
+
+  return withTransaction(async (tx) => {
+    const found = await tx.query<{ attendeeId: string; text: string; active: boolean }>(
+      `SELECT "attendeeId", "text", ("expiresAt" > ${NOW_UTC}) AS active FROM "Note" WHERE id = $1 FOR UPDATE`,
+      [noteId],
+    );
+    const note = found.rows[0];
+    if (!note) return { outcome: 'not_found' as const };
+    if (!note.active) return { outcome: 'already_expired' as const };
+
+    await tx.query(`UPDATE "Note" SET "expiresAt" = ${NOW_UTC} WHERE id = $1`, [noteId]);
+    await tx.query(
+      `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
+       VALUES ($1, $2, 'note.retire', 'Note', $3, $4::jsonb, ${NOW_UTC})`,
+      [newId(), actorId, noteId, JSON.stringify({ reason, attendeeId: note.attendeeId, text: note.text })],
+    );
+    return { outcome: 'ok' as const };
+  });
 }

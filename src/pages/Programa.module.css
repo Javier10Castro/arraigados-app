@@ -33,10 +33,11 @@
   color: var(--morado);
 }
 
-.dayActive {
+.dayActive,
+.dayActive:hover {
   background: var(--morado);
   border-color: var(--morado);
-  color: #fff;
+  color: #fff; /* sin esto, .day:hover (más específico) dejaba el texto morado sobre morado al tocar la pestaña activa */
 }
 
 .dayLong {
@@ -123,3 +124,19 @@
   color: var(--morado);
   flex: none;
 }
+
+/* Sede del día (sábado: única; domingo: según la zona del asistente) */
+.venueBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--morado);
+}
+.venueText { display: flex; flex-direction: column; flex: 1 1 140px; min-width: 0; }
+.venueText strong { font-size: 15px; color: var(--text-1); }
+.venueText span { font-size: 12.5px; color: var(--text-3); }

@@ -902,7 +902,7 @@ equivalente.
 
 ### Contenido
 
-- [ ] Programa dice "VIE 17 / SÁB 18" — el 17 es **sábado** y el 18 **domingo**
+- [x] ~~Programa dice "VIE 17 / SÁB 18"~~ ✅ Corregido; y desde el 5 oct `/programa` usa el programa oficial (§46)
 - [ ] Notificaciones de Inicio mencionan "Auditorio Principal" y "Recepción Norte"
       (no son las sedes reales)
 - [ ] **Lista de iglesias es de relleno** — falta el listado oficial (~27 presbiterios,
@@ -919,18 +919,18 @@ equivalente.
       llamarse "Dashboard". No se tocó `ready`, ni rutas, ni `ADMIN_HOME`
 - [ ] Orden de los `primary` en la barra móvil sigue siendo Dashboard · Lotes ·
       Asistentes. Opcional reordenar a Lotes · Asistentes · Dashboard (pide OK)
-- [ ] Comentario desactualizado en `src/admin/AdminShell.tsx:16`: sigue diciendo
+- [x] ~~Comentario desactualizado en `src/admin/AdminShell.tsx:16`~~ ✅ Ya corregido (5 oct). Texto original:: sigue diciendo
       "barra inferior Resumen · Lotes · Asistentes · Más". Es solo un comentario
       (no afecta al comportamiento) y quedó fuera del alcance del ajuste de
       etiquetas
 - [ ] **Dos `schema.prisma` desalineados**; la copia de la raíz de `Projects\` está
       desfasada (`age` vs `ageRange`, sin tablas `Instant*`). No tocar sin
       aprobación (§12)
-- [ ] `src/data/churches.ts` y `src/context/AuthContext.tsx` no los usa nadie
+- [ ] (Ver inventario actualizado en `docs/CODIGO_SIN_USO.md`; `AuthContext.tsx` ya no existe) `src/data/churches.ts` y `src/context/AuthContext.tsx` no los usa nadie
       (borrables). ⚠️ El segundo tiene contraseñas de demo en **texto plano**
 - [ ] `src/components/Wallpaper.tsx`, `assets/brand/logo.png`, `flyer-bg*.webp`,
       `flyer-shapes.webp` sin uso
-- [ ] `server/auth.ts:182` dice "máximo 72 caracteres" pero mide **bytes** (§27)
+- [x] ~~`server/auth.ts` decía "máximo 72 caracteres" pero mide bytes~~ ✅ Corregido el 5 oct (§27, §46)
 - [ ] `packageContent` (beneficios) indexado por **nombre** de paquete: renombrar
       un paquete en Neon rompe `/beneficios` (§14)
 
@@ -939,10 +939,10 @@ equivalente.
 - [ ] No hay `.git` en ninguna de las dos apps → causa del lío de `site.root` (§3)
 - [ ] Excluir del repo lo que genera `tsc -b`: `vite.config.js`, `vite.config.d.ts`,
       `*.tsbuildinfo`, y `dev.log` (están en la raíz, ver §22)
-- [ ] Optimizar SVG pesados con svgo (`Cita_*.svg` ≈ 348 KB c/u)
+- [x] ~~Optimizar SVG pesados con svgo (`Cita_*.svg` ≈ 348 KB c/u)~~ ✅ 5 oct: 162 KB c/u (§46)
 - [ ] Revisar licencias de fuentes demo (Degular, Pressio, Antarctican) y que
       tengan acentos y ñ
-- [ ] Quitar el recuadro "Datos de prueba" del Login antes de producción
+- [x] ~~Quitar el recuadro "Datos de prueba" del Login~~ ✅ Ya no existe (verificado 5 oct)
 
 ### Datos
 
@@ -2401,9 +2401,11 @@ visible para el asistente (el historial se ve solo en Admin).
 | `GET /api/notes/feed` | asistente | Carrusel: notas PUBLIC vigentes de **otros** (máx. 40, recientes primero). Solo `attendeeId` (semilla del avatar), **primer nombre**, `likeCount`, `likedByMe`. Vuelve a filtrar lenguaje |
 | `POST /api/notes/:id/like` | asistente | Alterna el like. Solo notas PUBLIC, vigentes y **de otra persona**: propia → **403**; vencida/privada/inexistente → **404** |
 | `GET /api/admin/notes` | ADMIN | Lista con filtros, orden, paginación y KPIs (ver 44.5) |
+| `POST /api/admin/notes/:id/retire` | ADMIN | Retira una nota activa `{reason}` (obligatorio, ≤ 200). Queda Vencida; AuditLog `note.retire`. **400** sin motivo · **404** inexistente · `{outcome:'already_expired'}` si ya no estaba activa |
+| `GET/POST /api/admin/blocked-words` · `DELETE /api/admin/blocked-words/:id` | ADMIN | Lista que administra el Admin (5 oct, ver `docs/MODERACION.md`) |
 
-Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes}.mts` · lógica en
-`server/notes.ts` · tipos en `shared/api.ts` · cliente en `src/lib/api.ts`.
+Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes,admin-note-retire,admin-blocked-words,admin-blocked-word}.mts` · lógica en
+`server/notes.ts` y `server/blockedWords.ts` · tipos en `shared/api.ts` · cliente en `src/lib/api.ts`.
 
 ### 44.3 Filtro de lenguaje (`shared/moderation.ts`)
 - `hasBlockedLanguage(texto)` lo usan el **cliente** (bloquea "Publicar" y avisa en vivo, sin repetir
@@ -2412,6 +2414,9 @@ Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes}.mts` · l
   y puntuación pegada (`culero!!`). Coincide por **palabra completa** o raíces largas, nunca por
   subcadena corta (`computadora`, `reputación`, `Honra a tu madre` pasan). Se amplía en `WORDS`/`STEMS`.
 - Error encontrado en pruebas y corregido: `culero!!` pasaba porque `!` se leía como "i".
+- **Actualización 5 oct (tarde):** lista fija ampliada y **lista administrable** por el Admin
+  (`BlockedWord`, migración `005_blocked_words.sql`; solo servidor + feed). Detalle, lista completa y
+  criterios en **`docs/MODERACION.md`**.
 
 ### 44.4 Frontend (`src/components/notes/` + `src/pages/home/`)
 - **`/home`**: encabezado "Hola, Nombre" + campana; debajo, el carrusel (`NoteTray`).
@@ -2438,13 +2443,15 @@ Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes}.mts` · l
   en sus dependencias le robaba el foco al campo de texto → `onClose` va en un ref y los efectos
   corren una sola vez (`NoteSheet`, `NoteViewer`).
 
-### 44.5 Admin → Notas (`/admin/notas`, solo ADMIN, solo lectura)
+### 44.5 Admin → Notas (`/admin/notas`, solo ADMIN)
 - KPIs: notas, activas ahora, vencidas, asistentes con notas, likes.
 - Filtros (en la URL): `q` (texto de la nota o nombre, sin acentos) · `estado` (`ACTIVA`/`VENCIDA`) ·
   `zona`/`presbiterio`/`iglesia` · `likes` (con/sin) · `desde`/`hasta` · `orden` (recientes/likes) ·
   `pagina`/`porPagina`. Tabla: publicada, asistente (enlace a su ficha), nota, estado, likes.
 - Estado: "Activa – vence en X" / "Vencida – hace X" / "quitada o reemplazada" (venció antes de 24 h).
-- Posible siguiente paso: acción "retirar nota" (moderación) para Admin.
+- **Moderación (5 oct, tarde):** botón **Retirar** en cada nota activa (motivo obligatorio; la nota queda
+  *Vencida – retirada por Admin*, nunca se borra; AuditLog `note.retire`) y panel plegable **Palabras
+  bloqueadas** (agregar/quitar; AuditLog `blocked_word.add|remove`).
 
 ### 44.6 Datos demo (`npm run db:notas-demo`)
 - Crea asistentes demo (`id` con prefijo `demo-notas-`, nombre "… (demo)") con notas PUBLIC
@@ -2464,17 +2471,18 @@ Archivos: `netlify/functions/{notes,notes-feed,notes-like,admin-notes}.mts` · l
 - **No se pudo probar** la concurrencia real (PGlite acepta una conexión a la vez).
 
 ### 44.8 Riesgos y pendientes
-- **Carrera conocida**: dos publicaciones simultáneas del mismo asistente podrían dejar 2 notas
-  activas (el CTE no bloquea filas nuevas). El cliente muestra la más reciente, así que se ve bien.
-  Arreglo si hace falta: `pg_advisory_xact_lock(hashtext(attendeeId))` dentro de una transacción.
+- ~~Carrera conocida~~ ✅ **Corregida el 5 oct (tarde)**: `createNote` corre en una transacción que toma
+  `pg_advisory_xact_lock(hashtext('note:'||attendeeId))` antes del CTE. ⚠️ Sigue sin poder probarse con
+  concurrencia real en PGlite (una sola conexión): se verificó el SQL y que el flujo no cambió.
 - Agregar `Note` y `NoteLike` a las tablas de los scripts de respaldo (`scripts/_db.mjs`).
-- Ampliar la lista de `shared/moderation.ts` con el uso real; valorar una acción de moderación en Admin.
+- ~~Ampliar lista / acción de moderación~~ ✅ hecho el 5 oct (tarde), ver `docs/MODERACION.md`.
 - La nota tarda ~0.26 s en abrirse al tocar (espera el posible 2º toque).
 - Antes de hacer el repo público: licencias de fuentes (Pressio TEST, Degular Demo, Antarctican).
 
 ### 44.9 Despliegue de este módulo
-1. Aplicar `npm run db:migrar` a la Neon de **producción** (la `002` crea `Note`/`NoteLike`; es
-   idempotente y solo agrega). Sin ella `/api/notes` y el carrusel fallan.
+1. Aplicar `npm run db:migrar` a la Neon de **producción** (la `002` crea `Note`/`NoteLike`; la `005`
+   crea `BlockedWord`; son idempotentes y solo agregan). Sin la 002 `/api/notes` y el carrusel fallan;
+   sin la 005 solo falla el panel "Palabras bloqueadas" (las Notas siguen con la lista fija).
 2. Limpiar datos demo si el `.env` apunta a producción (`npm run db:notas-demo -- --limpiar`).
 3. `git push origin main` → Netlify despliega solo. Commits: `28f6979` (carrusel, panel Admin, filtro,
    demo; publicado 3:47 PM) y `73607a0` (likes, dos líneas, flechas, documentación).
@@ -2558,3 +2566,75 @@ automático. Antes del primer deploy con estos cambios:
 38 Netlify Functions `.mts` con `config.path`, `@netlify/blobs` (fotos), `pg` por TCP
 (requiere Hyperdrive/driver serverless de Neon) y cabeceras de `netlify.toml`
 (→ `_headers`). `public/_redirects` (`/* /index.html 200`) ya es compatible.
+
+---
+
+## 46. Moderación, programa real y limpieza (5 oct 2026, tarde)
+
+Pedido del propietario tras el análisis de pendientes (lista completa y estado de cada punto en
+**`docs/PLAN_PENDIENTES.md`**).
+
+### Hecho
+- **Notas**: candado contra publicaciones simultáneas; **Retirar nota** en Admin (motivo + AuditLog);
+  **palabras bloqueadas administrables** (migración `005_blocked_words.sql`, `server/blockedWords.ts`,
+  3 funciones nuevas); lista fija ampliada y revisada contra 19 frases normales (0 falsos positivos).
+  Ver §44 y `docs/MODERACION.md`.
+- **`/programa`** ahora usa el programa **oficial** de `src/data/program.ts` (la misma fuente que `/home`):
+  pestañas Sábado 17 / Domingo 18, sede del día con botón de ubicación y, el domingo, la sede según la
+  zona del asistente. Antes mostraba un programa de relleno (`data/app.ts` → `schedule`, ya sin uso).
+  También se corrigió que el texto de la pestaña activa se volviera morado sobre morado al pasar el
+  cursor/tocar (`.day:hover` pisaba a `.dayActive`).
+- **SVG** `Cita_Beige.svg` / `Cita_Morado.svg`: 348 KB → 162 KB (svgo, precisión 2; 56 píxeles de borde
+  distintos de 1.5 M en una comparación a 2×).
+- `server/auth.ts`: el mensaje de contraseña larga dice **bytes** (antes "caracteres").
+- Documentos nuevos: `docs/MODERACION.md`, `docs/CODIGO_SIN_USO.md`, `docs/PLAN_PENDIENTES.md`.
+
+### Hallazgos
+- La campana de `/home` muestra **3 avisos inventados** iguales para todos ("Auditorio Principal",
+  "Recepción Norte"…). Plan en `PLAN_PENDIENTES.md` §4.
+- `AuthContext.tsx` y el recuadro "Datos de prueba" del Login **ya no existen**; el comentario de
+  `AdminShell.tsx` ya estaba corregido. §21 tenía esos puntos desactualizados.
+- `AuditLog` ya se llena en la mayoría de acciones: la Etapa 8 es principalmente una **pantalla** (§6 del plan).
+- No hay `AuditLog` para cambios de menú/mercancía ni para canjes nuevos.
+
+### Para desplegar
+1. `npm run db:migrar` en producción (aplica la `005`).
+2. Commit y `git push origin main` (el propietario lo hace; no se hizo commit desde aquí).
+3. Probar en producción: Admin → Notas → *Palabras bloqueadas*, *Retirar* en una nota, `/programa`.
+
+
+
+## 47. Campana, Auditoría y Recursos (5 oct 2026, noche)
+- **Home campana:** `src/pages/home/Home.tsx` ya no inventa avisos; panel vacío honesto (`.panelEmpty`).
+- **Auditoría (Etapa 8):** `shared/audit.ts` (catálogo de acciones, `auditDetails` sin `fp`, enlaces a entidad),
+  `server/audit.ts` (`listAudit`, solo lectura, filtros q/category/actorId/from/to + paginación, quita
+  `metadata.fp`), `GET /api/admin/audit` (ADMIN), `src/admin/Auditoria.tsx`, ruta `/admin/auditoria`,
+  `nav.ts` con `ready: true`. Probada (API, UI desktop/móvil, sin overflow ni errores).
+- **Recursos:** `src/data/resources.ts` (`RESOURCES`, vacío) + `Recursos.tsx` con `<a download>` reales y
+  estado vacío; se eliminaron `resources/resourceFilters` y 3 imports de `data/app.ts`.
+- **Respaldo:** ver `docs/PLAN_RESPALDO.md`.
+- **Pendiente del propietario:** `npm run db:migrar` (migración 005), commit/push.
+
+## 48. Notificaciones, Fase 1: avisos + campana (5 oct 2026, noche)
+- **BD:** `migrations/006_announcements.sql` → `"Announcement"` (title≤60, body≤280, audience ALL|Zona 1|Zona 2, publishAt, retiredAt, createdById) y `"NotificationState"` (attendeeId PK, seenAt). Idempotente.
+- **Compartido:** `shared/notifications.ts` (tipos, topes, `zoneAudienceOf` = misma regla que `resolveZoneForDisplay`).
+- **Servidor:** `server/announcements.ts` — `listNotifications(token)` (zona del asistente por Church→Presbytery→Zone; tolera tabla inexistente 42P01), `markNotificationsSeen`, `listAnnouncementsAdmin`, `createAnnouncement` (valida, auditoría), `retireAnnouncement`.
+- **Endpoints:** `GET /api/notifications`, `POST /api/notifications/seen` (x-pulse-token); `GET/POST /api/admin/announcements`, `POST /api/admin/announcements/:id/retire` (ADMIN).
+- **Cliente:** `src/components/notifications/useNotifications.ts`, campana en `Home.tsx` (punto `.bellDot`, `.panelItemNew`), `src/admin/Avisos.tsx` (ruta `/admin/avisos`, `nav.ts`), `api.ts`.
+- **Auditoría:** categoría `avisos`; `auditTarget` toma el título de `metadata` (no se une a "Announcement" para que Auditoría no dependa de la migración 006).
+- **Fase 2 prevista:** likes agrupados reutilizando `seenAt` (no hace falta otra tabla de lectura).
+- **Pendiente del propietario:** `npm run db:migrar`, commit/push.
+
+
+## 49. Likes en la campana, "En vivo", plantillas y moderación v2 (5 oct 2026, noche)
+- **BD:** `migrations/007_announcement_live.sql` (`"Announcement"."live"`). El servidor trata 42P01/42703 (tabla o columna inexistente) como campana vacía.
+- **Campana:** `AppNotification` pasó a unión `announcement | like` (`shared/notifications.ts`). `listNotifications` une avisos + likes a tus notas (JOIN LATERAL: like más reciente + conteo; excluye el like del propio autor). Claves de fila `kind-id`. `NotificationRow` (`src/components/notifications/`) la comparten `/home` y la vista previa de Admin.
+- **Admin → Avisos:** plantillas, casilla EN VIVO, vista previa y panel de ejemplos.
+- **Moderación v2 (`shared/moderation.ts`):** `prep()` (NFKC, invisibles, homoglifos cirílico/griego, `_`→espacio), `fold()` (ph→f, k→c, v→b), comodines `* # ?`, unión de trozos cortos ("pu ta"), `FIXED_BLOCKED` exportado para mostrarlo. `PATCH /api/admin/blocked-words/:id` (editar; auditoría `blocked_word.update`). Script `npm run moderacion:probar` (`scripts/moderacion-prueba.mjs`, usa `typescript` para transpilar; solo lee).
+- **Panel de palabras:** abierto por defecto, edición en línea, probador, lista fija en solo lectura.
+- **Pendiente del propietario:** `npm run db:migrar` (007) ANTES del deploy; commit/push.
+- (5 oct 2026) `scripts/db-likes-demo.mjs` (`npm run db:likes-demo`): likes de prueba para ver la campana. Solo inserta/borra filas con prefijo `demo-likes-`; pide escribir SI; muestra la base a la que se conecta.
+- (5 oct 2026, noche) Las filas de like ya NO muestran el texto de la nota (se quitó `noteText` del payload y de la UI); el corazón va en círculo rojo sobre el avatar con el total al lado.
+- (5 oct 2026, noche) **Likes en las notas con estilo Instagram:** `src/components/notes/LikeBadge.tsx` (círculo rojo `#e5365a` + corazón blanco + número; `on={false}` = círculo con borde) se usa en el botón de like de `NoteViewer` y en `NoteSheet`. `NoteBubble` tiene la prop `likes`: pastilla blanca con corazón rojo y número en la esquina inferior derecha de la burbuja (carrusel, nota propia y ajenas). Se quitó el contador junto a "Tu nota".
+- (5 oct 2026, noche) **Quién le dio like a MI nota:** `GET /api/notes/likers` (`netlify/functions/notes-likers.mts`, `listMyNoteLikers` en `server/notes.ts`; identidad por `x-pulse-token`, solo la nota vigente propia, más reciente primero, máx. 50, solo primer nombre). Tipos `NoteLiker`/`NoteLikersResponse` en `shared/api.ts`; cliente `api.noteLikers`. `NoteSheet` (vista "Tu nota") recibe `token` desde `Home.tsx` y lista avatar + nombre + círculo de like. Sin migración. Probar: `npm run db:likes-demo -- --nombre=<dueño> --n=5` y `npm run dev` (con `dev:vite` no existen las funciones). Limpiar: `npm run db:likes-demo -- --limpiar`.
+- **Pendiente del propietario:** `npm run db:migrar` (007) antes del deploy; commit/push; backup (ver `PLAN_RESPALDO.md`).

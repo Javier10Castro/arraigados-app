@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom';
 import { Check, Pencil, X } from 'lucide-react';
 import { BLOCKED_LANGUAGE_MESSAGE, hasBlockedLanguage } from '../../../shared/moderation';
 import { NOTE_LIFETIME_HOURS, NOTE_MAX_LENGTH, type Note } from '../../../shared/api';
+import LikeBadge from './LikeBadge';
+import { api } from '../../lib/api';
+import UserAvatar from '../UserAvatar';
+import type { NoteLiker } from '../../../shared/api';
 import Button from '../Button';
 import type { NotesStatus } from './useMyNotes';
 import styles from './NoteSheet.module.css';
@@ -26,6 +30,7 @@ type View = 'empty' | 'view' | 'edit' | 'error';
 type Props = {
   status: NotesStatus;
   error: string;
+  token: string;
   active: Note | null;
   now: number;
   onPublish: (text: string) => Promise<Note>;
@@ -48,12 +53,25 @@ export function remaining(expiresAt: string, now: number) {
   return `${h} h`;
 }
 
-export default function NoteSheet({ status, error, active, now, onPublish, onRemove, onReload, onClose }: Props) {
+export default function NoteSheet({ status, error, token, active, now, onPublish, onRemove, onReload, onClose }: Props) {
   const [view, setView] = useState<View>(() => initialView(status, active));
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
   const [done, setDone] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [likers, setLikers] = useState<NoteLiker[]>([]);
+  const likeCount = active?.likeCount ?? 0;
+  useEffect(() => {
+    if (!token || !active || likeCount === 0) {
+      setLikers([]);
+      return;
+    }
+    let off = false;
+    api.noteLikers(token).then((r) => !off && setLikers(r.likers)).catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [token, active?.id, likeCount]);
   const [formError, setFormError] = useState('');
   const dialogRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -175,8 +193,24 @@ export default function NoteSheet({ status, error, active, now, onPublish, onRem
             </p>
             <p className={styles.meta}>
               Se desvanece en {remaining(active.expiresAt, now)}
-              {active.likeCount > 0 && ` · ♥ ${active.likeCount}`}
+              {active.likeCount > 0 && (
+                <>
+                  {' · '}
+                  <LikeBadge size={16} count={active.likeCount} />
+                </>
+              )}
             </p>
+            {likers.length > 0 && (
+              <ul className={styles.likers} aria-label="Personas a las que les gustó tu nota">
+                {likers.map((p) => (
+                  <li key={p.attendeeId} className={styles.liker}>
+                    <UserAvatar size={36} attendeeId={p.attendeeId} name={p.firstName} />
+                    <span className={styles.likerName}>{p.firstName}</span>
+                    <LikeBadge size={22} />
+                  </li>
+                ))}
+              </ul>
+            )}
             {formError && <p className={styles.error} role="alert">{formError}</p>}
             <div className={styles.actionsRow}>
               <Button variant="outline" onClick={() => void removeNote()} disabled={removing}>

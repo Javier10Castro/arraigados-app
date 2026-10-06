@@ -86,3 +86,20 @@ button.invite:hover { background: rgba(242, 247, 215, 0.18); }
   .skeleton { animation: none; }
   button.bubble { transition: none; }
 }
+
+/* Likes al estilo Instagram: pastilla blanca con corazón rojo y número, en la esquina inferior derecha. */
+.likes {
+  position: absolute;
+  right: -8px;
+  bottom: -10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px 3px 5px;
+  border-radius: 999px;
+  background: #fff;
+  color: #e5365a;
+  font: 800 11px/1 var(--font-body);
+  box-shadow: 0 3px 8px rgba(8, 0, 32, 0.4);
+}

@@ -32,25 +32,17 @@
 .heart {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   min-height: 44px;
-  padding: 0 18px;
-  border: 1.5px solid rgba(30, 2, 99, 0.25);
+  padding: 0 6px;
+  border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--morado-oscuro);
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 17px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: transform 0.15s ease;
 }
 .heart:active { transform: scale(0.95); }
-.liked {
-  background: var(--live);
-  border-color: var(--live);
-  color: #fff;
-}
 .liked svg { animation: heartBeat 0.35s cubic-bezier(0.2, 1.4, 0.3, 1); }
 
 .hint {

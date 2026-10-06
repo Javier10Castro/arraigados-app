@@ -1,0 +1,72 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #f7f5ff;
+  list-style: none;
+}
+.fresh { background: #ece8ff; box-shadow: inset 3px 0 0 var(--morado); }
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: #ece8ff;
+  color: var(--morado);
+}
+.fresh .icon { background: #fff; }
+
+.avatarWrap { position: relative; flex: none; width: 38px; height: 38px; margin-right: 22px; }
+/* Círculo sólido con el corazón en negativo (blanco), sobre la esquina del avatar; el número va a su lado. */
+.heart {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e5365a;
+  color: #fff;
+  box-shadow: 0 0 0 2px #f7f5ff;
+}
+.fresh .heart { box-shadow: 0 0 0 2px #ece8ff; }
+.count {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: -3px;
+  font: 800 12px/1 var(--font-body);
+  color: #e5365a;
+}
+
+.body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.body strong { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.body span { font-size: 12px; color: var(--text-3); line-height: 1.35; }
+.body .when { font-size: 11px; opacity: 0.8; }
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--live);
+}
+.live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .live i { animation: none; } }

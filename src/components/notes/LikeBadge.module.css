@@ -1,0 +1,5 @@
+.root { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.dot { display: grid; place-items: center; flex: none; border-radius: 50%; box-sizing: border-box; }
+.on { background: #e5365a; color: #fff; }
+.off { background: transparent; color: #e5365a; border: 1.6px solid #e5365a; }
+.num { font: 800 0.95em/1 var(--font-body); color: var(--like-num, #e5365a); }

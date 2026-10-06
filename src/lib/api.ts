@@ -1,3 +1,12 @@
+import type { AdminAuditFilters, AdminAuditResponse } from '../../shared/audit';
+import type {
+  AdminAnnouncementFilters,
+  AdminAnnouncementsResponse,
+  CreateAnnouncementRequest,
+  CreateAnnouncementResponse,
+  NotificationsResponse,
+  RetireAnnouncementResponse,
+} from '../../shared/notifications';
 import {
   PULSE_TOKEN_HEADER,
   type ApiError,
@@ -46,6 +55,11 @@ import {
   type RemoveNoteResponse,
   type AdminNoteFilters,
   type AdminNotesResponse,
+  type AddBlockedWordResponse,
+  type BlockedWordsResponse,
+  type RetireNoteRequest,
+  type RetireNoteResponse,
+  type NoteLikersResponse,
   type ToggleNoteLikeResponse,
   type AdminDishesResponse,
   type AdminDishResponse,
@@ -117,6 +131,7 @@ export const api = {
   removeMyNote: (token: string) =>
     request<RemoveNoteResponse>('/api/notes', { method: 'DELETE', headers: { [PULSE_TOKEN_HEADER]: token } }),
   notesFeed: (token: string) => request<NotesFeedResponse>('/api/notes/feed', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  noteLikers: (token: string) => request<NoteLikersResponse>('/api/notes/likers', { headers: { [PULSE_TOKEN_HEADER]: token } }),
   toggleNoteLike: (token: string, noteId: string) =>
     request<ToggleNoteLikeResponse>(`/api/notes/${encodeURIComponent(noteId)}/like`, {
       method: 'POST',
@@ -156,6 +171,40 @@ export const api = {
     const s = qs.toString();
     return request<AdminNotesResponse>(`/api/admin/notes${s ? `?${s}` : ''}`);
   },
+
+  // Admin -> Auditoría (solo lectura)
+  adminAudit: (f: AdminAuditFilters) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '' && v !== 0) qs.set(k, String(v));
+    const s = qs.toString();
+    return request<AdminAuditResponse>(`/api/admin/audit${s ? `?${s}` : ''}`);
+  },
+  retireNote: (id: string, body: RetireNoteRequest) =>
+    postJson<RetireNoteResponse>(`/api/admin/notes/${encodeURIComponent(id)}/retire`, body),
+  notifications: (token: string) =>
+    request<NotificationsResponse>('/api/notifications', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  notificationsSeen: (token: string) =>
+    request<{ ok: true }>('/api/notifications/seen', { method: 'POST', headers: { [PULSE_TOKEN_HEADER]: token } }),
+  adminAnnouncements: (f: AdminAnnouncementFilters) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '' && v !== 0) qs.set(k, String(v));
+    const s = qs.toString();
+    return request<AdminAnnouncementsResponse>(`/api/admin/announcements${s ? `?${s}` : ''}`);
+  },
+  createAnnouncement: (body: CreateAnnouncementRequest) =>
+    postJson<CreateAnnouncementResponse>('/api/admin/announcements', body),
+  retireAnnouncement: (id: string) =>
+    postJson<RetireAnnouncementResponse>(`/api/admin/announcements/${encodeURIComponent(id)}/retire`, {}),
+  blockedWords: () => request<BlockedWordsResponse>('/api/admin/blocked-words'),
+  addBlockedWord: (word: string) => postJson<AddBlockedWordResponse>('/api/admin/blocked-words', { word }),
+  updateBlockedWord: (id: string, word: string) =>
+    request<{ outcome: 'ok'; word: string }>(`/api/admin/blocked-words/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ word }),
+    }),
+  removeBlockedWord: (id: string) =>
+    request<{ outcome: 'ok' }>(`/api/admin/blocked-words/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   // Admin -> Usuarios
   adminUsers: () => request<AdminUserRow[]>('/api/admin/users'),

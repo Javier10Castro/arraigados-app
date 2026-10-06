@@ -42,3 +42,87 @@
    (si no, el segundo input se sale de la tarjeta). */
 .dates { grid-column: 1 / -1; min-width: 0; }
 .dates input[type='date'] { flex: 1 1 0; min-width: 0; }
+
+.quote { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(30, 2, 99, 0.06); font-weight: 600; color: var(--morado-oscuro); overflow-wrap: anywhere; }
+
+/* Panel "Palabras bloqueadas" */
+.panelHead {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: none;
+  font: inherit; font-weight: 700; color: var(--morado-oscuro); cursor: pointer; text-align: left;
+}
+.panelHead:focus-visible { outline: 2px solid var(--morado); outline-offset: 4px; border-radius: 8px; }
+.panelHint { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--text-3); }
+.panelBody { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.addRow { display: flex; gap: 8px; align-items: center; }
+.addRow input {
+  flex: 1; min-width: 0; height: 40px; padding: 0 12px; border-radius: 12px; font: inherit;
+  border: 1px solid rgba(30, 2, 99, 0.2); background: #fff; color: var(--morado-oscuro);
+}
+.addRow input:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.info { margin: 0; font-size: 13px; font-weight: 600; color: #0d6e48; }
+.wordList { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.word {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 999px;
+  background: rgba(194, 51, 122, 0.1); color: #8f1f58; font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere;
+}
+.word button {
+  display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%;
+  background: rgba(194, 51, 122, 0.18); color: inherit; cursor: pointer;
+}
+.word button:hover:not(:disabled) { background: rgba(194, 51, 122, 0.32); }
+.word button:disabled { opacity: 0.5; cursor: default; }
+
+/* Selects de formulario (Avisos): mismo aspecto que los inputs de .f de Usuarios. */
+.fSelect {
+  height: 44px;
+  width: 100%;
+  border-radius: var(--r-input);
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  background: #fff;
+  padding: 0 12px;
+  font: 15px var(--font-body);
+  color: var(--ink);
+}
+.fSelect:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+
+/* Palabras bloqueadas: subtítulos, edición, probador y lista de la app (5 oct 2026). */
+.subHead { margin: 6px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.editForm { display: inline-flex; align-items: center; gap: 4px; }
+.editForm input {
+  width: 150px; max-width: 46vw; height: 26px; padding: 0 8px; border-radius: 999px; font: inherit; font-size: 13px;
+  border: 1px solid rgba(143, 31, 88, 0.4); background: #fff; color: #8f1f58;
+}
+.editForm input:focus { outline: none; box-shadow: 0 0 0 3px rgba(194, 51, 122, 0.18); }
+.probe {
+  width: 100%; height: 40px; padding: 0 12px; border-radius: 12px; font: inherit;
+  border: 1px solid rgba(30, 2, 99, 0.2); background: #fff; color: var(--morado-oscuro);
+}
+.probe:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.probeBad { margin: 0; font-size: 13.5px; font-weight: 700; color: #8f1f58; }
+.probeOk { margin: 0; font-size: 13.5px; font-weight: 700; color: #0d6e48; }
+.fixedToggle {
+  align-self: flex-start; padding: 8px 12px; border: 1px dashed rgba(30, 2, 99, 0.3); border-radius: 12px; background: transparent;
+  color: var(--morado-oscuro); font: 600 13px var(--font-body); text-align: left; cursor: pointer;
+}
+.fixedToggle:hover { border-color: var(--morado); }
+.fixedBox { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding: 4px 2px; }
+.wordFixed { padding: 5px 12px; background: rgba(30, 2, 99, 0.07); color: var(--morado-oscuro); font-weight: 500; }
+
+/* Avisos: plantillas, vista previa y ejemplos (5 oct 2026). */
+.templates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.templatesLabel { font-size: 11.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); margin-right: 4px; }
+.templateBtn {
+  padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(30, 2, 99, 0.22); background: #fff;
+  color: var(--morado-oscuro); font: 600 12.5px var(--font-body); cursor: pointer;
+}
+.templateBtn:hover { border-color: var(--morado); background: rgba(62, 7, 166, 0.06); }
+.liveCheck { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.liveCheck input { width: 18px; height: 18px; accent-color: var(--morado); }
+.preview { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 16px; background: rgba(30, 2, 99, 0.05); }
+.previewList { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.exampleGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.example { display: flex; flex-direction: column; gap: 6px; }
+.liveTag {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: rgba(229, 54, 90, 0.12);
+  color: #c0203f; font: 800 10px var(--font-display); letter-spacing: 0.1em; vertical-align: middle;
+}

@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, CupSoda, Images, LayoutDashboard, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { Boxes, ClipboardList, CupSoda, Images, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
  *   3 Lotes               COMPLETADA      8 Auditoria         PENDIENTE
  *   4 Asistentes          COMPLETADA      9 Instantaneas      PENDIENTE
  *   5 Paquetes            PENDIENTE
+ *   (8 Auditoria: COMPLETADA el 5 oct 2026, solo lectura -- ver abajo)
  *
  * Etapa 6 (Canje de bebidas), parte Admin -- COMPLETADA (1 oct 2026): listado
  * con filtros/paginación y anulación con motivo en `/admin/canjes`. El motor
@@ -49,8 +50,11 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/merch', label: 'Mercancía', Icon: ShoppingBag, ready: true },
   /* Notas (5 oct 2026): revisión de solo lectura de las notas de /home. */
   { to: '/admin/notas', label: 'Notas', Icon: StickyNote, ready: true },
+  /* Avisos (5 oct 2026): mensajes del equipo que salen en la campana de /home (Fase 1 de notificaciones). */
+  { to: '/admin/avisos', label: 'Avisos', Icon: Megaphone, ready: true },
   { to: '/admin/usuarios', label: 'Usuarios', Icon: UserCog, ready: true },
-  { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: false, stage: 'Etapa 8' },
+  /* Auditoría (Etapa 8, 5 oct 2026): bitácora de solo lectura sobre "AuditLog". */
+  { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: true },
   { to: '/admin/instantaneas', label: 'Instantáneas', Icon: Images, ready: false, stage: 'Etapa 9' },
 ];
 

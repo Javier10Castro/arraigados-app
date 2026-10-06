@@ -176,3 +176,8 @@
 @keyframes sheetPop  { from { transform: translateY(10px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes viewIn    { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes donePop   { 0% { transform: scale(0.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+
+/* Quién le dio like a tu nota: fila con avatar, nombre y el círculo de like. */
+.likers { list-style: none; margin: 14px 0 4px; padding: 0; display: grid; gap: 4px; max-height: 190px; overflow-y: auto; }
+.liker { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+.likerName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }

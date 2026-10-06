@@ -13,7 +13,11 @@
 .title { font: 700 17px/1.15 var(--font-body); letter-spacing: -0.01em; }
 .meta { margin-top: 5px; font-size: 11px; color: #f2f7d7d9; }
 .download { position: absolute; right: 12px; bottom: 14px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--crema); color: var(--morado); cursor: pointer; }
-.download:hover, .done { background: var(--morado); color: var(--crema); }
+.download:hover { background: var(--morado); color: var(--crema); }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 34px 18px; text-align: center; color: var(--morado-oscuro); }
+.empty svg { color: var(--morado); }
+.empty strong { font: 700 16px var(--font-body); }
+.empty span { max-width: 32ch; font-size: 13px; line-height: 1.4; color: var(--text-3); }
 @media (min-width: 1024px) {
   .panel { padding: 24px; }
   .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }

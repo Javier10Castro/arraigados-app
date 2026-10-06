@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Heart, Plus } from 'lucide-react';
 import styles from './NoteBubble.module.css';
 
 /**
@@ -35,9 +35,11 @@ type Props = {
   /** Si viene, la burbuja es un botón (la nota propia). */
   onClick?: () => void;
   label?: string;
+  /** Likes de la nota: pastilla con corazón y número pegada a la esquina de la burbuja (como Instagram). */
+  likes?: number;
 };
 
-export default function NoteBubble({ variant, text, onClick, label }: Props) {
+export default function NoteBubble({ variant, text, onClick, label, likes }: Props) {
   if (variant === 'loading') return <span className={`${styles.bubble} ${styles.skeleton}`} aria-hidden="true" />;
 
   const content = (
@@ -48,6 +50,12 @@ export default function NoteBubble({ variant, text, onClick, label }: Props) {
           <span className={styles.line} key={i}>{line}</span>
         ))}
       </span>
+      {variant === 'filled' && likes ? (
+        <span className={styles.likes} aria-label={`${likes} me gusta`}>
+          <Heart size={11} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+          {likes}
+        </span>
+      ) : null}
     </>
   );
   const cls = `${styles.bubble} ${styles[variant]}`;

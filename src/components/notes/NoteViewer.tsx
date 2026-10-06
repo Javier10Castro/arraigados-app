@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Heart, X } from 'lucide-react';
 import UserAvatar from '../UserAvatar';
+import LikeBadge from './LikeBadge';
 import type { NoteFeedItem } from '../../../shared/api';
 import { remaining } from './NoteSheet';
 import sheet from './NoteSheet.module.css';
@@ -81,8 +82,7 @@ export default function NoteViewer({ item, onClose, onLike }: Props) {
               aria-label={item.likedByMe ? 'Quitar me gusta' : 'Me gusta'}
               onClick={() => onLike(item.id, 'toggle')}
             >
-              <Heart size={22} strokeWidth={2.4} fill={item.likedByMe ? 'currentColor' : 'none'} />
-              <span>{item.likeCount > 0 ? item.likeCount : 'Me gusta'}</span>
+              <LikeBadge on={item.likedByMe} size={30} count={item.likeCount} label="Me gusta" />
             </button>
             <span className={sheet.meta}>Se desvanece en {remaining(item.expiresAt, Date.now())}</span>
           </div>

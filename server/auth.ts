@@ -207,6 +207,6 @@ export async function authorize(
 /** Reglas de contraseña (bcrypt solo usa los primeros 72 bytes). */
 export function passwordProblem(password: string): string | null {
   if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
-  if (Buffer.byteLength(password, 'utf8') > 72) return 'La contraseña es demasiado larga (máximo 72 caracteres).';
+  if (Buffer.byteLength(password, 'utf8') > 72) return 'La contraseña es demasiado larga (máximo 72 bytes; las letras con acento y los emojis ocupan más de uno).';
   return null;
 }

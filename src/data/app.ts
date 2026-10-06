@@ -4,9 +4,6 @@ import pastaImg from '../assets/img/pasta.webp';
 import aguasImg from '../assets/img/aguas.webp';
 import adoracionImg from '../assets/img/adoracion.webp';
 import multitudImg from '../assets/img/multitud.webp';
-import fondosImg from '../assets/img/fondos.webp';
-import stickersImg from '../assets/img/stickers.webp';
-import presentacionesImg from '../assets/img/presentaciones.webp';
 import type { PackageSummary } from '../../shared/api';
 
 export type EventItem = {
@@ -104,14 +101,6 @@ export const stories = [
     img: multitudImg,
   },
 ];
-
-export const resources = [
-  { id: 'fondos', title: 'Fondos de pantalla', meta: 'Descarga en alta calidad', tag: 'Fondos', img: fondosImg },
-  { id: 'stickers', title: 'Stickers', meta: 'PNG / SVG', tag: 'Stickers', img: stickersImg },
-  { id: 'presentaciones', title: 'Presentaciones', meta: 'Plenarias', tag: 'Fondos', img: presentacionesImg },
-];
-
-export const resourceFilters = ['Todos', 'Fondos', 'Stickers'];
 
 /** Información pública del congreso (pantalla /conocer). */
 export const eventInfo = {

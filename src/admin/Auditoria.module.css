@@ -1,0 +1,28 @@
+/* Admin -> Auditoría. Reutiliza Lotes/LoteDetalle/Asistentes/Notas; aquí solo lo propio. */
+
+.action { display: block; font-weight: 600; color: var(--morado-oscuro); }
+.cat { text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+.plain { font-weight: 600; color: var(--morado-oscuro); overflow-wrap: anywhere; }
+
+/* En pantallas angostas la columna "Sobre" se oculta; se muestra bajo el nombre de quien lo hizo. */
+.mobileOnly { display: block; }
+@media (min-width: 900px) { .mobileOnly { display: none; } }
+
+.dates { grid-column: 1 / -1; min-width: 0; }
+.dateRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dateRow input { flex: 1; min-width: 0; }
+@media (min-width: 900px) { .dates { grid-column: auto; } }
+
+.dl { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.dl > div { display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid rgba(30, 2, 99, 0.08); }
+.dl > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.dl dt { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); }
+.dl dd { margin: 0; font-weight: 500; color: var(--morado-oscuro); overflow-wrap: anywhere; }
+.dl a { color: var(--morado); font-weight: 600; }
+.type { color: var(--text-3); font-weight: 400; font-size: 13px; }
+.footer { display: flex; justify-content: flex-end; margin-top: 14px; }
+.dateRow input {
+  height: 40px; padding: 0 10px; border-radius: 12px; font: inherit; font-size: 14px;
+  border: 1px solid rgba(30, 2, 99, 0.2); background: #fff; color: var(--morado-oscuro);
+}
+.dateRow > span { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-3); }

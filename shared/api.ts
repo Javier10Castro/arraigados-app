@@ -733,6 +733,8 @@ export type AdminNoteRow = {
   expiresAt: string;
   status: AdminNoteStatus;
   likeCount: number;
+  /** true = el Admin la retiró (AuditLog 'note.retire'); el resto de vencidas expiró sola o la quitó su autor. */
+  retiredByAdmin: boolean;
   attendeeId: string;
   attendeeName: string;
   churchName: string;
@@ -745,8 +747,23 @@ export type AdminNotesSummary = { total: number; active: number; expired: number
 /** GET /api/admin/notes */
 export type AdminNotesResponse = { total: number; page: number; pageSize: number; rows: AdminNoteRow[]; summary: AdminNotesSummary };
 
+/** POST /api/admin/notes/:id/retire { reason } -- el Admin retira una nota activa (queda Vencida, nunca se borra). */
+export type RetireNoteRequest = { reason: string };
+export type RetireNoteResponse = { outcome: 'ok' | 'not_found' | 'already_expired' };
+
+/** Palabra/frase bloqueada por el Admin (tabla "BlockedWord"), además de la lista fija de shared/moderation.ts. */
+export type BlockedWord = { id: string; word: string; createdAt: string; createdByName: string | null };
+/** GET /api/admin/blocked-words */
+export type BlockedWordsResponse = { words: BlockedWord[]; max: number };
+/** POST /api/admin/blocked-words { word } */
+export type AddBlockedWordResponse = { outcome: 'ok' | 'exists'; word: string };
+
 /** POST /api/notes/:id/like -- alterna el like del asistente autenticado a esa nota. */
 export type ToggleNoteLikeResponse = { liked: boolean; likeCount: number };
+
+/** GET /api/notes/likers -- quién le dio like a MI nota vigente (más reciente primero, máx. 50). */
+export type NoteLiker = { attendeeId: string; firstName: string };
+export type NoteLikersResponse = { likers: NoteLiker[] };
 
 /* ------------------------------------------------------------------ */
 /* Menú de alimentos (admin + consumo público) -- 3 oct 2026            */

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Check, ChevronRight, Clock, CupSoda, MapPin, Radio } from 'lucide-react';
+import { useNotifications } from '../../components/notifications/useNotifications';
+import NotificationRow from '../../components/notifications/NotificationRow';
+import { Bell, Check, ChevronRight, Clock, CupSoda, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Badge from '../../components/Badge';
 import EventCard from '../../components/EventCard';
@@ -192,11 +194,12 @@ export default function Home() {
   const { me, state: pulse } = usePulseSession();
   const fullName = me?.attendee.fullName ?? '';
   const [open, setOpen] = useState(false);
+  // Campana (Fase 1, 5 oct 2026): avisos del equipo reales; ver docs/PLAN_PENDIENTES.md §10.
+  const bell = useNotifications(pulse.phase === 'ready' ? pulse.token : '');
   // Nota del asistente (burbuja sobre el avatar). Un fallo aquí nunca rompe /home.
   const notes = useMyNotes(pulse.phase === 'ready' ? pulse.token : '');
   const feed = useNotesFeed(pulse.phase === 'ready' ? pulse.token : '');
   const [noteOpen, setNoteOpen] = useState(false);
-  const [unread, setUnread] = useState(true);
   const now = useNow();
 
   const zone = resolveZoneForDisplay(me?.attendee.zoneName);
@@ -208,9 +211,17 @@ export default function Home() {
   const congressEnd = sundayBlocks[sundayBlocks.length - 1].end;
 
   const toggleBell = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) setUnread(false);
+    if (open) {
+      setOpen(false);
+      bell.clearFresh();
+    } else {
+      setOpen(true);
+      void bell.markSeen();
+    }
+  };
+  const closeBell = () => {
+    setOpen(false);
+    bell.clearFresh();
   };
 
   /** "Ahora": antes del Congreso | en vivo | entre actividades | terminado. */
@@ -243,31 +254,25 @@ export default function Home() {
         </div>
         <button type="button" className={styles.bell} aria-label="Notificaciones" aria-expanded={open} onClick={toggleBell}>
           <Bell size={20} strokeWidth={2.1} />
-          {unread && <span className={styles.bellDot} aria-hidden="true" />}
+          {bell.unread > 0 && !open && <span className={styles.bellDot} aria-label={`${bell.unread} sin leer`} />}
         </button>
 
         {open && (
           <div className={styles.panel} role="dialog" aria-label="Notificaciones">
             <p className={styles.panelHead}>Notificaciones</p>
-            <ul className={styles.panelList}>
-              {[
-                { id: 1, title: 'La plenaria está en vivo', detail: 'Auditorio Principal · hasta las 21:30', live: true },
-                { id: 2, title: 'Comida lista', detail: 'Recepción Norte · 14:00 - 15:30', live: false },
-                { id: 3, title: 'Tu kit está disponible', detail: 'Recógelo en el punto de credenciales', live: false },
-              ].map((n) => (
-                <li key={n.id} className={styles.panelItem}>
-                  <span className={styles.panelIcon} aria-hidden="true">
-                    <Radio size={15} strokeWidth={2.2} />
-                  </span>
-                  <span className={styles.panelBody}>
-                    <strong>{n.title}</strong>
-                    <span>{n.detail}</span>
-                  </span>
-                  {n.live && <span className={styles.panelLive}>EN VIVO</span>}
-                </li>
-              ))}
-            </ul>
-            <button type="button" className={styles.panelClose} onClick={() => setOpen(false)}>
+            {bell.items.length === 0 ? (
+              <p className={styles.panelEmpty}>
+                <strong>Por ahora no tienes notificaciones</strong>
+                <span>Aquí te avisaremos de lo que pase durante el congreso.</span>
+              </p>
+            ) : (
+              <ul className={styles.panelList}>
+                {bell.items.map((n) => (
+                  <NotificationRow key={`${n.kind}-${n.id}`} n={n} fresh={bell.freshIds.has(`${n.kind}-${n.id}`)} />
+                ))}
+              </ul>
+            )}
+            <button type="button" className={styles.panelClose} onClick={closeBell}>
               Cerrar
             </button>
           </div>
@@ -494,6 +499,7 @@ export default function Home() {
         <NoteSheet
           status={notes.status}
           error={notes.error}
+          token={pulse.phase === 'ready' ? pulse.token : ''}
           active={notes.active}
           now={notes.now}
           onPublish={notes.publish}

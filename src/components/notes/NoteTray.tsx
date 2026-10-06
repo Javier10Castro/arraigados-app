@@ -57,7 +57,7 @@ function FeedItem({ n, index, onOpen, onLike }: { n: NoteFeedItem; index: number
   return (
     <li className={styles.item} style={{ ['--i' as string]: Math.min(index + 1, 12) }}>
       <button type="button" className={styles.hit} onClick={tap} aria-label={`Nota de ${n.firstName}: ${n.text}. Toca para verla completa; doble toque para dar me gusta`}>
-        <span className={styles.bubbleSlot}><NoteBubble variant="filled" text={n.text} /></span>
+        <span className={styles.bubbleSlot}><NoteBubble variant="filled" text={n.text} likes={n.likeCount} /></span>
         <span className={styles.avatarBox}>
           <UserAvatar size={AVATAR} attendeeId={n.attendeeId} name={n.firstName} />
           {n.likedByMe && <Heart className={styles.likedBadge} size={20} fill="currentColor" strokeWidth={0} aria-label="Te gustó" />}
@@ -102,7 +102,7 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
     ) : ownStatus === 'error' ? (
       <NoteBubble variant="muted" text="Tu nota no cargó" onClick={onOpenOwn} label="No pudimos cargar tu nota. Toca para reintentar" />
     ) : ownNote ? (
-      <NoteBubble variant="filled" text={ownNote.text} onClick={onOpenOwn} label={`Tu nota: ${ownNote.text}. Toca para cambiarla`} />
+      <NoteBubble variant="filled" text={ownNote.text} likes={ownNote.likeCount} onClick={onOpenOwn} label={`Tu nota: ${ownNote.text}. Toca para cambiarla`} />
     ) : (
       <NoteBubble variant="invite" text="¿Qué tienes en mente?" onClick={onOpenOwn} label="Escribir una nota" />
     );
@@ -121,9 +121,6 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
           </button>
           <span className={`${styles.name} ${styles.own}`}>
             Tu nota
-            {ownNote && ownNote.likeCount > 0 && (
-              <span className={styles.ownLikes}><Heart size={12} fill="currentColor" strokeWidth={0} aria-hidden="true" /> {ownNote.likeCount}</span>
-            )}
           </span>
         </li>
 
