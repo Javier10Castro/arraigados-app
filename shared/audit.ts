@@ -278,6 +278,8 @@ const ENTITY_TYPE: Record<string, string> = {
   Setting: 'Ajuste',
   BlockedWord: 'Palabra bloqueada',
   Announcement: 'Aviso',
+  Church: 'Iglesia',
+  PackageBenefit: 'Beneficio',
 };
 export const auditEntityType = (t: string) => ENTITY_TYPE[t] ?? t;
 
@@ -286,7 +288,11 @@ export function auditTarget(row: Pick<AdminAuditRow, 'entityType' | 'entityId' |
   if (row.entityName) return row.entityName;
   // Los avisos no se unen a su tabla (así Auditoría no depende de la migración 006): el título va en el metadata.
   if (row.entityType === 'Announcement' && row.metadata && typeof row.metadata.title === 'string') return row.metadata.title;
+  // Iglesias y beneficios: el nombre va en el metadata (también cuando ya se eliminaron).
+  if (row.entityType === 'Church' && row.metadata && typeof row.metadata.name === 'string') return row.metadata.name;
+  if (row.entityType === 'PackageBenefit' && row.metadata && typeof row.metadata.label === 'string') return row.metadata.label;
   if (row.entityType === 'Setting' && row.entityId === 'avatarMode') return 'Tipo de avatar';
   if (row.entityType === 'BlockedWord') return row.entityId;
-  return `${auditEntityType(row.entityType)} eliminado`;
+  const fem = row.entityType === 'Church' || row.entityType === 'Pulse' || row.entityType === 'Note';
+  return `${auditEntityType(row.entityType)} ${fem ? 'eliminada' : 'eliminado'}`;
 }

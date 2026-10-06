@@ -38,9 +38,10 @@ const FROM = `
   LEFT JOIN "Pulse" tp ON al."entityType" = 'Pulse' AND tp.id = al."entityId"
   LEFT JOIN "Attendee" tpa ON tpa.id = tp."attendeeId"
   LEFT JOIN "Note" tn ON al."entityType" = 'Note' AND tn.id = al."entityId"
-  LEFT JOIN "Attendee" tna ON tna.id = tn."attendeeId"`;
+  LEFT JOIN "Attendee" tna ON tna.id = tn."attendeeId"
+  LEFT JOIN "Church" tc ON al."entityType" = 'Church' AND tc.id = al."entityId"`;
 
-const ENTITY_NAME = `COALESCE(tu."name", ta."fullName", tb."code", tra."fullName", tpa."fullName", tna."fullName")`;
+const ENTITY_NAME = `COALESCE(tu."name", ta."fullName", tb."code", tra."fullName", tpa."fullName", tna."fullName", tc."name")`;
 
 type DbRow = Omit<AdminAuditRow, 'createdAt'> & { createdAt: string };
 
