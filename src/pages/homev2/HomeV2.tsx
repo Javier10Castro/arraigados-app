@@ -8,14 +8,15 @@ import { usePulseSession } from '../../context/PulseSession';
 const FADE_MS = 500;
 
 /**
- * /homev2 — réplica exacta de /home que antes muestra la animación del gafete (portada de HangingCards /try).
+ * /home (principal desde el 6 oct 2026; antes /homev2) — el Home de siempre, que antes muestra la animación del gafete (portada de HangingCards /try).
  *
  *   1. Home se monta debajo desde el primer momento (así sus datos ya están al terminar la animación).
  *   2. La animación, con los datos reales de /api/me, tapa todo; "Omitir" la corta cuando se quiera.
  *   3. Al terminar, la capa se desvanece y desaparece: lo que queda es el Home de siempre.
  *
  * Si /api/me no carga (o no hay sesión lista) no se bloquea nada: se muestra el Home directamente.
- * Hoy la animación se muestra SIEMPRE; `SHOW_INTRO` es el punto para limitarla (p. ej. una vez por sesión).
+ * El Home anterior, sin animación, quedó en /homev2 (para comparar o volver atrás).
+ * Hoy la animación se muestra SIEMPRE (cada vez que se entra a /home); `SHOW_INTRO` es el punto para limitarla (p. ej. una vez por sesión).
  */
 const SHOW_INTRO = true;
 

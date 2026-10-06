@@ -2678,3 +2678,10 @@ Pedido del propietario tras el análisis de pendientes (lista completa y estado 
 - Verificado: `/programa` (sábado 9 filas, domingo 5) y reverso del gafete con el horario nuevo, sin recortes.
 - (6 oct 2026, despliegue) **Nombres cortos en la app** (pedido del propietario; el nombre oficial queda guardado en el encabezado de `program.ts` por si se requiere volver a él): sábado 4:10 pm **"Break"** (oficial "Break / Venta por parte del Distrito") y sábado 5:30 pm **"Intro"** (oficial "Video Bienvenida y Contador"). Se cambió en `program.ts` (única fuente) y en `Home.tsx` (`KIND_TITLE_OVERRIDES`: clave `Break` → etiqueta "Receso" en la tarjeta "Ahora"). Aplica a `/home`, `/programa` y el reverso del gafete.
 - (6 oct 2026) El domingo 6:00 pm también pasó a **"Intro"** (oficial: "Video / Contador"), igual que el sábado 5:30 pm. Nombre oficial guardado en el encabezado de `program.ts`.
+
+---
+
+## 53. Home principal = HomeV2 · Instantáneas oculto (6 oct 2026)
+- **Rutas intercambiadas** (`src/App.tsx`): `/home` ahora es **HomeV2** (el Home de siempre precedido por la animación del gafete, con "Omitir"); el Home anterior, **sin animación**, quedó en **`/homev2`** (para comparar o volver atrás). `/inicio` y todos los `navigate('/home')` (registro, "volver" de Mi kit/Mercancía, logo) llevan al nuevo Home. Para volver atrás basta intercambiar de nuevo las dos líneas de `<Route>`.
+- ⚠️ La animación sale **cada vez que se entra a `/home`** (también al regresar desde Mi kit, Programa, etc.), porque `SHOW_INTRO = true` en `src/pages/homev2/HomeV2.tsx`. Si resulta molesto: limitarla a una vez por sesión del navegador (punto único de cambio: ese archivo).
+- **Instantáneas oculto** (no se borró nada; `src/pages/Instantaneas.tsx` y su CSS siguen en el proyecto): quitado del menú lateral/rápido (`AppShell.tsx`), de "Más" (`Mas.tsx`) y del panel Admin (`admin/nav.ts`, donde era una entrada deshabilitada "Etapa 9"). La ruta `/instantaneas` ya no abre la maqueta: **redirige a `/home`** (import y ruta comentados en `App.tsx`). Cada lugar trae un comentario "OCULTO" con los pasos para restaurarlo.

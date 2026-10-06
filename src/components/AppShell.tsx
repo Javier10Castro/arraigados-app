@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils, Images } from 'lucide-react';
+import { CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils } from 'lucide-react';
 import Wordmark from './Wordmark';
 import RingsMark from './RingsMark';
 import Ambient from './Ambient';
@@ -18,7 +18,8 @@ const primaryNav = [
 
 const quickLinks = [
   { to: '/comida', label: 'Comida', Icon: Utensils },
-  { to: '/instantaneas', label: 'Instantáneas', Icon: Images },
+  // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
+  // { to: '/instantaneas', label: 'Instantáneas', Icon: Images },
   { to: '/recursos', label: 'Recursos', Icon: QrCode },
 ];
 

@@ -3,7 +3,6 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ChevronRight,
   IdCard,
-  Images,
   LogOut,
   MapPin,
   QrCode,
@@ -19,7 +18,8 @@ const GafeteViewer = lazy(() => import('./homev2/GafeteViewer'));
 
 const links = [
   { to: '/comida', label: 'Comida', desc: 'Menú de ambas sedes', Icon: Utensils },
-  { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },
+  // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
+  // { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },
   { to: '/recursos', label: 'Recursos', desc: 'Fondos, stickers y presentaciones', Icon: QrCode },
 ];
 

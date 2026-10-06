@@ -1,4 +1,4 @@
-import { Boxes, Church, ClipboardList, CupSoda, Images, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { Boxes, Church, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -57,7 +57,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/usuarios', label: 'Usuarios', Icon: UserCog, ready: true },
   /* Auditoría (Etapa 8, 5 oct 2026): bitácora de solo lectura sobre "AuditLog". */
   { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: true },
-  { to: '/admin/instantaneas', label: 'Instantáneas', Icon: Images, ready: false, stage: 'Etapa 9' },
+  /* Instantáneas OCULTO (6 oct 2026; Etapa 9 sin construir). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
+  { to: '/admin/instantaneas', label: 'Instantáneas', Icon: Images, ready: false, stage: 'Etapa 9' }, */
 ];
 
 /** Primera sección construida: a donde llega Admin al iniciar sesión. */
