@@ -58,6 +58,7 @@ import {
   type AddBlockedWordResponse,
   type BlockedWordsResponse,
   type AdminBenefitsResponse,
+  type AdminKitsResponse,
   type AdminChurchesResponse,
   type ChurchInput,
   type RetireNoteRequest,
@@ -223,6 +224,8 @@ export const api = {
   deleteBenefit: (id: string) => request<{ ok: true }>(`/api/admin/benefits/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   moveBenefit: (id: string, dir: -1 | 1) => postJson<{ ok: true }>(`/api/admin/benefits/${encodeURIComponent(id)}/reorder`, { dir }),
 
+  adminKits: () => request<AdminKitsResponse>('/api/admin/packages'),
+
   // Admin -> Iglesias (CRUD; presbiterios y zonas son de solo lectura)
   adminChurches: () => request<AdminChurchesResponse>('/api/admin/churches'),
   createChurch: (body: ChurchInput) => postJson<{ id: string }>('/api/admin/churches', body),
@@ -238,6 +241,7 @@ export const api = {
   // Admin -> Usuarios
   adminUsers: () => request<AdminUserRow[]>('/api/admin/users'),
   createUser: (body: CreateUserRequest) => postJson<{ id: string }>('/api/admin/users', body),
+  deleteUser: (id: string) => request<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   updateUser: (id: string, body: UpdateUserRequest) =>
     request<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}`, {
       method: 'PATCH',

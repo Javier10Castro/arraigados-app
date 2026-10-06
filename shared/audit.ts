@@ -32,10 +32,10 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'user.create': { label: 'Creó una cuenta', category: 'usuarios' },
   'user.update': { label: 'Editó una cuenta', category: 'usuarios' },
   'user.password_reset': { label: 'Restableció una contraseña', category: 'usuarios' },
+  'user.delete': { label: 'Eliminó una cuenta', category: 'usuarios' },
   'user.password_change': { label: 'Cambió su contraseña', category: 'usuarios' },
   'batch.create': { label: 'Creó un lote', category: 'lotes' },
   'batch.delete': { label: 'Borró un lote', category: 'lotes' },
-  'audit.clear': { label: 'Vació la bitácora', category: 'ajustes' },
   'attendee.update': { label: 'Corrigió datos de un asistente', category: 'asistentes' },
   'pulse.reassign': { label: 'Reemplazó una pulsera', category: 'pulseras' },
   'redemption.void': { label: 'Anuló un canje', category: 'canjes' },
@@ -137,6 +137,12 @@ export function auditDetails(row: Pick<AdminAuditRow, 'action' | 'entityId' | 'm
     }
     case 'user.password_reset':
       return [{ label: 'Resultado', value: 'Se asignó una contraseña temporal; la persona debe crear la suya' }];
+    case 'user.delete':
+      return [
+        { label: 'Nombre', value: text(m.name) },
+        { label: 'Correo', value: text(m.email) },
+        { label: 'Rol', value: ROLE[String(m.role)] ?? text(m.role) },
+      ];
     case 'user.password_change':
       return [{ label: 'Resultado', value: 'La persona cambió su propia contraseña' }];
     case 'batch.create':
@@ -152,8 +158,6 @@ export function auditDetails(row: Pick<AdminAuditRow, 'action' | 'entityId' | 'm
         { label: 'Canjes borrados', value: text(m.redemptions) },
         { label: 'Notas borradas', value: text(m.notes) },
       ];
-    case 'audit.clear':
-      return [{ label: 'Registros borrados', value: text(m.deleted) }];
     case 'attendee.update': {
       const label: Record<string, string> = { fullName: 'Nombre', ageRange: 'Rango de edad', church: 'Iglesia' };
       return Object.entries(m).map(([k, v]) => {

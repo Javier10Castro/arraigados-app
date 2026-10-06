@@ -4,6 +4,7 @@ import { Check, ChevronRight, Copy, KeyRound, Plus, ScanLine, ShieldCheck, Wand2
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
+import ConfirmTypeModal from './ConfirmTypeModal';
 import { api } from '../lib/api';
 import UserAvatar from '../components/UserAvatar';
 import AvatarSetting from './AvatarSetting';
@@ -342,6 +343,7 @@ function EditUserModal({
   const [saved, setSaved] = useState(false);
   const [resetPw, setResetPw] = useState<string | null>(null);
   const [resetDone, setResetDone] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const dirty = name.trim() !== user.name || role !== user.role;
 
@@ -359,6 +361,31 @@ function EditUserModal({
       setBusy(false);
     }
   };
+
+  if (confirmDelete) {
+    return (
+      <ConfirmTypeModal
+        title="Eliminar cuenta"
+        word="ELIMINAR"
+        actionLabel="Eliminar cuenta"
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          await api.deleteUser(user.id);
+          onChanged();
+          onClose();
+        }}
+      >
+        <p>
+          Vas a eliminar la cuenta de <strong>{user.name}</strong> ({user.email}). Ya no podrá iniciar sesión y la cuenta no se puede
+          recuperar. <strong>No se puede deshacer.</strong>
+        </p>
+        <p style={{ margin: '8px 0 0' }}>
+          Si solo quieres quitarle el acceso por un tiempo, mejor <strong>desactívala</strong>. Si la cuenta ya tiene historial (lotes
+          o canjes), el sistema no permitirá eliminarla.
+        </p>
+      </ConfirmTypeModal>
+    );
+  }
 
   if (resetDone && resetPw) {
     return (
@@ -467,6 +494,11 @@ function EditUserModal({
           >
             {active ? 'Desactivar cuenta' : 'Reactivar cuenta'}
           </Button>
+          {!user.protected && (
+            <Button variant="outline" className={s.dangerBtn} disabled={busy} onClick={() => setConfirmDelete(true)}>
+              Eliminar cuenta
+            </Button>
+          )}
         </section>
       )}
     </AdminModal>

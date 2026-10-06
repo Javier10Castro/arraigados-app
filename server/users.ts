@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import type pg from 'pg';
 import { NOW_UTC, newId, query, withTransaction } from './db';
+import { isOwnerEmail } from './owner';
 import { BCRYPT_COST, passwordFingerprint, passwordProblem } from './auth';
 import type { AdminUserRow, CreateUserRequest, StaffRole, UpdateUserRequest } from '../shared/api';
 
@@ -67,6 +68,7 @@ export async function listUsers(): Promise<AdminUserRow[]> {
     active: r.active,
     createdAt: r.createdAt,
     pendingPassword: r.temporary === 'true' && r.fp === passwordFingerprint(r.passwordHash),
+    protected: isOwnerEmail(r.email),
   }));
 }
 
@@ -147,6 +149,41 @@ export async function updateUser(actorId: string, userId: string, input: UpdateU
       after: Object.fromEntries(changed.map((k) => [k, after[k]])),
     });
   });
+}
+
+/**
+ * Elimina una cuenta (Admin o Staff) para siempre. Nunca se puede eliminar: la cuenta dueña
+ * (server/owner.ts), la propia cuenta de quien lo pide, ni al último Admin activo. Si la cuenta ya tiene
+ * historial que la referencia (lotes, canjes…) la base lo impide y se sugiere desactivarla.
+ */
+export async function deleteUser(actorId: string, userId: string) {
+  try {
+    await withTransaction(async (tx) => {
+      await tx.query(`SELECT id FROM "User" WHERE role = 'ADMIN' AND active = true FOR UPDATE`);
+      const { rows } = await tx.query<{ name: string; email: string; role: StaffRole; active: boolean }>(
+        `SELECT name, email, role::text AS role, active FROM "User" WHERE id = $1 FOR UPDATE`,
+        [userId],
+      );
+      const u = rows[0];
+      if (!u) throw new UserError('Esa cuenta ya no existe.');
+      if (isOwnerEmail(u.email)) throw new UserError('Esta cuenta está protegida y no se puede eliminar.');
+      if (userId === actorId) throw new UserError('No puedes eliminar tu propia cuenta.');
+      if (u.role === 'ADMIN' && u.active) {
+        const { rows: admins } = await tx.query<{ n: number }>(
+          `SELECT count(*)::int AS n FROM "User" WHERE role = 'ADMIN' AND active = true AND id <> $1`,
+          [userId],
+        );
+        if (admins[0].n === 0) throw new UserError('Debe quedar al menos un Admin activo.');
+      }
+      await tx.query(`DELETE FROM "User" WHERE id = $1`, [userId]);
+      await audit(tx, actorId, 'user.delete', userId, { name: u.name, email: u.email, role: u.role });
+    });
+  } catch (err) {
+    if ((err as { code?: string }).code === '23503') {
+      throw new UserError('Esta cuenta ya tiene historial (lotes, canjes u otros registros) y no se puede eliminar. Desactívala en su lugar.');
+    }
+    throw err;
+  }
 }
 
 /** Admin pone una nueva contraseña TEMPORAL (cierra las sesiones abiertas de esa cuenta). */

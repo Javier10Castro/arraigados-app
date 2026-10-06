@@ -287,3 +287,4 @@ sección "Etapa 9" del Admin deshabilitada como está.
 - ⏳ `/comida` sigue con datos de ejemplo (`data/app.ts`); falta conectarla a `/api/menu` y cargar platillos/fotos reales. El menú del Home y `/admin/menu` ya usan datos reales.
 - ⏳ Notificaciones Fase 3 (recordatorios automáticos del programa + toast).
 - Decisión: "Mi gafete" NO se agrega a Beneficios (queda en menú lateral y Más). Animación del Home: siempre.
+- ✅ Kits (Etapa 5) en **solo lectura** (`/admin/paquetes`) y eliminar cuentas — `CLAUDE_HANDOFF.md` §56.

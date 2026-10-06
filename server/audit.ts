@@ -1,4 +1,5 @@
-import { NOW_UTC, newId, query, withTransaction } from './db';
+import { NOW_UTC, query } from './db';
+import { isOwnerEmail } from './owner';
 import { EVENT_TIMEZONE, parsePageSize } from '../shared/api';
 import {
   AUDIT_ACTIONS,
@@ -127,29 +128,20 @@ export const AUDIT_CLEAR_WORD = 'BORRAR BITACORA';
 
 /**
  * Vacía TODA la bitácora (para quitar los registros de pruebas antes del evento). Es lo único que
- * borra "AuditLog". Deja UNA entrada nueva ("Vació la bitácora", quién y cuántos registros) para que
- * el borrado mismo quede registrado. Todo en una transacción.
+ * borra "AuditLog". NO deja ninguna entrada propia: la bitácora queda realmente en cero.
  */
-export async function clearAudit(actorId: string, confirm: string): Promise<{ deleted: number }> {
+export async function clearAudit(_actorId: string, confirm: string): Promise<{ deleted: number }> {
   const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
   if (norm(String(confirm ?? '')) !== AUDIT_CLEAR_WORD) {
     throw new AuditClearError(`Para vaciar la bitácora escribe: ${AUDIT_CLEAR_WORD}`);
   }
-  return withTransaction(async (tx) => {
-    const deleted = (await tx.query(`DELETE FROM "AuditLog"`)).rowCount ?? 0;
-    await tx.query(
-      `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
-       VALUES ($1, $2, 'audit.clear', 'AuditLog', 'all', $3::jsonb, ${NOW_UTC})`,
-      [newId(), actorId, JSON.stringify({ deleted })],
-    );
-    return { deleted };
-  });
+  const deleted = (await query(`DELETE FROM "AuditLog"`)).rowCount ?? 0;
+  return { deleted };
 }
 
 export class AuditClearError extends Error {}
 
-/** Única cuenta que puede vaciar la bitácora (los demás Admin ni ven el botón). Se puede cambiar con la variable AUDIT_CLEAR_EMAIL. */
+/** Solo la cuenta dueña (server/owner.ts) puede vaciar la bitácora; los demás Admin ni ven el botón. */
 export function canClearAudit(email: string | null | undefined): boolean {
-  const owner = (process.env.AUDIT_CLEAR_EMAIL || 'javiercastro9912@gmail.com').trim().toLowerCase();
-  return String(email ?? '').trim().toLowerCase() === owner;
+  return isOwnerEmail(email);
 }

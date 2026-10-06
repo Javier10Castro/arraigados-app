@@ -134,6 +134,8 @@ export type AdminUserRow = {
   createdAt: string;
   /** Todavía no cambia la contraseña temporal. */
   pendingPassword: boolean;
+  /** Cuenta dueña: nunca se puede eliminar (la pantalla no muestra el botón). */
+  protected: boolean;
 };
 export type CreateUserRequest = { name: string; email: string; role: StaffRole; temporaryPassword: string };
 export type UpdateUserRequest = { name?: string; role?: StaffRole; active?: boolean };
@@ -981,3 +983,20 @@ export type AdminKitBenefits = {
 };
 /** GET /api/admin/benefits. `ready: false` = la migración 008 aún no está aplicada. */
 export type AdminBenefitsResponse = { ready: boolean; labelMax: number; perKitMax: number; kits: AdminKitBenefits[] };
+
+/* Admin -> Kits (solo lectura, 6 oct 2026) */
+export type AdminKitRow = {
+  id: string;
+  name: string;
+  /** Centavos de MXN. */
+  price: number;
+  includedDrinks: number;
+  active: boolean;
+  benefits: string[];
+  pulses: { total: number; unclaimed: number; active: number; invalidated: number };
+  /** Aguas incluidas en las pulseras activas vs. ya canjeadas. */
+  drinks: { included: number; used: number };
+  /** Centavos: precio × pulseras activas. */
+  expectedIncome: number;
+};
+export type AdminKitsResponse = { kits: AdminKitRow[]; totals: { total: number; active: number; expectedIncome: number } };

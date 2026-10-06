@@ -1,19 +1,29 @@
 import type { Config, Context } from '@netlify/functions';
 import { authorize } from '../../server/auth';
-import { UserError, resetPassword, updateUser } from '../../server/users';
+import { UserError, deleteUser, resetPassword, updateUser } from '../../server/users';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
 import type { ResetPasswordRequest, UpdateUserRequest } from '../../shared/api';
 
 /**
  * PATCH /api/admin/users/:id            -> nombre, rol, activa/desactivada
  * POST  /api/admin/users/:id/password   -> nueva contraseña TEMPORAL
- * Solo Admin. Nunca se borra una cuenta.
+ * DELETE /api/admin/users/:id          -> elimina la cuenta (nunca la dueña, ni la propia, ni al último Admin)
+ * Solo Admin.
  */
 export default handler(async (req: Request, context: Context) => {
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
   const id = context.params.id ?? '';
   const isPassword = new URL(req.url).pathname.endsWith('/password');
+  if (req.method === 'DELETE' && !isPassword) {
+    try {
+      await deleteUser(auth.user.id, id);
+      return json({ ok: true });
+    } catch (err) {
+      if (err instanceof UserError) return apiError(err.message, 400);
+      throw err;
+    }
+  }
   let body: unknown;
   try {
     body = await req.json();

@@ -1,0 +1,20 @@
+/* Admin -> Kits (solo lectura): tarjetas crema sobre morado, mismo lenguaje que Beneficios. */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 18px; background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); min-width: 0; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.name { margin: 0; font: 800 20px var(--font-body); }
+.price { font: 800 20px var(--font-body); }
+.off { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #a1262c; }
+.meta { margin: -6px 0 0; font-size: 13px; color: var(--text-2); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: rgba(30, 2, 99, 0.06); min-width: 0; }
+.stat dt { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.stat dd { margin: 0; font: 800 18px var(--font-body); }
+.bar { height: 8px; border-radius: 99px; background: rgba(30, 2, 99, 0.12); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: #0d9a6a; border-radius: inherit; }
+.barText { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); }
+.sub { margin: 0; font: 800 12px var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); }
+.list { margin: 0; padding-left: 18px; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.none { margin: 0; font-size: 13.5px; color: var(--text-2); }
+.totals { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; font-size: 13.5px; color: var(--crema); }
+.link { color: var(--crema); font-weight: 700; }
