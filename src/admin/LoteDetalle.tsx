@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, Trash2, X, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, X, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import ConfirmTypeModal from './ConfirmTypeModal';
+import HeaderDangerButton from './HeaderDangerButton';
 import { api, batchFileUrls, downloadFile } from '../lib/api';
 import {
   PAPER_SIZE_LABELS,
@@ -167,7 +168,10 @@ export default function LoteDetalle() {
   };
 
   return (
-    <AdminShell title={lote?.code ?? 'Lote'}>
+    <AdminShell
+      title={lote?.code ?? 'Lote'}
+      action={lote ? <HeaderDangerButton label="Borrar lote" onClick={() => setDeleting(true)} /> : undefined}
+    >
       <Link to="/admin/lotes" className={d.back}>
         <ChevronLeft size={16} strokeWidth={2.4} /> Lotes
       </Link>
@@ -259,19 +263,6 @@ export default function LoteDetalle() {
             </button>
           </section>
 
-          <section className={d.card}>
-            <h2 className={d.cardTitle}>Borrar lote</h2>
-            <p className={s.hint}>
-              Quita el lote y sus pulseras{lote.active + lote.invalidated > 0 ? ', junto con los asistentes registrados con ellas, sus notas y canjes' : ''}. No se puede deshacer. Útil para
-              limpiar lotes de prueba.
-            </p>
-            <div>
-              <Button variant="outlineLight" style={{ color: '#ffb3b6', borderColor: 'rgba(255,140,146,.6)' }} onClick={() => setDeleting(true)}>
-                <Trash2 size={16} /> Borrar lote
-              </Button>
-            </div>
-          </section>
-
           {deleting && (
             <ConfirmTypeModal
               title="Borrar lote"
@@ -284,16 +275,23 @@ export default function LoteDetalle() {
               }}
             >
               <p>
-                Vas a borrar <strong>{lote.code}</strong>: {lote.total} {lote.total === 1 ? 'pulsera' : 'pulseras'}
+                Vas a borrar el lote <strong>{lote.code}</strong> ({lote.total} {lote.total === 1 ? 'pulsera' : 'pulseras'}).
+              </p>
+              <p style={{ margin: '8px 0 0' }}>Se eliminará todo esto:</p>
+              <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                <li>El lote y todas sus pulseras (los QR dejan de funcionar).</li>
                 {lote.active + lote.invalidated > 0 ? (
-                  <>
-                    , de las cuales <strong>{lote.active + lote.invalidated}</strong> ya se reclamaron. Se borrarán también esos
-                    asistentes, sus notas y sus canjes.
-                  </>
+                  <li>
+                    Los <strong>{lote.active + lote.invalidated}</strong> asistentes ya registrados con estas pulseras, con sus notas,
+                    likes y canjes.
+                  </li>
                 ) : (
-                  <> (ninguna reclamada).</>
-                )}{' '}
-                <strong>No se puede deshacer.</strong>
+                  <li>Ninguna pulsera se ha reclamado, así que no hay asistentes que borrar.</li>
+                )}
+                <li>Si un asistente también tiene una pulsera de otro lote (reemplazo), se conserva.</li>
+              </ul>
+              <p style={{ margin: '8px 0 0' }}>
+                Sirve para limpiar lotes de prueba. Queda un registro en la bitácora. <strong>No se puede deshacer.</strong>
               </p>
             </ConfirmTypeModal>
           )}

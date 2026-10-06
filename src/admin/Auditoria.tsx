@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Trash2, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
 import ConfirmTypeModal from './ConfirmTypeModal';
-import u from './Usuarios.module.css';
+import HeaderDangerButton from './HeaderDangerButton';
 import { api } from '../lib/api';
 import { parsePageSize } from '../../shared/api';
 import {
@@ -101,20 +101,20 @@ export default function Auditoria() {
   const sum = data?.summary;
 
   return (
-    <AdminShell title="Auditoría">
+    <AdminShell
+      title="Auditoría"
+      action={
+        data?.canClear ? (
+          <HeaderDangerButton label="Vaciar bitácora" onClick={() => setClearing(true)} />
+        ) : undefined
+      }
+    >
       <section className={n.kpis} aria-label="Resumen de la bitácora" aria-busy={!sum}>
         <Kpi label="Eventos registrados" value={sum?.total} />
         <Kpi label="Últimas 24 horas" value={sum?.last24h} tone="ok" />
         <Kpi label="Personas con actividad" value={sum?.actors} />
       </section>
 
-      {data?.canClear && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button size="sm" variant="outline" className={u.dangerBtn} onClick={() => setClearing(true)}>
-            <Trash2 size={15} /> Vaciar bitácora
-          </Button>
-        </div>
-      )}
       {data?.canClear && clearing && (
         <ConfirmTypeModal
           title="Vaciar bitácora"

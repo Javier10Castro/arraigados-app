@@ -1,0 +1,29 @@
+/* Botón de acción peligrosa en la cabecera (Vaciar bitácora, Borrar lote): en la cabecera, pegado al extremo derecho y centrado en la altura del título.
+   En celular solo el ícono (el texto no cabe junto al título); desde 560px, ícono + texto. */
+.btn {
+  align-self: center;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 140, 146, 0.65);
+  background: rgba(212, 53, 60, 0.14);
+  color: #ffb3b6;
+  font: 700 13px/1 var(--font-body, inherit);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn:hover { background: rgba(212, 53, 60, 0.28); }
+.btn:focus-visible { outline: 2px solid #ffb3b6; outline-offset: 2px; }
+.text { display: none; }
+@media (min-width: 560px) {
+  .btn { padding: 0 16px; }
+  .text { display: inline; }
+}
