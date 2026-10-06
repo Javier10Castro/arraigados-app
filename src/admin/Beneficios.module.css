@@ -1,0 +1,68 @@
+/* Admin → Beneficios. Reutiliza chips, formulario y modal de Usuarios.module.css; aquí solo lo propio. */
+.kitCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-card);
+}
+.kitName { font: 700 17px var(--font-body); }
+.kitPrice { font: 800 17px var(--font-body); }
+.kitMeta { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--text-2); }
+
+.list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  border-radius: 14px;
+  background: var(--crema);
+  color: var(--morado-oscuro);
+  box-shadow: var(--shadow-card);
+}
+.label { font: 600 15px var(--font-body); overflow-wrap: anywhere; }
+.tools { display: flex; align-items: center; gap: 4px; }
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(62, 7, 166, 0.08);
+  color: var(--morado);
+  cursor: pointer;
+}
+.iconBtn:hover:not(:disabled) { background: rgba(62, 7, 166, 0.18); }
+.iconBtn:disabled { opacity: 0.3; cursor: default; }
+
+.add {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.add input {
+  height: 44px;
+  min-width: 0;
+  border-radius: var(--r-input);
+  border: 1.4px solid rgba(11, 15, 26, 0.14);
+  background: #fff;
+  padding: 0 14px;
+  font: 15px var(--font-body);
+  color: var(--ink);
+}
+.add input:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px rgba(62, 7, 166, 0.1); }
+.hint { margin: 0; font-size: 12.5px; color: rgba(242, 247, 215, 0.85); }
+.errorBox { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--crema); color: #a1262c; font-size: 13.5px; }
+.actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 8px; }
+.actions > * { min-width: 0; padding-inline: 10px; white-space: normal; line-height: 1.15; }

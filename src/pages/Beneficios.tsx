@@ -22,7 +22,8 @@ export default function Beneficios() {
   if (!me) return null; // RequireAttendee garantiza la sesión; esto solo satisface a TS.
 
   const { package: pkg, drinksUsed, drinksRemaining } = me;
-  const items = packageContent[pkg.name] ?? [];
+  // Lista de la base (administrable en /admin/beneficios); si aún no existe, la fija de siempre.
+  const items = pkg.benefits ?? packageContent[pkg.name] ?? [];
 
   return (
     <div className={`page-enter ${styles.page}`}>

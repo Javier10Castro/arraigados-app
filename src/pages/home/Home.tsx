@@ -244,6 +244,9 @@ export default function Home() {
 
   if (!me) return null; // RequireAttendee garantiza la sesión; esto solo satisface a TS.
 
+  // Lo que incluye el kit: viene de la base (administrable en /admin/beneficios); sin migración 008, la lista fija de siempre.
+  const kitItems = me.package.benefits ?? packageContent[me.package.name] ?? [];
+
   return (
     <div className={`page-enter ${styles.page}`}>
       <header className={styles.top}>
@@ -419,9 +422,9 @@ export default function Home() {
 
           <section className={beneficiosStyles.section}>
             <h2 className="label">Incluye</h2>
-            {(packageContent[me.package.name] ?? []).length > 0 ? (
+            {kitItems.length > 0 ? (
               <ul className={beneficiosStyles.includes}>
-                {(packageContent[me.package.name] ?? []).map((item) => (
+                {kitItems.map((item) => (
                   <li key={item}>
                     <span className={beneficiosStyles.check} aria-hidden="true">
                       <Check size={13} strokeWidth={3.2} />

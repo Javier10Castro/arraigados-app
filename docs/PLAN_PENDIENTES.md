@@ -10,7 +10,7 @@ Nada de lo de las secciones 2–8 está implementado todavía (salvo donde se in
 | 1–3 | Deploy de Notas, migraciones en producción, limpiar datos demo | ✅ Hecho por el propietario |
 | 4 | Lista oficial de iglesias (~27 presbiterios, ~120 iglesias) | ⏳ **Pendiente** (esperando el listado) |
 | 5 | Quitar "Datos de prueba" del Login | ✅ Ya no existe en el código (verificado) |
-| 6 | Respaldo de la base | 📋 Plan en §2 |
+| 6 | Respaldo de la base | 🟡 Scripts listos (`db:respaldo-total`, `db:restaurar-total`, `db:limpiar-pruebas`); falta ejecutarlo y probar restauración (`PLAN_RESPALDO.md`, §54) |
 | 7 | Variables de entorno en Netlify | ✅ Hecho |
 | 8 | Instantáneas | 📝 **Solo documentar**: no se construirá en este proyecto (ver §8) |
 | 9 | Recursos descargables | 📋 Plan en §3 |
@@ -268,3 +268,22 @@ sección "Etapa 9" del Admin deshabilitada como está.
 3. Menú de alimentos (`/comida`) con fotos y platillos reales cuando se tengan; luego `/admin/menu` ya existe para administrarlos.
 4. Pruebas automáticas mínimas (no urgentes): moderación, notificaciones, QR.
 5. Tras el congreso: limpiar datos de prueba (`db:limpiar-pruebas`), archivar avisos y notas.
+
+## 12. Actualización (6 oct 2026, tarde)
+**Hecho desde §11:** `/homev2` ya es el `/home` principal (el anterior quedó en `/homev2`); programa oficial cargado (Break / Intro, sin Convivencia); CRUD de iglesias en `/admin/iglesias`; Instantáneas oculto (archivos conservados); notas de 1 a 2 líneas; fix del giro del gafete; contador de likes solo para el dueño.
+
+**Sigue pendiente (en este orden):**
+1. **Antes de desplegar:** (la migración 007 ya fue aplicada por el propietario, 6 oct 2026) · rama de respaldo en Neon · commit/push · probar en celular real (animación de `/home`, "Mi gafete" + descarga en iPhone/Safari y Android, likes, `/admin/iglesias`) · `npm run moderacion:probar`.
+2. **Decisión:** ¿la animación de `/home` una vez por sesión en vez de siempre? (`SHOW_INTRO` en `HomeV2.tsx`). ¿"Mi gafete" también en Beneficios? Kits: ¿resumen de solo lectura en Admin?
+3. **Notificaciones Fase 3:** recordatorios automáticos del programa + aviso emergente (toast).
+4. **Respaldo completo** (`db:respaldo-total` + restauración probada).
+5. **Menú `/comida`** con fotos y platillos reales (el admin de Menú ya existe).
+6. Pruebas automáticas mínimas; tras el congreso, limpiar datos de prueba.
+
+
+## 13. Actualización (6 oct 2026, noche)
+- ✅ CRUD de Beneficios (`/admin/beneficios`, migración 008) — `CLAUDE_HANDOFF.md` §54. **Correr `npm run db:migrar`.**
+- ✅ Scripts de respaldo total / restauración / limpieza de pruebas (§54).
+- ⏳ `/comida` sigue con datos de ejemplo (`data/app.ts`); falta conectarla a `/api/menu` y cargar platillos/fotos reales. El menú del Home y `/admin/menu` ya usan datos reales.
+- ⏳ Notificaciones Fase 3 (recordatorios automáticos del programa + toast).
+- Decisión: "Mi gafete" NO se agrega a Beneficios (queda en menú lateral y Más). Animación del Home: siempre.

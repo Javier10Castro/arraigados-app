@@ -14,6 +14,8 @@
     "db:renombrar-kits": "node scripts/db-renombrar-kits.mjs",
     "db:migrar": "node scripts/db-migrate.mjs",
     "db:respaldo": "node scripts/db-respaldo.mjs",
+    "db:respaldo-total": "node scripts/db-respaldo-total.mjs",
+    "db:restaurar-total": "node scripts/db-restaurar-total.mjs",
     "db:limpiar-pruebas": "node scripts/db-limpiar-pruebas.mjs",
     "db:restaurar": "node scripts/db-restaurar.mjs",
     "db:notas-demo": "node scripts/db-notas-demo.mjs",

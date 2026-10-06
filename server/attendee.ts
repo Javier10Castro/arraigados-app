@@ -1,4 +1,5 @@
 import { NOW_UTC, newId, query, withTransaction } from './db';
+import { getBenefitLabels } from './benefits';
 import { deriveCity, type Church } from '../shared/churches';
 import {
   QR_TOKEN_RE,
@@ -136,6 +137,7 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
   const { rows } = await query<{
     status: PulseRow['status'];
     drinksUsed: number;
+    packageId: string;
     packageName: string;
     price: number;
     includedDrinks: number;
@@ -147,7 +149,7 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
     zoneName: string | null;
   }>(
     `SELECT p.status, p."drinksUsed",
-            k.name AS "packageName", k.price, k."includedDrinks",
+            k.id AS "packageId", k.name AS "packageName", k.price, k."includedDrinks",
             a.id AS "attendeeId", a."fullName", a."ageRange",
             c.name AS "churchName", pr.name AS "presbyteryName", z.name AS "zoneName"
        FROM "Pulse" p
@@ -163,6 +165,7 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
   if (!r) return { ok: false, status: 'not_found' };
   if (r.status === 'INVALIDATED') return { ok: false, status: 'invalidated' };
   if (r.status === 'UNCLAIMED' || !r.fullName || !r.attendeeId) return { ok: false, status: 'unclaimed' };
+  const benefits = await getBenefitLabels(r.packageId); // null = migración 008 sin aplicar -> el cliente usa la lista fija
 
   return {
     ok: true,
@@ -175,7 +178,7 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
         presbyteryName: r.presbyteryName ?? '',
         zoneName: r.zoneName ?? '',
       },
-      package: { name: r.packageName, price: r.price, includedDrinks: r.includedDrinks },
+      package: { name: r.packageName, price: r.price, includedDrinks: r.includedDrinks, ...(benefits ? { benefits } : {}) },
       drinksUsed: r.drinksUsed,
       drinksRemaining: Math.max(r.includedDrinks - r.drinksUsed, 0),
     },

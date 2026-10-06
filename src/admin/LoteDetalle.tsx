@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, X, XCircle } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, Trash2, X, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
+import ConfirmTypeModal from './ConfirmTypeModal';
 import { api, batchFileUrls, downloadFile } from '../lib/api';
 import {
   PAPER_SIZE_LABELS,
@@ -58,6 +59,8 @@ const STATUS_ICON: Record<PulseStatus, LucideIcon> = {
 
 export default function LoteDetalle() {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Math.floor(Number(params.get('pagina') ?? 1)) || 1);
   const pageSize = parsePageSize(params.get('porPagina'));
@@ -255,6 +258,45 @@ export default function LoteDetalle() {
               <FileText size={16} /> {pdfBusy ? 'Generando PDF…' : 'Descargar PDF'}
             </button>
           </section>
+
+          <section className={d.card}>
+            <h2 className={d.cardTitle}>Borrar lote</h2>
+            <p className={s.hint}>
+              Quita el lote y sus pulseras{lote.active + lote.invalidated > 0 ? ', junto con los asistentes registrados con ellas, sus notas y canjes' : ''}. No se puede deshacer. Útil para
+              limpiar lotes de prueba.
+            </p>
+            <div>
+              <Button variant="outlineLight" style={{ color: '#ffb3b6', borderColor: 'rgba(255,140,146,.6)' }} onClick={() => setDeleting(true)}>
+                <Trash2 size={16} /> Borrar lote
+              </Button>
+            </div>
+          </section>
+
+          {deleting && (
+            <ConfirmTypeModal
+              title="Borrar lote"
+              word={lote.code}
+              actionLabel="Borrar lote"
+              onClose={() => setDeleting(false)}
+              onConfirm={async () => {
+                await api.deleteBatch(lote.id, lote.code);
+                navigate('/admin/lotes', { replace: true });
+              }}
+            >
+              <p>
+                Vas a borrar <strong>{lote.code}</strong>: {lote.total} {lote.total === 1 ? 'pulsera' : 'pulseras'}
+                {lote.active + lote.invalidated > 0 ? (
+                  <>
+                    , de las cuales <strong>{lote.active + lote.invalidated}</strong> ya se reclamaron. Se borrarán también esos
+                    asistentes, sus notas y sus canjes.
+                  </>
+                ) : (
+                  <> (ninguna reclamada).</>
+                )}{' '}
+                <strong>No se puede deshacer.</strong>
+              </p>
+            </ConfirmTypeModal>
+          )}
 
           {notice && (
             <p className={d.alert} role="alert">

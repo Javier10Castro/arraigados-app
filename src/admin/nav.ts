@@ -1,4 +1,4 @@
-import { Boxes, Church, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { Boxes, Church, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -42,6 +42,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/lotes', label: 'Lotes', Icon: Boxes, ready: true, primary: true },
   { to: '/admin/asistentes', label: 'Asistentes', Icon: Users, ready: true, primary: true },
   { to: '/admin/paquetes', label: 'Kits', Icon: Package, ready: false, stage: 'Etapa 5' },
+  /* Beneficios (6 oct 2026): lo que incluye cada kit (lista "Incluye" del asistente), administrable. Las aguas frescas siguen siendo del kit. */
+  { to: '/admin/beneficios', label: 'Beneficios', Icon: Gift, ready: true },
   { to: '/admin/canjes', label: 'Canjes', Icon: CupSoda, ready: true },
   { to: '/admin/menu', label: 'Menú', Icon: UtensilsCrossed, ready: true },
   /* Mercancía (3 oct 2026, conectada a datos reales el mismo día): CRUD

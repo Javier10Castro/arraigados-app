@@ -98,7 +98,8 @@ export type MeResponse = {
     presbyteryName: string;
     zoneName: string;
   };
-  package: PackageSummary;
+  /** `benefits`: lo que incluye el kit (tabla PackageBenefit). Ausente = usar la lista fija de data/app.ts. */
+  package: PackageSummary & { benefits?: string[] };
   drinksUsed: number;
   drinksRemaining: number;
 };
@@ -964,3 +965,19 @@ export type AdminPresbyteryOption = { id: string; name: string; zoneName: string
 export type AdminChurchesResponse = { churches: AdminChurchRow[]; presbyteries: AdminPresbyteryOption[]; nameMax: number };
 /** POST /api/admin/churches · PATCH /api/admin/churches/:id */
 export type ChurchInput = { name: string; presbyteryId: string };
+
+/* ------------------------------------------------------------------ */
+/* Admin -> Beneficios (lo que incluye cada kit; migración 008)        */
+/* ------------------------------------------------------------------ */
+
+export type AdminKitBenefits = {
+  id: string;
+  name: string;
+  /** centavos MXN */
+  price: number;
+  includedDrinks: number;
+  active: boolean;
+  benefits: { id: string; label: string }[];
+};
+/** GET /api/admin/benefits. `ready: false` = la migración 008 aún no está aplicada. */
+export type AdminBenefitsResponse = { ready: boolean; labelMax: number; perKitMax: number; kits: AdminKitBenefits[] };

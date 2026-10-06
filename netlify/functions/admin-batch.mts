@@ -1,6 +1,6 @@
 import type { Config, Context } from '@netlify/functions';
 import { authorize } from '../../server/auth';
-import { batchTokens, getBatch, pulseTokenInBatch } from '../../server/batches';
+import { BatchError, batchTokens, deleteBatch, getBatch, pulseTokenInBatch } from '../../server/batches';
 import { baseUrlOrEmpty, publicBaseUrl, qrCardPng } from '../../server/wristband';
 import { buildBatchPdf } from '../../server/wristbandPdf';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
@@ -11,12 +11,14 @@ import { PAPER_SIZES, type PaperSize } from '../../shared/api';
  * GET /api/admin/batches/:id/pdf?size=a4|letter|tabloid -> PDF del lote (application/pdf)
  * GET /api/admin/batches/:id/pulses/:pulseId/qr   -> PNG del QR suelto (image/png)
  *
+ * DELETE /api/admin/batches/:id  { confirm: <código del lote> } -> borra el lote y lo que depende de él
+ *
  * Solo ADMIN. El PDF y el PNG se devuelven como binario, no como JSON.
  */
 export default handler(async (req: Request, context: Context) => {
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
-  if (req.method !== 'GET') return methodNotAllowed('GET');
+  if (req.method !== 'GET' && req.method !== 'DELETE') return methodNotAllowed('GET, DELETE');
 
   const path = new URL(req.url).pathname;
   const id = context.params.id ?? '';
@@ -26,6 +28,18 @@ export default handler(async (req: Request, context: Context) => {
   // "Falta el lote" en vez de "Ese lote no existe".
   if (!id) {
     return apiError(path.includes('/pulses/') ? 'Esa pulsera no existe en este lote.' : 'Ese lote no existe.', 404);
+  }
+
+  /* --- Borrar lote ---------------------------------------------------- */
+  if (req.method === 'DELETE') {
+    if (path.endsWith('/pdf') || path.endsWith('/qr')) return methodNotAllowed('GET');
+    const body = (await req.json().catch(() => ({}))) as { confirm?: string };
+    try {
+      return json(await deleteBatch(auth.user.id, id, body.confirm ?? ''));
+    } catch (err) {
+      if (err instanceof BatchError) return apiError(err.message, 400);
+      throw err;
+    }
   }
 
   /* --- PDF del lote ------------------------------------------------- */

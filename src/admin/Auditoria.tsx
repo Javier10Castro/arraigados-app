@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
+import ConfirmTypeModal from './ConfirmTypeModal';
+import u from './Usuarios.module.css';
 import { api } from '../lib/api';
 import { parsePageSize } from '../../shared/api';
 import {
@@ -94,6 +96,7 @@ export default function Auditoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, category, actorId, from, to, page, pageSize, reload]);
 
+  const [clearing, setClearing] = useState(false);
   const hasFilters = Boolean(q || category || actorId || from || to);
   const sum = data?.summary;
 
@@ -104,6 +107,34 @@ export default function Auditoria() {
         <Kpi label="Últimas 24 horas" value={sum?.last24h} tone="ok" />
         <Kpi label="Personas con actividad" value={sum?.actors} />
       </section>
+
+      {data?.canClear && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button size="sm" variant="outline" className={u.dangerBtn} onClick={() => setClearing(true)}>
+            <Trash2 size={15} /> Vaciar bitácora
+          </Button>
+        </div>
+      )}
+      {data?.canClear && clearing && (
+        <ConfirmTypeModal
+          title="Vaciar bitácora"
+          word="BORRAR BITACORA"
+          actionLabel="Vaciar bitácora"
+          onClose={() => setClearing(false)}
+          onConfirm={async () => {
+            await api.clearAudit('BORRAR BITACORA');
+            setClearing(false);
+            setParams(new URLSearchParams(), { replace: true });
+            setText('');
+            setReload((x) => x + 1);
+          }}
+        >
+          <p>
+            Se borrarán <strong>todos</strong> los registros de la bitácora ({sum?.total ?? '…'}). Queda una sola entrada que
+            dice quién la vació y cuántos registros había. <strong>No se puede deshacer.</strong>
+          </p>
+        </ConfirmTypeModal>
+      )}
 
       <section className={`${d.card} ${a.filters}`} aria-label="Buscar y filtrar la bitácora">
         <label className={a.search}>

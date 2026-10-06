@@ -447,3 +447,85 @@ export async function createBatch(
   }
   throw new BatchError('No se pudo crear el lote. Intenta de nuevo.');
 }
+
+/* ------------------------------------------------------------------------ */
+/* Borrar un lote (7 oct 2026)                                              */
+/* ------------------------------------------------------------------------ */
+
+export type DeleteBatchResult = { code: string; pulses: number; attendees: number; redemptions: number; notes: number };
+
+/**
+ * Borra un lote COMPLETO en una transacción (todo o nada). Pensado para limpiar lotes de prueba.
+ * Se borran: sus pulseras, los asistentes que se registraron SOLO con pulseras de este lote (con sus
+ * notas, likes, canjes y estado de campana) y los canjes hechos con sus pulseras. Un asistente que
+ * además tiene una pulsera de OTRO lote (reemplazo) se conserva.
+ * `confirmCode` debe ser el nombre exacto del lote (confirmación escrita desde la pantalla).
+ */
+export async function deleteBatch(actorId: string, id: string, confirmCode: string): Promise<DeleteBatchResult> {
+  try {
+    return await withTransaction(async (tx) => {
+      const b = await tx.query<{ code: string }>(`SELECT code FROM "Batch" WHERE id = $1 FOR UPDATE`, [id]);
+      if (!b.rowCount) throw new BatchError('Ese lote ya no existe.');
+      const code = b.rows[0].code;
+      if (String(confirmCode ?? '').trim() !== code) throw new BatchError(`Para borrar escribe exactamente: ${code}`);
+
+      // Asistentes que quedarían sin ninguna pulsera fuera de este lote.
+      const orphan = (
+        await tx.query<{ id: string }>(
+          `SELECT DISTINCT p."attendeeId" AS id FROM "Pulse" p
+            WHERE p."batchId" = $1 AND p."attendeeId" IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM "Pulse" o WHERE o."attendeeId" = p."attendeeId" AND o."batchId" <> $1)`,
+          [id],
+        )
+      ).rows.map((r) => r.id);
+
+      const has = async (t: string) => Boolean((await tx.query(`SELECT to_regclass($1) AS t`, [`public."${t}"`])).rows[0].t);
+      let notes = 0;
+      if (orphan.length) {
+        if (await has('Note')) {
+          if (await has('NoteLike')) {
+            await tx.query(
+              `DELETE FROM "NoteLike" WHERE "attendeeId" = ANY($1::text[]) OR "noteId" IN (SELECT id FROM "Note" WHERE "attendeeId" = ANY($1::text[]))`,
+              [orphan],
+            );
+          }
+          notes = (await tx.query(`DELETE FROM "Note" WHERE "attendeeId" = ANY($1::text[])`, [orphan])).rowCount ?? 0;
+        }
+        if (await has('NotificationState')) {
+          await tx.query(`DELETE FROM "NotificationState" WHERE "attendeeId" = ANY($1::text[])`, [orphan]);
+        }
+      }
+      const redemptions =
+        (
+          await tx.query(
+            `DELETE FROM "Redemption" WHERE "pulseId" IN (SELECT id FROM "Pulse" WHERE "batchId" = $1) OR "attendeeId" = ANY($2::text[])`,
+            [id, orphan],
+          )
+        ).rowCount ?? 0;
+      // Una pulsera de otro lote que reemplazó a una de este: se suelta la referencia.
+      const selfRef = await tx.query(`SELECT 1 FROM information_schema.columns WHERE table_name = 'Pulse' AND column_name = 'replacesId'`);
+      if (selfRef.rowCount) {
+        await tx.query(
+          `UPDATE "Pulse" SET "replacesId" = NULL WHERE "batchId" <> $1 AND "replacesId" IN (SELECT id FROM "Pulse" WHERE "batchId" = $1)`,
+          [id],
+        );
+      }
+      const pulses = (await tx.query(`DELETE FROM "Pulse" WHERE "batchId" = $1`, [id])).rowCount ?? 0;
+      if (orphan.length) await tx.query(`DELETE FROM "Attendee" WHERE id = ANY($1::text[])`, [orphan]);
+      await tx.query(`DELETE FROM "Batch" WHERE id = $1`, [id]);
+
+      const result = { code, pulses, attendees: orphan.length, redemptions, notes };
+      await tx.query(
+        `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
+         VALUES ($1, $2, 'batch.delete', 'Batch', $3, $4::jsonb, ${NOW_UTC})`,
+        [newId(), actorId, id, JSON.stringify(result)],
+      );
+      return result;
+    });
+  } catch (err) {
+    if ((err as { code?: string }).code === '23503') {
+      throw new BatchError('No se pudo borrar: hay datos que dependen de este lote. Usa el script db:limpiar-pruebas.');
+    }
+    throw err;
+  }
+}

@@ -57,6 +57,7 @@ import {
   type AdminNotesResponse,
   type AddBlockedWordResponse,
   type BlockedWordsResponse,
+  type AdminBenefitsResponse,
   type AdminChurchesResponse,
   type ChurchInput,
   type RetireNoteRequest,
@@ -174,7 +175,9 @@ export const api = {
     return request<AdminNotesResponse>(`/api/admin/notes${s ? `?${s}` : ''}`);
   },
 
-  // Admin -> Auditoría (solo lectura)
+  clearAudit: (confirm: string) =>
+    request<{ deleted: number }>('/api/admin/audit', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }) }),
+  // Admin -> Auditoría
   adminAudit: (f: AdminAuditFilters) => {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '' && v !== 0) qs.set(k, String(v));
@@ -207,6 +210,18 @@ export const api = {
     }),
   removeBlockedWord: (id: string) =>
     request<{ outcome: 'ok' }>(`/api/admin/blocked-words/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Admin -> Beneficios (lo que incluye cada kit)
+  adminBenefits: () => request<AdminBenefitsResponse>('/api/admin/benefits'),
+  createBenefit: (packageId: string, label: string) => postJson<{ id: string }>('/api/admin/benefits', { packageId, label }),
+  updateBenefit: (id: string, label: string) =>
+    request<{ ok: true }>(`/api/admin/benefits/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ label }),
+    }),
+  deleteBenefit: (id: string) => request<{ ok: true }>(`/api/admin/benefits/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  moveBenefit: (id: string, dir: -1 | 1) => postJson<{ ok: true }>(`/api/admin/benefits/${encodeURIComponent(id)}/reorder`, { dir }),
 
   // Admin -> Iglesias (CRUD; presbiterios y zonas son de solo lectura)
   adminChurches: () => request<AdminChurchesResponse>('/api/admin/churches'),
@@ -265,6 +280,12 @@ export const api = {
     const s = qs.toString();
     return request<AdminBatchDetail>(`/api/admin/batches/${encodeURIComponent(id)}${s ? `?${s}` : ''}`);
   },
+
+  deleteBatch: (id: string, confirm: string) =>
+    request<{ code: string; pulses: number; attendees: number; redemptions: number; notes: number }>(
+      `/api/admin/batches/${encodeURIComponent(id)}`,
+      { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }) },
+    ),
 
   // Admin -> Asistentes (Etapa 4)
   adminAttendees: (f: AdminAttendeeFilters) => {

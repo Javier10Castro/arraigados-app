@@ -32,6 +32,7 @@ import Notas from './admin/Notas';
 import Avisos from './admin/Avisos';
 import Auditoria from './admin/Auditoria';
 import Iglesias from './admin/Iglesias';
+import BeneficiosAdmin from './admin/Beneficios';
 import { AdminMas } from './admin/AdminShell';
 import { ADMIN_HOME } from './admin/nav';
 import Mas from './pages/Mas';
@@ -116,6 +117,7 @@ export default function App() {
         <Route path="/admin/merch" element={admin(<Merch />)} />
         <Route path="/admin/notas" element={admin(<Notas />)} />
         <Route path="/admin/avisos" element={admin(<Avisos />)} />
+        <Route path="/admin/beneficios" element={admin(<BeneficiosAdmin />)} />
         <Route path="/admin/iglesias" element={admin(<Iglesias />)} />
         <Route path="/admin/auditoria" element={admin(<Auditoria />)} />
         <Route path="/admin/usuarios" element={admin(<Usuarios />)} />

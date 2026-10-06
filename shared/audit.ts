@@ -13,7 +13,7 @@ import type { PageSize } from './api';
  * muestra nunca, ni en el detalle genérico.
  */
 
-export type AuditCategory = 'usuarios' | 'lotes' | 'asistentes' | 'pulseras' | 'canjes' | 'notas' | 'avisos' | 'iglesias' | 'ajustes' | 'otros';
+export type AuditCategory = 'usuarios' | 'lotes' | 'asistentes' | 'pulseras' | 'canjes' | 'notas' | 'avisos' | 'iglesias' | 'beneficios' | 'ajustes' | 'otros';
 
 export const AUDIT_CATEGORIES: { id: AuditCategory; label: string }[] = [
   { id: 'usuarios', label: 'Usuarios' },
@@ -24,6 +24,7 @@ export const AUDIT_CATEGORIES: { id: AuditCategory; label: string }[] = [
   { id: 'notas', label: 'Notas' },
   { id: 'avisos', label: 'Avisos' },
   { id: 'iglesias', label: 'Iglesias' },
+  { id: 'beneficios', label: 'Beneficios' },
   { id: 'ajustes', label: 'Ajustes' },
 ];
 
@@ -33,6 +34,8 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'user.password_reset': { label: 'Restableció una contraseña', category: 'usuarios' },
   'user.password_change': { label: 'Cambió su contraseña', category: 'usuarios' },
   'batch.create': { label: 'Creó un lote', category: 'lotes' },
+  'batch.delete': { label: 'Borró un lote', category: 'lotes' },
+  'audit.clear': { label: 'Vació la bitácora', category: 'ajustes' },
   'attendee.update': { label: 'Corrigió datos de un asistente', category: 'asistentes' },
   'pulse.reassign': { label: 'Reemplazó una pulsera', category: 'pulseras' },
   'redemption.void': { label: 'Anuló un canje', category: 'canjes' },
@@ -45,6 +48,10 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'church.create': { label: 'Agregó una iglesia', category: 'iglesias' },
   'church.update': { label: 'Editó una iglesia', category: 'iglesias' },
   'church.delete': { label: 'Eliminó una iglesia', category: 'iglesias' },
+  'benefit.create': { label: 'Agregó un beneficio a un kit', category: 'beneficios' },
+  'benefit.update': { label: 'Editó un beneficio', category: 'beneficios' },
+  'benefit.delete': { label: 'Quitó un beneficio de un kit', category: 'beneficios' },
+  'benefit.move': { label: 'Reordenó un beneficio', category: 'beneficios' },
   'setting.update': { label: 'Cambió un ajuste', category: 'ajustes' },
 };
 
@@ -95,6 +102,8 @@ export type AdminAuditResponse = {
   rows: AdminAuditRow[];
   summary: AdminAuditSummary;
   actors: AdminAuditActor[];
+  /** true solo para la cuenta autorizada a vaciar la bitácora. */
+  canClear: boolean;
 };
 
 /* ------------------------------------------------------------------ */
@@ -135,6 +144,16 @@ export function auditDetails(row: Pick<AdminAuditRow, 'action' | 'entityId' | 'm
         { label: 'Código del lote', value: text(m.code) },
         { label: 'Pulseras', value: text(m.quantity) },
       ];
+    case 'batch.delete':
+      return [
+        { label: 'Código del lote', value: text(m.code) },
+        { label: 'Pulseras borradas', value: text(m.pulses) },
+        { label: 'Asistentes borrados', value: text(m.attendees) },
+        { label: 'Canjes borrados', value: text(m.redemptions) },
+        { label: 'Notas borradas', value: text(m.notes) },
+      ];
+    case 'audit.clear':
+      return [{ label: 'Registros borrados', value: text(m.deleted) }];
     case 'attendee.update': {
       const label: Record<string, string> = { fullName: 'Nombre', ageRange: 'Rango de edad', church: 'Iglesia' };
       return Object.entries(m).map(([k, v]) => {
@@ -192,6 +211,25 @@ export function auditDetails(row: Pick<AdminAuditRow, 'action' | 'entityId' | 'm
         { label: 'Iglesia', value: text(m.name) },
         { label: 'Presbiterio', value: text(m.presbytery) },
       ];
+    case 'benefit.create':
+    case 'benefit.delete':
+      return [
+        { label: 'Kit', value: text(m.kit) },
+        { label: 'Beneficio', value: text(m.label) },
+      ];
+    case 'benefit.update': {
+      const c = obj(m.label);
+      return [
+        { label: 'Kit', value: text(m.kit) },
+        { label: 'Cambió', value: `${text(c.from)} → ${text(c.to)}` },
+      ];
+    }
+    case 'benefit.move':
+      return [
+        { label: 'Kit', value: text(m.kit) },
+        { label: 'Beneficio', value: text(m.label) },
+        { label: 'Lo movió', value: text(m.dir) },
+      ];
     case 'setting.update':
       return [
         { label: 'Ajuste', value: row.entityId === 'avatarMode' ? 'Tipo de avatar' : text(row.entityId) },
@@ -218,6 +256,8 @@ export function auditEntityLink(row: Pick<AdminAuditRow, 'entityType' | 'entityI
       return '/admin/usuarios';
     case 'Church':
       return '/admin/iglesias';
+    case 'PackageBenefit':
+      return '/admin/beneficios';
     default:
       return null;
   }
@@ -227,6 +267,7 @@ const ENTITY_TYPE: Record<string, string> = {
   User: 'Cuenta',
   Attendee: 'Asistente',
   Batch: 'Lote',
+  AuditLog: 'Bitácora',
   Pulse: 'Pulsera',
   Redemption: 'Canje',
   Note: 'Nota',
