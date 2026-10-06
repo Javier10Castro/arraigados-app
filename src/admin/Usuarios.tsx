@@ -204,9 +204,9 @@ function RoleSegment({ value, onChange, disabled }: { value: StaffRole; onChange
 }
 
 /** Credenciales para compartir (se muestran una sola vez). */
-function Credentials({ email, password }: { email: string; password: string }) {
+function Credentials({ email, password, role }: { email: string; password: string; role: StaffRole }) {
   const [copied, setCopied] = useState(false);
-  const text = `Arraigados 2K26 · Staff\nCorreo: ${email}\nContraseña temporal: ${password}\nAl entrar se te pedirá crear tu propia contraseña.`;
+  const text = `Arraigados 2K26 · ${role === 'ADMIN' ? 'Admin' : 'Staff'}\nCorreo: ${email}\nContraseña temporal: ${password}\nAl entrar se te pedirá crear tu propia contraseña.\n\nEntra aquí:\nredjuveniltijuana.com/login`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -242,7 +242,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [password, setPassword] = useState(generateTemporaryPassword);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState<{ email: string; password: string } | null>(null);
+  const [done, setDone] = useState<{ email: string; password: string; role: StaffRole } | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,7 +250,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setError('');
     try {
       await api.createUser({ name, email, role, temporaryPassword: password });
-      setDone({ email: email.trim().toLowerCase(), password });
+      setDone({ email: email.trim().toLowerCase(), password, role });
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.');
@@ -262,7 +262,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   if (done) {
     return (
       <AdminModal title="Cuenta creada" onClose={onClose}>
-        <Credentials email={done.email} password={done.password} />
+        <Credentials email={done.email} password={done.password} role={done.role} />
         <Button block onClick={onClose}>
           Listo
         </Button>
@@ -391,7 +391,7 @@ function EditUserModal({
     return (
       <AdminModal title="Contraseña restablecida" onClose={onClose}>
         <p className={s.hint}>Las sesiones abiertas de {user.name} se cerraron.</p>
-        <Credentials email={user.email} password={resetPw} />
+        <Credentials email={user.email} password={resetPw} role={user.role} />
         <Button block onClick={onClose}>
           Listo
         </Button>
