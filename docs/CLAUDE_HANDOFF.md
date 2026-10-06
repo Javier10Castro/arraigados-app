@@ -2666,3 +2666,15 @@ Pedido del propietario tras el análisis de pendientes (lista completa y estado 
 - **UI (`src/admin/Iglesias.tsx` + `Iglesias.module.css`, reutiliza estilos de `Usuarios.module.css`):** chips por zona, buscador (sin acentos), filtro por presbiterio, lista paginada; modal de alta/edición con selector de presbiterio agrupado por zona, aviso cuando mover cambia la zona (cambia también la sede del domingo y los avisos por zona de sus asistentes) y borrado con confirmación solo si no tiene asistentes.
 - **Efecto en el registro:** `/api/churches` (buscador del registro) lee las mismas tablas; trae `cache-control: max-age=300`, así que una iglesia nueva puede tardar hasta ~5 min en aparecer en el buscador de quien ya lo tenía abierto.
 - **Probado (PGlite con el esquema Prisma real: `updatedAt` obligatorio y FK):** 401 sin sesión, alta, duplicados (mismo nombre, otro acento/mayúsculas, otro presbiterio), presbiterio inválido, nombre corto, mover (cambia zona), renombrar, sin cambios, 404, borrar con asistentes (409) y sin ellos, auditoría; UI en escritorio y 390 px (crear, mover, eliminar, filtros, sin scroll horizontal ni errores de consola).
+
+---
+
+## 52. Programa oficial (6 oct 2026)
+- El propietario compartió la hoja oficial "PROGRAMA — CONGRESO ARRAIGADOS RJDT". Fuente única en la app: `src/data/program.ts` (la leen `/home`, `/programa` y el reverso del gafete `/homev2`).
+- **Formato corto respetado:** solo HORA + EVENTO. La hoja trae además Tiempo, Responsable, Iglesia y Notas; **no se publican** (regla editorial del propietario, ver encabezado de `program.ts`).
+- **Cambios:** sábado 5:30 pm "Video / Contador" → **"Video Bienvenida y Contador"**; se **quitó "Convivencia 7:30 pm"** del sábado (no está en el programa oficial: el sábado cierra con Despedida 7:25 pm). Domingo sin cambios (6:00 Video / Contador · 6:05 Inicio Culto · 6:30 Ofrenda · 6:45 Predicación y Ministración · 7:45 Despedida).
+- **Sedes (ya estaban bien):** sábado IAFCJ 12 para todos; domingo Zona 1 → IAFCJ 21, Zona 2 → IAFCJ 12 (`SUNDAY_VENUE_BY_ZONE`).
+- La tarjeta "En vivo" de `/home` calcula el fin de cada bloque con el inicio del siguiente; ahora la última del sábado es "Despedida" (su fin = fin del día).
+- Verificado: `/programa` (sábado 9 filas, domingo 5) y reverso del gafete con el horario nuevo, sin recortes.
+- (6 oct 2026, despliegue) **Nombres cortos en la app** (pedido del propietario; el nombre oficial queda guardado en el encabezado de `program.ts` por si se requiere volver a él): sábado 4:10 pm **"Break"** (oficial "Break / Venta por parte del Distrito") y sábado 5:30 pm **"Intro"** (oficial "Video Bienvenida y Contador"). Se cambió en `program.ts` (única fuente) y en `Home.tsx` (`KIND_TITLE_OVERRIDES`: clave `Break` → etiqueta "Receso" en la tarjeta "Ahora"). Aplica a `/home`, `/programa` y el reverso del gafete.
+- (6 oct 2026) El domingo 6:00 pm también pasó a **"Intro"** (oficial: "Video / Contador"), igual que el sábado 5:30 pm. Nombre oficial guardado en el encabezado de `program.ts`.

@@ -85,11 +85,11 @@ function endOfDay(dateStr: string): Date {
  * TIPO que va en la etiqueta ("Plenaria") y el nombre específico que va en
  * el título ("Raíces profundas"). Dos casos no siguen el patrón "Tipo N —
  * Nombre" y se nombran aquí explícitamente, tal como pidió el propietario:
- * "Break / Venta por parte del Distrito" se anuncia como "Receso", e "Inicio
+ * "Break" se anuncia como "Receso", e "Inicio
  * Culto" se anuncia como "Culto".
  */
 const KIND_TITLE_OVERRIDES: Record<string, { kind: string; title: string }> = {
-  'Break / Venta por parte del Distrito': { kind: 'Receso', title: 'Break / Venta por parte del Distrito' },
+  Break: { kind: 'Receso', title: 'Break' }, // oficial: "Break / Venta por parte del Distrito" (ver program.ts)
   'Inicio Culto': { kind: 'Culto', title: 'Inicio Culto' },
 };
 
@@ -105,8 +105,7 @@ function splitKindTitle(event: string): { kind: string; title: string } {
 /**
  * Construye los bloques de un día: el fin de cada actividad es el inicio de
  * la siguiente (regla explícita del propietario -- nunca una duración
- * inventada). La ÚLTIMA actividad del día ("Convivencia" el sábado,
- * "Despedida" el domingo) no tiene una siguiente actividad ese mismo día, así
+ * inventada). La ÚLTIMA actividad del día ("Despedida", sábado y domingo) no tiene una siguiente actividad ese mismo día, así
  * que su fin se fija al final del día calendario: evita inventar una
  * duración y evita que, de madrugada, la tarjeta siga diciendo "En vivo".
  */

@@ -1,7 +1,27 @@
 import { VENUE_12VA, VENUE_21RA } from './app';
 
 /**
- * Programa público del congreso para la experiencia /home (NUEVO ARCHIVO --
+ * PROGRAMA OFICIAL del congreso (confirmado por el propietario el 6 oct 2026,
+ * hoja "PROGRAMA — CONGRESO ARRAIGADOS RJDT"). Es la ÚNICA fuente: la leen
+ * /home, /programa y el reverso del gafete (/homev2).
+ *
+ * Cambios del 6 oct 2026 respecto a la versión anterior (brief del 2 oct):
+ *  - Sábado 5:30 pm: "Video / Contador" -> "Video Bienvenida y Contador".
+ *  - Sábado: se quitó "Convivencia 7:30 pm" (no está en el programa oficial;
+ *    el sábado termina con "Despedida 7:25 pm").
+ *
+ * NOMBRES DE DESPLIEGUE (6 oct 2026, pedido del propietario): en la app se
+ * muestran más cortos que en la hoja oficial. Se guarda aquí el nombre
+ * oficial por si hace falta volver a él (basta cambiar el `event` de abajo y,
+ * en Home.tsx, la clave de KIND_TITLE_OVERRIDES):
+ *   Sábado 4:10 pm  app: "Break"  | oficial: "Break / Venta por parte del Distrito"
+ *   Sábado 5:30 pm  app: "Intro"  | oficial: "Video Bienvenida y Contador"
+ *   Domingo 6:00 pm app: "Intro"  | oficial: "Video / Contador"
+ *
+ * El Excel oficial trae además Tiempo, Responsable, Iglesia y Notas, que NO se
+ * publican (ver filtro editorial abajo).
+ *
+ * Programa público para la experiencia /home (NUEVO ARCHIVO --
  * src/data/app.ts ya tenía un `schedule` distinto, usado hoy por /programa y
  * que NO se toca en esta etapa; ver docs/CLAUDE_HANDOFF.md).
  *
@@ -24,13 +44,12 @@ export const SATURDAY_PROGRAM: ProgramItem[] = [
   { time: '2:00 pm', event: 'Bienvenida' },
   { time: '2:10 pm', event: 'Plenaria 1 — Raíces profundas' },
   { time: '3:10 pm', event: 'Plenaria 2 — Sobreedificados en Él' },
-  { time: '4:10 pm', event: 'Break / Venta por parte del Distrito' },
-  { time: '5:30 pm', event: 'Video / Contador' },
+  { time: '4:10 pm', event: 'Break' },
+  { time: '5:30 pm', event: 'Intro' },
   { time: '5:35 pm', event: 'Inicio Culto' },
   { time: '6:00 pm', event: 'Ofrenda' },
   { time: '6:15 pm', event: 'Predicación y Ministración' },
   { time: '7:25 pm', event: 'Despedida' },
-  { time: '7:30 pm', event: 'Convivencia' },
 ];
 
 /**
@@ -40,7 +59,7 @@ export const SATURDAY_PROGRAM: ProgramItem[] = [
  *   Zona 2 -> 12va IAFCJ
  */
 export const SUNDAY_PROGRAM: ProgramItem[] = [
-  { time: '6:00 pm', event: 'Video / Contador' },
+  { time: '6:00 pm', event: 'Intro' },
   { time: '6:05 pm', event: 'Inicio Culto' },
   { time: '6:30 pm', event: 'Ofrenda' },
   { time: '6:45 pm', event: 'Predicación y Ministración' },
