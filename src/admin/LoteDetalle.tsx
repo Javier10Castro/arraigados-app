@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, X, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, Unlink, X, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import ConfirmTypeModal from './ConfirmTypeModal';
 import HeaderDangerButton from './HeaderDangerButton';
+import ReleasePulseModal from './ReleasePulseModal';
+import { useStaffSession } from '../context/StaffSession';
 import { api, batchFileUrls, downloadFile } from '../lib/api';
 import {
   PAPER_SIZE_LABELS,
@@ -62,6 +64,8 @@ export default function LoteDetalle() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const { user: me } = useStaffSession();
+  const [releasing, setReleasing] = useState<{ id: string; label: string; who: string } | null>(null);
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Math.floor(Number(params.get('pagina') ?? 1)) || 1);
   const pageSize = parsePageSize(params.get('porPagina'));
@@ -296,6 +300,19 @@ export default function LoteDetalle() {
             </ConfirmTypeModal>
           )}
 
+          {releasing && (
+            <ReleasePulseModal
+              pulseId={releasing.id}
+              label={releasing.label}
+              who={releasing.who}
+              onClose={() => setReleasing(null)}
+              onDone={() => {
+                setReleasing(null);
+                load();
+              }}
+            />
+          )}
+
           {notice && (
             <p className={d.alert} role="alert">
               {notice}
@@ -401,6 +418,18 @@ export default function LoteDetalle() {
                             </button>
                           </td>
                           <td className={d.act}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            {me?.isOwner && p.attendeeId && p.status === 'ACTIVE' && (
+                              <button
+                                type="button"
+                                className={s.iconBtn}
+                                title="Desvincular (dejar como recién creada)"
+                                aria-label={`Desvincular pulsera ${p.position}`}
+                                onClick={() => setReleasing({ id: p.id, label: `#${p.position}`, who: p.attendeeName ?? 'el asistente' })}
+                              >
+                                <Unlink size={15} />
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={`${s.iconBtn} ${p.status === 'INVALIDATED' ? d.blocked : ''}`}
@@ -415,6 +444,7 @@ export default function LoteDetalle() {
                             >
                               <Download size={15} />
                             </button>
+                            </div>
                           </td>
                         </tr>
                       ))

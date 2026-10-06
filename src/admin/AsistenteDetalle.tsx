@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
-import { ChevronLeft, CupSoda, Pencil } from 'lucide-react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ChevronLeft, CupSoda, Pencil, Unlink } from 'lucide-react';
 import Button from '../components/Button';
 import DrinkCups from '../components/DrinkCups';
 import ChurchCombobox from '../components/ChurchCombobox';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
+import HeaderDangerButton from './HeaderDangerButton';
+import ReleasePulseModal from './ReleasePulseModal';
+import { useStaffSession } from '../context/StaffSession';
 import { api } from '../lib/api';
 import UserAvatar from '../components/UserAvatar';
 import { Skeleton, SkeletonRegion } from '../components/Skeleton';
@@ -32,6 +35,9 @@ export default function AsistenteDetalle() {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { user: me } = useStaffSession();
+  const [releasing, setReleasing] = useState(false);
+  const navigate = useNavigate();
 
   const load = useCallback(() => {
     setError('');
@@ -46,7 +52,23 @@ export default function AsistenteDetalle() {
   const previous = att?.pulses.filter((p) => p.status !== 'ACTIVE') ?? [];
 
   return (
-    <AdminShell title="Asistente">
+    <AdminShell
+      title="Asistente"
+      action={
+        me?.isOwner && att && active ? (
+          <HeaderDangerButton label="Desvincular pulsera" icon={Unlink} onClick={() => setReleasing(true)} />
+        ) : undefined
+      }
+    >
+      {releasing && att && active && (
+        <ReleasePulseModal
+          pulseId={active.id}
+          label={active.label}
+          who={att.fullName}
+          onClose={() => setReleasing(false)}
+          onDone={() => navigate(backTo, { replace: true })}
+        />
+      )}
       <Link to={backTo} className={d.back}>
         <ChevronLeft size={16} strokeWidth={2.4} /> Asistentes
       </Link>

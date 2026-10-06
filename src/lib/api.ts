@@ -285,6 +285,12 @@ export const api = {
     return request<AdminBatchDetail>(`/api/admin/batches/${encodeURIComponent(id)}${s ? `?${s}` : ''}`);
   },
 
+  /** Herramienta de pruebas (solo cuenta dueña): deja la pulsera como recién creada. */
+  releasePulse: (pulseId: string) =>
+    request<{ attendeeName: string; redemptions: number; notes: number }>(
+      `/api/admin/pulses/${encodeURIComponent(pulseId)}/release`,
+      { method: 'POST' },
+    ),
   deleteBatch: (id: string, confirm: string) =>
     request<{ code: string; pulses: number; attendees: number; redemptions: number; notes: number }>(
       `/api/admin/batches/${encodeURIComponent(id)}`,

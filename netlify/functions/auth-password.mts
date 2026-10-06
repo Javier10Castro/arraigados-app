@@ -1,5 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { authorize, sessionCookie } from '../../server/auth';
+import { isOwnerEmail } from '../../server/owner';
 import { UserError, changeOwnPassword } from '../../server/users';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
 import type { ChangePasswordRequest } from '../../shared/api';
@@ -22,7 +23,7 @@ export default handler(async (req: Request) => {
   try {
     const newHash = await changeOwnPassword(auth.user.id, auth.user.passwordHash, body.currentPassword, body.newPassword);
     const { passwordHash: _omit, ...user } = auth.user;
-    return json({ ...user, mustChangePassword: false }, 200, { 'set-cookie': sessionCookie(req, user.id, newHash) });
+    return json({ ...user, mustChangePassword: false, isOwner: isOwnerEmail(user.email) }, 200, { 'set-cookie': sessionCookie(req, user.id, newHash) });
   } catch (err) {
     if (err instanceof UserError) return apiError(err.message, 400);
     throw err;

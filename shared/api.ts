@@ -119,6 +119,8 @@ export type StaffUser = {
   role: StaffRole;
   /** true = entró con una contraseña temporal y debe crear la suya antes de continuar. */
   mustChangePassword?: boolean;
+  /** Solo lo devuelve /api/auth/me: true si es la cuenta dueña (herramientas de pruebas). */
+  isOwner?: boolean;
 };
 
 /** POST /api/auth/password -- el propio usuario cambia su contraseña. */
