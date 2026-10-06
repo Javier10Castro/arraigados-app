@@ -1,6 +1,8 @@
+import { lazy, Suspense, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ChevronRight,
+  IdCard,
   Images,
   LogOut,
   MapPin,
@@ -13,6 +15,8 @@ import { firstName, usePulseSession } from '../context/PulseSession';
 import UserAvatar from '../components/UserAvatar';
 import styles from './Mas.module.css';
 
+const GafeteViewer = lazy(() => import('./homev2/GafeteViewer'));
+
 const links = [
   { to: '/comida', label: 'Comida', desc: 'Menú de ambas sedes', Icon: Utensils },
   { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },
@@ -22,6 +26,7 @@ const links = [
 export default function Mas() {
   const navigate = useNavigate();
   const { me, signOut } = usePulseSession();
+  const [gafeteOpen, setGafeteOpen] = useState(false);
   const fullName = me?.attendee.fullName ?? '';
   const name = firstName(fullName);
 
@@ -47,6 +52,18 @@ export default function Mas() {
       <section className={styles.section}>
         <h2 className="label">Secciones</h2>
         <ul className={styles.list}>
+          <li>
+            <button type="button" className={`${styles.row} ${styles.rowButton}`} onClick={() => setGafeteOpen(true)}>
+              <span className={styles.rowIcon} aria-hidden="true">
+                <IdCard size={18} strokeWidth={2} />
+              </span>
+              <span className={styles.rowBody}>
+                <strong>Mi gafete</strong>
+                <span>Verlo, girarlo y descargarlo como imagen</span>
+              </span>
+              <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
+            </button>
+          </li>
           {links.map(({ to, label, desc, Icon }) => (
             <li key={to}>
               <NavLink to={to} className={styles.row}>
@@ -92,6 +109,11 @@ export default function Mas() {
         <p className={styles.aboutLine}>17 y 18 de octubre</p>
         <p className={`${styles.verse} script`}>Colosenses 2:6 - 7</p>
       </section>
+      {gafeteOpen && (
+        <Suspense fallback={null}>
+          <GafeteViewer onClose={() => setGafeteOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

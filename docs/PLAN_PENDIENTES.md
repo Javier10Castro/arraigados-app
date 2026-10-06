@@ -245,3 +245,26 @@ sección "Etapa 9" del Admin deshabilitada como está.
 ### 10.3 Likes en notas (5 oct 2026, noche) — HECHO en código
 - Indicadores de like unificados con la campana (círculo rojo + corazón blanco + número); pastilla tipo Instagram sobre la burbuja; lista "quién le dio like" en la hoja de tu nota (`GET /api/notes/likers`). Detalle en `CLAUDE_HANDOFF.md` §49.
 - Pendiente: Fase 3 (recordatorios automáticos del programa + toast), respaldo completo, Kits (resumen de solo lectura, sin decidir).
+
+### 10.4 /homev2 (6 oct 2026) — HECHO en código
+- Animación del gafete antes del Home (ver `CLAUDE_HANDOFF.md` §50). Pendiente de decidir: ¿una vez por sesión en lugar de siempre (`SHOW_INTRO` en `HomeV2.tsx`)?, ¿sustituir `/home` por `/homev2` cuando se apruebe?, ¿mostrar el mismo gafete en otra pantalla (p. ej. Beneficios)?
+
+## 11. Plan — lo que sigue (6 oct 2026)
+**A. Antes de desplegar (hoy)**
+1. `npm run db:migrar` (aplica 007, "EN VIVO"). Sin esto la campana de avisos sale vacía en producción.
+2. Crear una rama de respaldo en Neon (ver `PLAN_RESPALDO.md`): hoy NO hay respaldo.
+3. `git add -A` · commit · push (Netlify despliega solo).
+4. Probar en un celular real: `/homev2`, "Mi gafete" (descarga de imagen en iPhone/Safari y Android/Chrome), likes en notas y la lista de quién dio like.
+5. `npm run moderacion:probar` en tu máquina.
+
+**B. Decisiones pendientes (una línea cada una)**
+- ¿`/homev2` reemplaza a `/home` al aprobarlo? ¿La animación "siempre" o "una vez por sesión" (`SHOW_INTRO` en `HomeV2.tsx`)?
+- ¿"Mi gafete" también en la pantalla Beneficios?
+- Kits: ¿resumen de solo lectura en Admin? (sin decidir)
+
+**C. Construcción (en este orden)**
+1. Notificaciones Fase 3: recordatorios automáticos del programa (p. ej. "Empieza el culto en 15 min") + aviso emergente (toast) en la app. Reutiliza `Announcement`/campana; el programa ya está en `src/data/program.ts`.
+2. Respaldo completo: `db:respaldo-total` + restauración probada (`PLAN_RESPALDO.md`).
+3. Menú de alimentos (`/comida`) con fotos y platillos reales cuando se tengan; luego `/admin/menu` ya existe para administrarlos.
+4. Pruebas automáticas mínimas (no urgentes): moderación, notificaciones, QR.
+5. Tras el congreso: limpiar datos de prueba (`db:limpiar-pruebas`), archivar avisos y notas.

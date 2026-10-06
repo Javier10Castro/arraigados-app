@@ -1,6 +1,7 @@
+import { lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { CalendarDays, Gift, Home, LogOut, MoreHorizontal, QrCode, Utensils, Images } from 'lucide-react';
+import { CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils, Images } from 'lucide-react';
 import Wordmark from './Wordmark';
 import RingsMark from './RingsMark';
 import Ambient from './Ambient';
@@ -21,10 +22,14 @@ const quickLinks = [
   { to: '/recursos', label: 'Recursos', Icon: QrCode },
 ];
 
+// El visor del gafete (física, estilos, imágenes) se carga solo al abrirlo.
+const GafeteViewer = lazy(() => import('../pages/homev2/GafeteViewer'));
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { me, signOut } = usePulseSession();
+  const [gafeteOpen, setGafeteOpen] = useState(false);
   const fullName = me?.attendee.fullName ?? '';
   const displayName = firstName(fullName);
 
@@ -58,6 +63,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
+
+        <button type="button" className={styles.gafeteBtn} onClick={() => setGafeteOpen(true)}>
+          <IdCard size={19} strokeWidth={2.1} />
+          <span>Mi gafete</span>
+        </button>
 
         <p className={styles.quickLabel}>Accesos rápidos</p>
         <nav className={styles.quick} aria-label="Accesos rápidos">
@@ -94,6 +104,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <main className={styles.main}>
         <div className={styles.content}>{children}</div>
       </main>
+
+      {gafeteOpen && (
+        <Suspense fallback={null}>
+          <GafeteViewer onClose={() => setGafeteOpen(false)} />
+        </Suspense>
+      )}
 
       <nav className={styles.bottom} aria-label="Navegación principal">
         {primaryNav.map(({ to, label, Icon }) => (

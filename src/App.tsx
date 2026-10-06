@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import Cover from './pages/Cover';
+
+// /homev2 se carga bajo demanda: su física, estilos e imágenes no pesan en el resto de la app.
+const HomeV2 = lazy(() => import('./pages/homev2/HomeV2'));
 import Registro from './pages/Registro';
 import Conocer from './pages/Conocer';
 import Login from './pages/Login';
@@ -118,6 +121,7 @@ export default function App() {
             redirige aquí para no romper enlaces o marcadores guardados. */}
         <Route path="/inicio" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={shell(<Home />)} />
+        <Route path="/homev2" element={shell(<Suspense fallback={null}><HomeV2 /></Suspense>)} />
         {/* "Ver todo" de la vitrina de Mercancía (4 oct 2026): página propia,
             no un modal/hoja -- ver nota en MerchCarousel.tsx. */}
         <Route path="/home/mercancia" element={shell(<MerchGallery />)} />

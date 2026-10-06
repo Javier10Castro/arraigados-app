@@ -5,6 +5,12 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 /** Cabecera con la que el proxy de desarrollo marca sus peticiones (evita ciclos). */
 const PROXY_MARK = 'x-arraigados-dev-proxy';
 
+/**
+ * Vite NO debe vigilar `.netlify/` (lo escribe y bloquea `netlify dev`): en Windows el vigilante falla con
+ * `EBUSY: resource busy or locked, watch '...\\.netlify\\functions-serve\\...'` y tumba todo el servidor.
+ */
+const WATCH_IGNORED = ['**/.netlify/**', '**/dist/**'];
+
 // `npm run dev:https` (--mode https) sirve con un certificado local para
 // poder usar la cámara desde un celular en la red (los navegadores solo
 // permiten la cámara en https o en localhost).
@@ -18,11 +24,13 @@ export default defineConfig(({ mode }) => ({
           // debe estar corriendo en otra terminal.
           port: 5174,
           host: true,
+          watch: { ignored: WATCH_IGNORED },
           proxy: { '/api': { target: 'http://localhost:8888', changeOrigin: false } },
         }
       : {
           port: 5173,
           host: true,
+          watch: { ignored: WATCH_IGNORED },
           // PUBLIC_BASE_URL de desarrollo es http://localhost:5173, así que un QR
           // de prueba abre /p/… directo en Vite. Sin este proxy esa página no
           // llega a las funciones (/api → 404). Con `npm run dev` corriendo,

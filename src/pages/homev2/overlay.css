@@ -1,0 +1,97 @@
+/* Capa de la animación de entrada: cubre TODO (incluida la barra de la app) y se desvanece al terminar. */
+.hc.hc-overlay.app-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  transition: opacity 0.5s ease;
+}
+.hc.hc-overlay.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.hc .hc-skip {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 60;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid color-mix(in srgb, var(--congreso-purple) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--congreso-paper) 70%, transparent);
+  color: var(--congreso-purple);
+  font: 700 12px/1 'Degular Text', 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.hc .hc-skip:hover { background: color-mix(in srgb, var(--congreso-paper) 92%, transparent); }
+.hc .hc-skip:active { transform: scale(0.96); }
+.hc .hc-skip:focus-visible { outline: 2px solid var(--congreso-purple); outline-offset: 2px; }
+
+/* ---- Cristal: se ve la app detrás (sin fondo propio) ---- */
+.hc.hc-overlay.app-canvas.try-view,
+.hc.hc-overlay.app-canvas.theme-light {
+  background: color-mix(in srgb, var(--congreso-deep) 38%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  color: var(--congreso-cream);
+}
+.hc.hc-overlay .studio-background { display: none; }
+.hc.hc-overlay .try-footer-hint { color: color-mix(in srgb, var(--congreso-cream) 70%, transparent); }
+.hc.hc-overlay .hc-skip,
+.hc.hc-overlay .hc-btn {
+  border-color: color-mix(in srgb, var(--congreso-cream) 55%, transparent);
+  background: color-mix(in srgb, var(--congreso-cream) 14%, transparent);
+  color: var(--congreso-cream);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.hc.hc-overlay .hc-skip:hover,
+.hc.hc-overlay .hc-btn:hover { background: color-mix(in srgb, var(--congreso-cream) 26%, transparent); }
+.hc.hc-overlay .hc-skip:focus-visible,
+.hc.hc-overlay .hc-btn:focus-visible { outline-color: var(--congreso-cream); }
+
+/* Barra de acciones del visor "Mi gafete". */
+.hc .hc-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 16px;
+}
+.hc .hc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  font: 700 12px/1 'Degular Text', 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+}
+.hc .hc-btn:active { transform: scale(0.96); }
+.hc .hc-btn:disabled { opacity: 0.6; cursor: progress; }
+.hc .hc-btn.is-primary { background: var(--congreso-cream); color: var(--congreso-ink); border-color: var(--congreso-cream); }
+.hc.hc-overlay .hc-btn.is-primary { background: var(--congreso-cream); color: var(--congreso-ink); }
+.hc.hc-overlay .hc-btn.is-primary:hover { background: #fff; }
+.hc .hc-error { position: absolute; left: 0; right: 0; bottom: 74px; z-index: 60; text-align: center; font: 600 12px 'Degular Text', sans-serif; color: #ffd6d6; }
+
+/* Versión plana (sin 3D) que se serializa para descargar la credencial como imagen. */
+.hc .cred-export .cred-face-back { transform: none; }
+.hc .cred-export .cred-face { backface-visibility: visible; -webkit-backface-visibility: visible; }

@@ -202,3 +202,6 @@
   .register { margin-left: auto; }
   .section { padding: 14px; }
 }
+
+/* El visor del gafete usa un botón con el mismo aspecto que las filas-enlace. */
+.rowButton { width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; appearance: none; }
