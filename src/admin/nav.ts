@@ -41,7 +41,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/dashboard', label: 'Dashboard', Icon: LayoutDashboard, ready: true, primary: true },
   { to: '/admin/lotes', label: 'Lotes', Icon: Boxes, ready: true, primary: true },
   { to: '/admin/asistentes', label: 'Asistentes', Icon: Users, ready: true, primary: true },
-  { to: '/admin/paquetes', label: 'Kits', Icon: Package, ready: true },
+  { to: '/admin/kits', label: 'Kits', Icon: Package, ready: true },
   /* Beneficios (6 oct 2026): lo que incluye cada kit (lista "Incluye" del asistente), administrable. Las aguas frescas siguen siendo del kit. */
   { to: '/admin/beneficios', label: 'Beneficios', Icon: Gift, ready: true },
   { to: '/admin/canjes', label: 'Canjes', Icon: CupSoda, ready: true },

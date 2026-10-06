@@ -118,7 +118,9 @@ export default function App() {
         <Route path="/admin/merch" element={admin(<Merch />)} />
         <Route path="/admin/notas" element={admin(<Notas />)} />
         <Route path="/admin/avisos" element={admin(<Avisos />)} />
-        <Route path="/admin/paquetes" element={admin(<KitsAdmin />)} />
+        <Route path="/admin/kits" element={admin(<KitsAdmin />)} />
+        {/* Ruta anterior: redirige a /admin/kits */}
+        <Route path="/admin/paquetes" element={<Navigate to="/admin/kits" replace />} />
         <Route path="/admin/beneficios" element={admin(<BeneficiosAdmin />)} />
         <Route path="/admin/iglesias" element={admin(<Iglesias />)} />
         <Route path="/admin/auditoria" element={admin(<Auditoria />)} />
