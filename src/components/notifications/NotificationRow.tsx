@@ -1,4 +1,4 @@
-import { Heart, Megaphone } from 'lucide-react';
+import { CalendarClock, Heart, Megaphone } from 'lucide-react';
 import UserAvatar from '../UserAvatar';
 import type { AppNotification } from '../../../shared/notifications';
 import styles from './NotificationRow.module.css';
@@ -18,6 +18,7 @@ export function notificationWhen(iso: string): string {
  * Una fila de la campana. La usan /home (datos reales) y el formulario de Admin → Avisos
  * (vista previa de cómo se verá). Dos tipos:
  *   - aviso del equipo: icono de megáfono, título y mensaje, y opcionalmente la etiqueta "EN VIVO";
+ *   - recordatorio del programa (fase 3): icono de reloj, nombre del momento y "Empieza en 10 minutos";
  *   - like: [avatar con corazón en círculo y número] {Nombre} le ha dado like a tu nota  (agrupado: "{Nombre} y N más le dieron like…").
  */
 export default function NotificationRow({ n, fresh = false, whenLabel }: { n: AppNotification; fresh?: boolean; whenLabel?: string }) {
@@ -41,6 +42,20 @@ export default function NotificationRow({ n, fresh = false, whenLabel }: { n: Ap
         </span>
         <span className={styles.body}>
           <strong>{text}</strong>
+          <span className={styles.when}>{when}</span>
+        </span>
+      </li>
+    );
+  }
+  if (n.kind === 'reminder') {
+    return (
+      <li className={`${styles.row} ${fresh ? styles.fresh : ''}`}>
+        <span className={styles.icon} aria-hidden="true">
+          <CalendarClock size={15} strokeWidth={2.2} />
+        </span>
+        <span className={styles.body}>
+          <strong>{n.title}</strong>
+          <span>{n.body}</span>
           <span className={styles.when}>{when}</span>
         </span>
       </li>

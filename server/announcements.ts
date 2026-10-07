@@ -15,6 +15,7 @@ import {
   type NotificationsResponse,
 } from '../shared/notifications';
 import { QR_TOKEN_RE } from '../shared/api';
+import { programReminders } from '../shared/programSchedule';
 
 /**
  * Avisos del equipo + campana (migración 006). El asistente se identifica SIEMPRE por el
@@ -89,7 +90,15 @@ export async function listNotifications(
         LIMIT ${NOTIFICATIONS_MAX}`,
       [who.attendeeId],
     );
+    // Recordatorios del programa (fase 3): se calculan al leer; PROGRAM_REMINDERS=off los apaga.
+    let reminders: AppNotification[] = [];
+    if ((process.env.PROGRAM_REMINDERS ?? '').toLowerCase() !== 'off') {
+      const st = await query<{ seenAt: string | null }>(`SELECT ${iso('"seenAt"')} AS "seenAt" FROM "NotificationState" WHERE "attendeeId" = $1`, [who.attendeeId]);
+      const seen = st.rows[0]?.seenAt ? new Date(st.rows[0].seenAt) : null;
+      reminders = programReminders(new Date(), who.zone, seen);
+    }
     const items: AppNotification[] = [
+      ...reminders,
       ...ann.rows.map((r): AppNotification => ({ id: r.id, kind: 'announcement', title: r.title, body: r.body, live: r.live, at: r.at, unread: r.unread })),
       ...likes.rows.map(
         (r): AppNotification => ({

@@ -36,35 +36,14 @@ import { VENUE_12VA, VENUE_21RA } from './app';
  * información operativa interna, ni nombres de predicadores/participantes.
  */
 
-export type ProgramItem = { time: string; event: string };
+import { SATURDAY_PROGRAM, SUNDAY_PROGRAM, type ProgramItem } from '../../shared/programSchedule';
+export type { ProgramItem };
+// Las horas viven en shared/programSchedule.ts (las usa también el servidor para los
+// recordatorios de la campana). Para cambiar el programa, edita ESE archivo.
+export { SATURDAY_PROGRAM, SUNDAY_PROGRAM };
 
 /** Sábado: una sola sede para todos, sin importar la zona del asistente. */
 export const SATURDAY_VENUE = VENUE_12VA;
-export const SATURDAY_PROGRAM: ProgramItem[] = [
-  { time: '2:00 pm', event: 'Bienvenida' },
-  { time: '2:10 pm', event: 'Plenaria 1 — Raíces profundas' },
-  { time: '3:10 pm', event: 'Plenaria 2 — Sobreedificados en Él' },
-  { time: '4:10 pm', event: 'Break' },
-  { time: '5:30 pm', event: 'Intro' },
-  { time: '5:35 pm', event: 'Inicio Culto' },
-  { time: '6:00 pm', event: 'Ofrenda' },
-  { time: '6:15 pm', event: 'Predicación y Ministración' },
-  { time: '7:25 pm', event: 'Despedida' },
-];
-
-/**
- * Domingo: el mismo horario en ambas sedes -- lo único que cambia es la
- * sede, según la zona del asistente.
- *   Zona 1 -> 21ra IAFCJ
- *   Zona 2 -> 12va IAFCJ
- */
-export const SUNDAY_PROGRAM: ProgramItem[] = [
-  { time: '6:00 pm', event: 'Intro' },
-  { time: '6:05 pm', event: 'Inicio Culto' },
-  { time: '6:30 pm', event: 'Ofrenda' },
-  { time: '6:45 pm', event: 'Predicación y Ministración' },
-  { time: '7:45 pm', event: 'Despedida' },
-];
 
 export type ZoneKey = 'Zona 1' | 'Zona 2';
 

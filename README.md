@@ -80,7 +80,7 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 | **Sede** (`Venue`) | 12va IAFCJ o 21ra IAFCJ; el menú de alimentos es por sede. |
 | **Nota** | Frase pública de 60 caracteres, 24 h de vida, una activa por persona. |
 | **Aviso** (`Announcement`) | Mensaje del equipo que aparece en la campana. |
-| **Cuenta dueña** | `javiercastro9912@gmail.com`: la única que puede **vaciar la bitácora** y que **nunca se puede eliminar** (ver §8). |
+| **Cuenta protegida** | La cuenta principal del proyecto (`OWNER_EMAIL`): **nunca se puede eliminar** (ver §8). |
 
 ---
 
@@ -167,7 +167,8 @@ Todas son **solo de servidor** (el frontend no usa ninguna). Se documentan en [`
 | `DATABASE_URL` | **Sí** | Conexión a Neon. Usa el endpoint **pooler** (`-pooler` en el host). |
 | `SESSION_SECRET` | **Sí** | Firma las sesiones de Staff/Admin (HMAC-SHA256). Mínimo 32 caracteres aleatorios. Cambiarla cierra todas las sesiones. |
 | `PUBLIC_BASE_URL` | Solo en producción | Dominio con el que se arma el QR de cada pulsera: `{PUBLIC_BASE_URL}/p/{token}`. Sin `/` al final. **Queda grabado en cada QR impreso**: fíjalo al dominio oficial definitivo **antes** de imprimir pulseras reales. En desarrollo déjala vacía. |
-| `OWNER_EMAIL` | No | Cuenta "dueña" (por defecto `javiercastro9912@gmail.com`): única que puede vaciar la bitácora y que no se puede eliminar. |
+| `OWNER_EMAIL` | No | Cuenta principal protegida (por defecto `javiercastro9912@gmail.com`): no se puede eliminar. |
+| `PROGRAM_REMINDERS` | No | Poner `off` para apagar los recordatorios automáticos del programa en la campana (por defecto están activos). |
 | `NETLIFY_SITE_ID`, `NETLIFY_AUTH_TOKEN` | No | Solo para que `db:respaldo-total` también respalde/restaure las **fotos** (Netlify Blobs). La app no las necesita. |
 
 Generar un `SESSION_SECRET` en PowerShell:
@@ -205,8 +206,8 @@ Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se pue
 ### 7.2 Reglas de oro
 - **Nunca** alterar tablas heredadas (la otra app las usa). Solo se agregan tablas nuevas.
 - Dinero siempre en **centavos** (entero). `$150` = `15000`. El frontend lo formatea.
-- Nada importante se borra: los canjes se **anulan**, las notas **vencen**, los avisos se **retiran**. Las únicas acciones de borrado real son las del Admin explícitas (borrar lote, eliminar cuenta/iglesia, vaciar bitácora) y siempre piden confirmación.
-- Las acciones administrativas importantes (cuentas, lotes, asistentes, canjes anulados, notas retiradas, avisos, iglesias, beneficios, ajustes) quedan en `AuditLog`; la bitácora solo se puede vaciar desde la cuenta dueña y queda en cero.
+- Nada importante se borra: los canjes se **anulan**, las notas **vencen**, los avisos se **retiran**. Las únicas acciones de borrado real son las del Admin explícitas (borrar lote, eliminar cuenta/iglesia) y siempre piden confirmación.
+- Las acciones administrativas importantes (cuentas, lotes, asistentes, canjes anulados, notas retiradas, avisos, iglesias, beneficios, ajustes) quedan en `AuditLog`. Cada registro guarda en su `metadata` los nombres y códigos de lo que cambió (cuenta, asistente, pulsera, lote…), así que la pantalla de Auditoría sigue leyéndose bien aunque el elemento se elimine después. También se registran el **menú** (platillos) y la **mercancía**.
 
 ### 7.3 Almacenamiento de imágenes
 Fotos de platillos y mercancía: **Netlify Blobs**. Se sirven públicas por `/api/dish-image/:key` y `/api/merch-image/:key`; la *key* cambia en cada reemplazo, así que la caché es agresiva y segura.
@@ -228,7 +229,7 @@ Detalles de seguridad:
 - **Contraseña temporal:** al crear una cuenta o restablecer su contraseña, esta queda como temporal; la persona **debe** crear la suya antes de usar cualquier otra función (hasta entonces solo funciona `/api/auth/password`).
 - Contraseñas con **bcrypt** (costo 12). La huella `fp` de la contraseña se guarda en la bitácora pero **nunca sale** del servidor.
 - **Ocultar una pantalla no es seguridad:** todo `/api/admin/*` se revalida en el servidor; un Staff que llame a mano un endpoint de Admin recibe **403**.
-- **Cuenta dueña** (`OWNER_EMAIL`): solo ella ve y puede usar **Vaciar bitácora**; su cuenta **nunca** se puede eliminar (ni a sí misma ni otro Admin). Tampoco se puede eliminar la cuenta propia ni al **último Admin activo**.
+- **Cuenta protegida** (`OWNER_EMAIL`): su cuenta **nunca** se puede eliminar (ni por otro Admin). Tampoco se puede eliminar la cuenta propia ni al **último Admin activo**.
 - **Moderación:** las notas pasan un filtro de lenguaje en cliente y servidor (`shared/moderation.ts` + palabras del Admin); el servidor responde **422** si hay groserías.
 - Cabeceras de seguridad (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`) en `netlify.toml`.
 
@@ -289,7 +290,7 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 | `GET /api/notes/feed` | 🎫 | Notas vigentes de otros (solo primer nombre y avatar). |
 | `POST /api/notes/:id/like` | 🎫 | Alterna like (no a la propia). |
 | `GET /api/notes/likers` | 🎫 | Quién dio like a mis notas. |
-| `GET /api/notifications` · `POST /api/notifications/seen` | 🎫 | Campana (avisos + likes) · marcar como visto. |
+| `GET /api/notifications` · `POST /api/notifications/seen` | 🎫 | Campana (avisos + likes + recordatorios del programa) · marcar como visto. |
 
 ### Sesión y Staff
 
@@ -322,7 +323,7 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 | **Avisos** | `GET/POST /api/admin/announcements` · `POST /api/admin/announcements/:id/retire` |
 | **Iglesias** | `GET/POST /api/admin/churches` · `PATCH/DELETE /api/admin/churches/:id` |
 | **Usuarios** | `GET/POST /api/admin/users` · `PATCH/DELETE /api/admin/users/:id` · `POST /api/admin/users/:id/password` |
-| **Auditoría** | `GET /api/admin/audit` · `DELETE /api/admin/audit` (**solo la cuenta dueña**) |
+| **Auditoría** | `GET /api/admin/audit` |
 | **Ajustes** | `GET/PATCH /api/admin/settings` |
 
 **Ejemplo (curl)** — iniciar sesión y consultar lotes:
@@ -393,8 +394,8 @@ Guía completa en [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md). Resumen:
    - **Borra:** notas y likes, avisos, canjes, pulseras, asistentes, lotes, Instantáneas y la bitácora de esas pruebas.
    - **Conserva:** todas las cuentas (Admin y Staff), kits, beneficios, zonas/presbiterios/iglesias, menú, mercancía, palabras bloqueadas y configuración.
    - ⚠️ Borra **todas** las pulseras y asistentes, aunque sean reales. Córrelo **antes** de generar los lotes definitivos.
-4. Desde el panel también puedes **borrar lotes de prueba** uno por uno (Admin → Lotes → lote → ícono de bote) y, la cuenta dueña, **vaciar la bitácora** (Admin → Auditoría).
-5. **Orden recomendado:** respaldo → borrar lotes de prueba → (si quedan datos sueltos) `db:limpiar-pruebas` → vaciar bitácora → crear lotes definitivos con `PUBLIC_BASE_URL` ya fijado.
+4. Desde el panel también puedes **borrar lotes de prueba** uno por uno (Admin → Lotes → lote → ícono de bote).
+5. **Orden recomendado:** respaldo → borrar lotes de prueba → (si quedan datos sueltos) `db:limpiar-pruebas` → crear lotes definitivos con `PUBLIC_BASE_URL` ya fijado.
 
 ---
 
@@ -448,8 +449,7 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 | Los QR apuntan a `localhost` | Estás en desarrollo: **no imprimas** esas pulseras. |
 | La cámara no abre en el celular | Necesita HTTPS: usa `npm run dev:https` o el dominio real. |
 | `El token ... && no es un separador válido` en PowerShell | PowerShell antiguo: ejecuta un comando por línea (no uses `&&`). |
-| No puedo eliminar una cuenta | Es la cuenta dueña, la tuya, el último Admin, o tiene historial (lotes/canjes): **desactívala**. |
-| No veo "Vaciar bitácora" | Solo la cuenta dueña (`OWNER_EMAIL`) lo ve. |
+| No puedo eliminar una cuenta | Es la cuenta protegida, la tuya, el último Admin, o tiene historial (lotes/canjes): **desactívala**. |
 | Al borrar un lote dice que no se puede | Hay datos que dependen de él; usa `npm run db:limpiar-pruebas`. |
 | "Sesión inválida" tras cambiar `SESSION_SECRET` | Esperado: todos deben iniciar sesión de nuevo. |
 
@@ -459,8 +459,9 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 
 | Archivo | Contenido |
 |---|---|
+| [`docs/MANUAL_ADMIN.pdf`](docs/MANUAL_ADMIN.pdf) | **Manual de uso para administradores** (PDF con capturas reales, 32 páginas). |
 | [`docs/API.md`](docs/API.md) | **Referencia completa de la API** (cuerpos, respuestas, errores, ejemplos). |
-| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§56), con cada decisión. **Empieza aquí para entender el porqué.** |
+| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§61), con cada decisión. **Empieza aquí para entender el porqué.** |
 | [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md) | Qué falta por hacer y su estado. |
 | [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md) | Plan y comandos de respaldo, restauración y limpieza. |
 | [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/CONEXION_NEON.md`](docs/CONEXION_NEON.md), [`docs/PLAN_DOMINIO.md`](docs/PLAN_DOMINIO.md), [`docs/MIGRATION_TO_RED.md`](docs/MIGRATION_TO_RED.md) | Infraestructura, conexión a Neon, dominio y migración. |

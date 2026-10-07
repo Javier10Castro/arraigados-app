@@ -218,7 +218,7 @@ function DishVenueSection({
 
   return (
     <section className={s.venueSection}>
-      <h2 className="label">
+      <h2 className={`label ${s.venueTitle}`}>
         {venue.name} <span className={s.countBadge}>{items.length}</span>
       </h2>
       <ul className={s.grid}>

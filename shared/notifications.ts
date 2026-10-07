@@ -2,7 +2,7 @@ import type { PageSize } from './api';
 
 /**
  * Notificaciones (5 oct 2026) -- tipos compartidos servidor/cliente.
- * Fase 1: avisos del equipo (/admin/avisos) y campana de /home. Ver docs/PLAN_PENDIENTES.md §10.
+ * Fase 1: avisos del equipo (/admin/avisos) y campana de /home. Fase 3 (7 oct): recordatorios del programa. Ver docs/PLAN_PENDIENTES.md §10.
  */
 
 export const ANNOUNCEMENT_TITLE_MAX = 60;
@@ -45,6 +45,18 @@ export type AppNotification =
       /** Total de likes de esa nota (la fila dice "Ana y N más"). */
       count: number;
       /** Hora del like más reciente. */
+      at: string;
+      unread: boolean;
+    }
+  | {
+      /** Recordatorio automático del programa (fase 3). id = "<fecha>-<hora>"; nunca se guarda en la base. */
+      id: string;
+      kind: 'reminder';
+      /** Nombre del momento del programa ("Plenaria 1 — Raíces profundas"). */
+      title: string;
+      /** "Empieza en 10 minutos (2:10 pm) · 12va IAFCJ". */
+      body: string;
+      /** Hora en que aparece el recordatorio (ISO UTC). */
       at: string;
       unread: boolean;
     };

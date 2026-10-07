@@ -33,7 +33,7 @@ El cliente del frontend que consume todo esto es [`src/lib/api.ts`](../src/lib/a
 | `200` / `201` | Correcto / creado. |
 | `400` | Datos inválidos o regla de negocio incumplida (el mensaje dice cuál). |
 | `401` | Sin sesión (`Inicia sesión.`). |
-| `403` | Sin permiso (rol insuficiente, cuenta sin cambiar contraseña temporal, o acción reservada a la cuenta dueña). |
+| `403` | Sin permiso (rol insuficiente, cuenta sin cambiar contraseña temporal, o acción no permitida para esa cuenta). |
 | `404` | No existe. |
 | `405` | Método no permitido (cabecera `allow` indica los válidos). |
 | `409` | Conflicto (duplicado, pulsera en estado incompatible, migración pendiente…). |
@@ -120,7 +120,7 @@ Sirven la imagen (Netlify Blobs). Caché agresiva (la `key` cambia al reemplazar
 
 | Endpoint | Descripción |
 |---|---|
-| `GET /api/notifications` | `{ items, unread }` — máximo 30. Cada item es `{ kind: "announcement", id, title, body, live, at, unread }` o `{ kind: "like", id, likerAttendeeId, likerFirstName, count, at, unread }`. Los avisos se filtran por la **zona** del asistente. |
+| `GET /api/notifications` | `{ items, unread }` — máximo 30. Cada item es `{ kind: "announcement", id, title, body, live, at, unread }` `{ kind: "like", id, likerAttendeeId, likerFirstName, count, at, unread }` o `{ kind: "reminder", id, title, body, at, unread }` (recordatorio automático del programa: aparece 10 min antes de Bienvenida, Plenarias, Inicio de culto y Predicación, y deja de mostrarse 3 h después de que empieza; se calcula al leer, no se guarda; `PROGRAM_REMINDERS=off` lo apaga). Los avisos y la sede de los recordatorios dependen de la **zona** del asistente. |
 | `POST /api/notifications/seen` | Marca todo como visto (al abrir la campana). |
 
 ---
@@ -221,14 +221,14 @@ Todos requieren cookie de **Admin**.
 | Endpoint | Descripción |
 |---|---|
 | `GET /api/admin/dishes` | `{ dishes: AdminDishRow[], venues }` (todos, disponibles o no). |
-| `POST /api/admin/dishes` | Campos: `name`, `description`, `price` (centavos, como texto), `available` (`true`/`false`), `venueId`, `image` (opcional; JPG/PNG/WebP ≤ 4 MB). → `{ dish }`. |
-| `PATCH /api/admin/dishes/:id` | Mismos campos; `image` solo si se **reemplaza** la foto. |
-| `DELETE /api/admin/dishes/:id` | Elimina el platillo y su foto. |
+| `POST /api/admin/dishes` | Auditoría `dish.create`. Campos: `name`, `description`, `price` (centavos, como texto), `available` (`true`/`false`), `venueId`, `image` (opcional; JPG/PNG/WebP ≤ 4 MB). → `{ dish }`. |
+| `PATCH /api/admin/dishes/:id` | Mismos campos; `image` solo si se **reemplaza** la foto. Auditoría `dish.update` (solo los campos que cambiaron; si no cambió nada, no registra). |
+| `DELETE /api/admin/dishes/:id` | Elimina el platillo y su foto. Auditoría `dish.delete`. |
 | `POST /api/admin/dish-image-search` `{ query, exclude? }` | Busca una foto automáticamente (Openverse) → `{ result \| null }`. |
 | `GET /api/admin/merch` | `{ items: AdminMerchItem[] }` con galería. |
-| `POST /api/admin/merch` | Campos: `name`, `description`, `price` (centavos o vacío = "Por definir"), `availability` (`tbd`/`onsite`), `images` (0 o más archivos). |
-| `PATCH /api/admin/merch/:id` | Igual + `removeImageIds` (JSON de ids a quitar) e `imageOrder` (JSON con el orden final; `"new:N"` = N-ésima foto nueva). |
-| `DELETE /api/admin/merch/:id` | Elimina el artículo y sus fotos. |
+| `POST /api/admin/merch` | Auditoría `merch.create`. Campos: `name`, `description`, `price` (centavos o vacío = "Por definir"), `availability` (`tbd`/`onsite`), `images` (0 o más archivos). |
+| `PATCH /api/admin/merch/:id` | Igual + `removeImageIds` (JSON de ids a quitar) e `imageOrder` (JSON con el orden final; `"new:N"` = N-ésima foto nueva). Auditoría `merch.update` (solo cambios). |
+| `DELETE /api/admin/merch/:id` | Elimina el artículo y sus fotos. Auditoría `merch.delete`. |
 | `POST /api/admin/merch/:id/reorder` `{ "dir": -1 \| 1 }` | Mueve el artículo en la vitrina. |
 
 ### 4.7 Notas y moderación
@@ -264,18 +264,17 @@ Presbiterios y zonas son **fijos** (no hay endpoints para modificarlos).
 
 | Endpoint | Descripción |
 |---|---|
-| `GET /api/admin/users` | `[{ id, name, email, role, active, createdAt, pendingPassword, protected }]`. `protected: true` = cuenta dueña (nunca eliminable). |
+| `GET /api/admin/users` | `[{ id, name, email, role, active, createdAt, pendingPassword, protected }]`. `protected: true` = cuenta protegida (nunca eliminable). |
 | `POST /api/admin/users` `{ name, email, role: "ADMIN"\|"STAFF", temporaryPassword }` | Crea la cuenta con contraseña **temporal** (8 a 72 bytes) → `201 { id }`. |
 | `PATCH /api/admin/users/:id` `{ name?, role?, active? }` | No puedes quitarte el rol ni desactivarte; siempre debe quedar un Admin activo. |
 | `POST /api/admin/users/:id/password` `{ temporaryPassword }` | Restablece (nueva temporal) y cierra las sesiones de esa cuenta. |
-| `DELETE /api/admin/users/:id` | **Elimina** la cuenta. `400` si es la cuenta dueña, la propia, el último Admin activo, o si tiene historial que la referencia (en ese caso: desactívala). Auditoría `user.delete`. |
+| `DELETE /api/admin/users/:id` | **Elimina** la cuenta. `400` si es la cuenta protegida, la propia, el último Admin activo, o si tiene historial que la referencia (en ese caso: desactívala). Auditoría `user.delete`. |
 
 ### 4.11 Auditoría
 
 | Endpoint | Descripción |
 |---|---|
-| `GET /api/admin/audit` | Filtros: `q`, `category` (`usuarios, lotes, asistentes, pulseras, canjes, notas, avisos, iglesias, beneficios, ajustes, otros`), `actorId`, `from`, `to`, `page`, `pageSize`. → `{ total, page, pageSize, rows, summary{total,last24h,actors}, actors[], canClear }`. Cada fila: `{ id, createdAt, action, entityType, entityId, entityName, actorId, actorName, metadata }` (la huella `fp` de contraseñas nunca se devuelve). |
-| `DELETE /api/admin/audit` `{ "confirm": "BORRAR BITACORA" }` | **Solo la cuenta dueña** (`OWNER_EMAIL`); cualquier otro Admin recibe `403`. Vacía **toda** la bitácora y **no deja ningún registro**. → `{ deleted }`. La confirmación ignora mayúsculas y acentos. |
+| `GET /api/admin/audit` | Filtros: `q`, `category` (`usuarios, lotes, asistentes, pulseras, canjes, notas, avisos, iglesias, beneficios, menu, mercancia, ajustes, otros`), `actorId`, `from`, `to`, `page`, `pageSize`. → `{ total, page, pageSize, rows, summary{total,last24h,actors}, actors[] }`. Cada fila: `{ id, createdAt, action, entityType, entityId, entityName, entityEmail, entityCode, relatedCode, actorId, actorName, metadata }` (la huella `fp` de contraseñas nunca se devuelve). `entityName/entityEmail/entityCode/relatedCode` salen de uniones con las tablas actuales y solo sirven de **respaldo** para registros viejos; los registros nuevos guardan los nombres y códigos en `metadata`, así que el historial se lee igual aunque el elemento ya no exista. Los textos en español («Desactivó la cuenta…», «Reemplazó la pulsera de…») se arman en `shared/audit.ts` (`auditSummary`, `auditDetails`, `auditTarget`). |
 
 Acciones registradas (`action`): `user.create/update/password_reset/password_change/delete`, `batch.create/delete`, `attendee.update`, `pulse.reassign`, `redemption.void`, `note.retire`, `blocked_word.add/update/remove`, `announcement.create/retire`, `church.create/update/delete`, `benefit.create/update/delete/move`, `setting.update`. (Menú y Mercancía no registran bitácora.)
 

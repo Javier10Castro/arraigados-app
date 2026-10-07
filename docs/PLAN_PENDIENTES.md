@@ -288,3 +288,10 @@ sección "Etapa 9" del Admin deshabilitada como está.
 - ⏳ Notificaciones Fase 3 (recordatorios automáticos del programa + toast).
 - Decisión: "Mi gafete" NO se agrega a Beneficios (queda en menú lateral y Más). Animación del Home: siempre.
 - ✅ Kits (Etapa 5) en **solo lectura** (`/admin/paquetes`) y eliminar cuentas — `CLAUDE_HANDOFF.md` §56.
+
+## 14. Actualización (7 oct 2026)
+- ✅ Notificaciones Fase 3 (**recordatorios automáticos del programa**) — `CLAUDE_HANDOFF.md` §60. Falta solo el aviso emergente (toast), opcional.
+- ✅ Auditoría con mensajes concretos y registro de Menú y Mercancía — §59.
+- ✅ Contraste de los títulos de sede en `/admin/menu` — §61.
+- ✅ Manual de administradores: `docs/MANUAL_ADMIN.pdf`.
+- ⏳ `/comida` sigue con datos de ejemplo (§61).
