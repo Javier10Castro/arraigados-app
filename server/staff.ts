@@ -268,10 +268,23 @@ export async function reassignPulse(manualCode: string, newToken: string, staffI
         WHERE id = $1 AND status = 'UNCLAIMED'`,
       [next.id, old.attendeeId, drinksUsed, old.id],
     );
+    const owner = (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [old.attendeeId])).rows[0];
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'pulse.reassign', 'Pulse', $3, $4::jsonb, ${NOW_UTC})`,
-      [newId(), staffId, next.id, JSON.stringify({ oldPulseId: old.id, attendeeId: old.attendeeId, drinksUsed })],
+      [
+        newId(),
+        staffId,
+        next.id,
+        JSON.stringify({
+          oldPulseId: old.id,
+          attendeeId: old.attendeeId,
+          drinksUsed,
+          attendeeName: owner?.fullName ?? null,
+          oldCode: old.manualCode,
+          newCode: next.manualCode,
+        }),
+      ],
     );
     return {
       outcome: 'ok' as const,

@@ -16,6 +16,7 @@ import {
   auditEntityType,
   auditTarget,
   auditLabel,
+  auditSummary,
   type AdminAuditResponse,
   type AdminAuditRow,
   type AuditCategory,
@@ -130,8 +131,8 @@ export default function Auditoria() {
           }}
         >
           <p>
-            Se borrarán <strong>todos</strong> los registros de la bitácora ({sum?.total ?? '…'}). Queda una sola entrada que
-            dice quién la vació y cuántos registros había. <strong>No se puede deshacer.</strong>
+            Se borrarán <strong>todos</strong> los registros de la bitácora ({sum?.total ?? '…'}). La bitácora queda
+            completamente vacía y no se guarda ningún registro de este borrado. <strong>No se puede deshacer.</strong>
           </p>
         </ConfirmTypeModal>
       )}
@@ -273,6 +274,7 @@ export default function Auditoria() {
 function AuditRow({ row, onOpen }: { row: AdminAuditRow; onOpen: () => void }) {
   const link = auditEntityLink(row);
   const name = auditTarget(row);
+  const sum = auditSummary(row);
   return (
     <tr>
       <td className={`${a.wide} ${a.date}`}>{shortDate(row.createdAt)}</td>
@@ -281,7 +283,8 @@ function AuditRow({ row, onOpen }: { row: AdminAuditRow; onOpen: () => void }) {
         <span className={`${n.whoSub} ${m.mobileOnly}`}>{name}</span>
       </td>
       <td>
-        <span className={m.action}>{auditLabel(row.action)}</span>
+        <span className={m.action}>{sum.title}</span>
+        {sum.detail && <span className={`${n.whoSub} ${m.detail}`}>{sum.detail}</span>}
         <span className={`${n.whoSub} ${m.cat}`}>{categoryLabel(row.action)}</span>
       </td>
       <td className={a.wide}>
@@ -294,7 +297,7 @@ function AuditRow({ row, onOpen }: { row: AdminAuditRow; onOpen: () => void }) {
         )}
       </td>
       <td className={d.act}>
-        <Button size="sm" variant="outline" onClick={onOpen} aria-label={`Ver detalle: ${auditLabel(row.action)}`}>
+        <Button size="sm" variant="outline" onClick={onOpen} aria-label={`Ver detalle: ${sum.title}`}>
           Ver
         </Button>
       </td>
@@ -313,6 +316,7 @@ function DetailModal({ row, onClose }: { row: AdminAuditRow; onClose: () => void
   const name = auditTarget(row);
   return (
     <AdminModal title={auditLabel(row.action)} onClose={onClose}>
+      <p className={m.headline}>{auditSummary(row).title}</p>
       <dl className={m.dl}>
         <div>
           <dt>Cuándo</dt>

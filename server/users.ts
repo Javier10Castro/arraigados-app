@@ -94,6 +94,7 @@ export async function createUser(actorId: string, input: CreateUserRequest) {
       );
       await audit(tx, actorId, 'user.create', id, {
         email,
+        name,
         role: input.role,
         temporary: true,
         fp: passwordFingerprint(passwordHash),
@@ -111,8 +112,8 @@ export async function updateUser(actorId: string, userId: string, input: UpdateU
   await withTransaction(async (tx) => {
     // Bloquea a los admins activos para que dos cambios simultáneos no dejen la app sin Admin.
     await tx.query(`SELECT id FROM "User" WHERE role = 'ADMIN' AND active = true FOR UPDATE`);
-    const { rows } = await tx.query<{ name: string; role: StaffRole; active: boolean }>(
-      `SELECT name, role::text AS role, active FROM "User" WHERE id = $1 FOR UPDATE`,
+    const { rows } = await tx.query<{ name: string; role: StaffRole; active: boolean; email: string }>(
+      `SELECT name, role::text AS role, active, email FROM "User" WHERE id = $1 FOR UPDATE`,
       [userId],
     );
     const before = rows[0];
@@ -145,6 +146,8 @@ export async function updateUser(actorId: string, userId: string, input: UpdateU
       [userId, after.name, after.role, after.active],
     );
     await audit(tx, actorId, 'user.update', userId, {
+      email: before.email,
+      name: after.name,
       before: Object.fromEntries(changed.map((k) => [k, before[k]])),
       after: Object.fromEntries(changed.map((k) => [k, after[k]])),
     });
@@ -198,7 +201,13 @@ export async function resetPassword(actorId: string, userId: string, temporaryPa
       passwordHash,
     ]);
     if (res.rowCount === 0) throw new UserError('Esa cuenta no existe.');
-    await audit(tx, actorId, 'user.password_reset', userId, { temporary: true, fp: passwordFingerprint(passwordHash) });
+    const who = (await tx.query<{ name: string; email: string }>(`SELECT name, email FROM "User" WHERE id = $1`, [userId])).rows[0];
+    await audit(tx, actorId, 'user.password_reset', userId, {
+      email: who?.email,
+      name: who?.name,
+      temporary: true,
+      fp: passwordFingerprint(passwordHash),
+    });
   });
 }
 
@@ -216,7 +225,8 @@ export async function changeOwnPassword(userId: string, currentHash: string, cur
       userId,
       passwordHash,
     ]);
-    await audit(tx, userId, 'user.password_change', userId, { temporary: false });
+    const who = (await tx.query<{ name: string; email: string }>(`SELECT name, email FROM "User" WHERE id = $1`, [userId])).rows[0];
+    await audit(tx, userId, 'user.password_change', userId, { email: who?.email, name: who?.name, temporary: false });
   });
   return passwordHash;
 }

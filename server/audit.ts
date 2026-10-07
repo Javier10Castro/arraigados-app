@@ -1,4 +1,4 @@
-import { NOW_UTC, query } from './db';
+import { NOW_UTC, newId, query } from './db';
 import { isOwnerEmail } from './owner';
 import { EVENT_TIMEZONE, parsePageSize } from '../shared/api';
 import {
@@ -25,7 +25,7 @@ const local = (col: string) => `((${col}) AT TIME ZONE 'UTC') AT TIME ZONE '${TZ
 const unaccent = (expr: string) => `translate(lower(${expr}), 'áéíóúüñ', 'aeiouun')`;
 const iso = (col: string) => `to_char(${col}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 
-const CATEGORY_IDS: AuditCategory[] = ['usuarios', 'lotes', 'asistentes', 'pulseras', 'canjes', 'notas', 'avisos', 'ajustes', 'otros'];
+const CATEGORY_IDS: AuditCategory[] = ['usuarios', 'lotes', 'asistentes', 'pulseras', 'canjes', 'notas', 'avisos', 'iglesias', 'beneficios', 'menu', 'mercancia', 'ajustes', 'otros'];
 
 const FROM = `
   FROM "AuditLog" al
@@ -39,7 +39,8 @@ const FROM = `
   LEFT JOIN "Attendee" tpa ON tpa.id = tp."attendeeId"
   LEFT JOIN "Note" tn ON al."entityType" = 'Note' AND tn.id = al."entityId"
   LEFT JOIN "Attendee" tna ON tna.id = tn."attendeeId"
-  LEFT JOIN "Church" tc ON al."entityType" = 'Church' AND tc.id = al."entityId"`;
+  LEFT JOIN "Church" tc ON al."entityType" = 'Church' AND tc.id = al."entityId"
+  LEFT JOIN "Pulse" top ON al."action" = 'pulse.reassign' AND top.id = al."metadata"->>'oldPulseId'`;
 
 const ENTITY_NAME = `COALESCE(tu."name", ta."fullName", tb."code", tra."fullName", tpa."fullName", tna."fullName", tc."name")`;
 
@@ -89,7 +90,8 @@ export async function listAudit(f: AdminAuditFilters, viewerEmail?: string): Pro
 
   const { rows } = await query<DbRow>(
     `SELECT al.id, ${iso('al."createdAt"')} AS "createdAt", al."action", al."entityType", al."entityId",
-            ${ENTITY_NAME} AS "entityName", al."actorId", actor."name" AS "actorName", al."metadata"
+            ${ENTITY_NAME} AS "entityName", tu."email" AS "entityEmail",
+            COALESCE(tb."code", tp."manualCode") AS "entityCode", top."manualCode" AS "relatedCode", al."actorId", actor."name" AS "actorName", al."metadata"
        ${FROM} ${whereSql}
       ORDER BY al."createdAt" DESC, al.id DESC
       LIMIT ${pageSize} OFFSET ${page * pageSize}`,
@@ -122,6 +124,15 @@ export async function listAudit(f: AdminAuditFilters, viewerEmail?: string): Pro
   }
 
   return { total, page, pageSize, rows, summary, actors, canClear: canClearAudit(viewerEmail) };
+}
+
+/** Escribe un evento en la bitácora (entityType/entityId = sobre qué; metadata = datos legibles que se conservan aunque la entidad se borre). */
+export async function writeAudit(actorId: string, action: string, entityType: string, entityId: string, metadata: Record<string, unknown>): Promise<void> {
+  await query(
+    `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, ${NOW_UTC})`,
+    [newId(), actorId, action, entityType, entityId, JSON.stringify(metadata)],
+  );
 }
 
 /** Palabra que hay que escribir para vaciar la bitácora (se valida también aquí, no solo en la pantalla). */

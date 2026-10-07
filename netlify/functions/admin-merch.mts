@@ -29,7 +29,7 @@ export default handler(async (req: Request) => {
       return apiError('Solicitud inválida.');
     }
     try {
-      const item = await createMerchItem(form);
+      const item = await createMerchItem(form, auth.user.id);
       return json({ item }, 201);
     } catch (err) {
       if (err instanceof MerchValidationError) return apiError(err.message, 400);

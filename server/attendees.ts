@@ -204,7 +204,7 @@ export async function updateAttendee(id: string, input: UpdateAttendeeRequest, a
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'attendee.update', 'Attendee', $3, $4::jsonb, ${NOW_UTC})`,
-      [newId(), actorId, id, JSON.stringify(changes)],
+      [newId(), actorId, id, JSON.stringify({ attendee: fullName, ...changes })],
     );
     return { changed: true };
   });

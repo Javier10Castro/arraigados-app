@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { writeAudit } from './audit';
 import { NOW_UTC, newId, query } from './db';
 import { searchOpenverseImage } from './openverseSearch';
 
@@ -180,7 +181,7 @@ async function resolveDishImage(form: FormData, dishId: string): Promise<string 
   return useKey;
 }
 
-export async function createDish(form: FormData) {
+export async function createDish(form: FormData, actorId: string) {
   const data = parseDishForm(form);
   await assertVenueExists(data.venueId);
 
@@ -199,10 +200,12 @@ export async function createDish(form: FormData) {
     [id, data.name, data.description, data.price, data.available, data.venueId, imageKey, sortOrder],
   );
 
-  return getDishAdmin(id);
+  const created = await getDishAdmin(id);
+  await writeAudit(actorId, 'dish.create', 'Dish', id, { name: data.name, price: data.price, venue: created?.venueName ?? null, available: data.available });
+  return created;
 }
 
-export async function updateDish(id: string, form: FormData) {
+export async function updateDish(id: string, form: FormData, actorId: string) {
   const existing = await getDishRow(id);
   if (!existing) throw new DishValidationError('Ese platillo ya no existe.');
 
@@ -231,14 +234,25 @@ export async function updateDish(id: string, form: FormData) {
       .catch((err) => console.error('[dishes] no se pudo borrar la imagen vieja', existing.imageKey, err));
   }
 
-  return getDishAdmin(id);
+  const updated = await getDishAdmin(id);
+  // Solo lo que realmente cambió (nada de "antes → después" si no cambió).
+  const changes: Record<string, unknown> = { dish: data.name };
+  if (existing.name !== data.name) changes.name = { from: existing.name, to: data.name };
+  if (existing.price !== data.price) changes.price = { from: existing.price, to: data.price };
+  if (existing.available !== data.available) changes.available = { from: existing.available, to: data.available };
+  if (existing.venueId !== data.venueId) changes.venue = { from: existing.venueName, to: updated?.venueName ?? null };
+  if (existing.description !== data.description) changes.description = true;
+  if (newImageKey) changes.image = true;
+  if (Object.keys(changes).length > 1) await writeAudit(actorId, 'dish.update', 'Dish', id, changes);
+  return updated;
 }
 
-export async function deleteDish(id: string) {
+export async function deleteDish(id: string, actorId: string) {
   const existing = await getDishRow(id);
   if (!existing) throw new DishValidationError('Ese platillo ya no existe.');
 
   await query(`DELETE FROM "Dish" WHERE id = $1`, [id]);
+  await writeAudit(actorId, 'dish.delete', 'Dish', id, { name: existing.name, price: existing.price, venue: existing.venueName });
 
   if (existing.imageKey) {
     await imageStore()

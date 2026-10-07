@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { writeAudit } from './audit';
 import { NOW_UTC, newId, query } from './db';
 
 /**
@@ -161,7 +162,7 @@ async function uploadNewImages(form: FormData, itemId: string): Promise<string[]
   return keys;
 }
 
-export async function createMerchItem(form: FormData) {
+export async function createMerchItem(form: FormData, actorId: string) {
   const data = parseMerchForm(form);
   const id = newId();
 
@@ -186,6 +187,7 @@ export async function createMerchItem(form: FormData) {
     );
   }
 
+  await writeAudit(actorId, 'merch.create', 'MerchItem', id, { name: data.name, price: data.price, availability: data.availability });
   return getMerchAdmin(id);
 }
 
@@ -203,7 +205,7 @@ export async function createMerchItem(form: FormData) {
  *     final. Si viene vacío, se usa el orden por default (existentes en su
  *     orden actual, nuevas al final).
  */
-export async function updateMerchItem(id: string, form: FormData) {
+export async function updateMerchItem(id: string, form: FormData, actorId: string) {
   const existing = await getItemRow(id);
   if (!existing) throw new MerchValidationError('Ese artículo ya no existe.');
 
@@ -271,10 +273,19 @@ export async function updateMerchItem(id: string, form: FormData) {
       .catch((err) => console.error('[merch] no se pudo borrar la imagen vieja', img.imageKey, err));
   }
 
+  // Solo lo que realmente cambió.
+  const changes: Record<string, unknown> = { item: data.name };
+  if (existing.name !== data.name) changes.name = { from: existing.name, to: data.name };
+  if (existing.price !== data.price) changes.price = { from: existing.price, to: data.price };
+  if (existing.availability !== data.availability) changes.availability = { from: existing.availability, to: data.availability };
+  if (existing.description !== data.description) changes.description = true;
+  if (removeImageIds.length > 0 || newKeys.length > 0) changes.images = true;
+  if (Object.keys(changes).length > 1) await writeAudit(actorId, 'merch.update', 'MerchItem', id, changes);
+
   return getMerchAdmin(id);
 }
 
-export async function deleteMerchItem(id: string) {
+export async function deleteMerchItem(id: string, actorId: string) {
   const existing = await getItemRow(id);
   if (!existing) throw new MerchValidationError('Ese artículo ya no existe.');
 
@@ -283,6 +294,7 @@ export async function deleteMerchItem(id: string) {
   // ON DELETE CASCADE se encarga de las filas de "MerchImage"; los blobs se
   // borran aparte (Blobs no sabe nada de la base de datos).
   await query(`DELETE FROM "MerchItem" WHERE id = $1`, [id]);
+  await writeAudit(actorId, 'merch.delete', 'MerchItem', id, { name: existing.name, price: existing.price });
 
   for (const img of images) {
     await imageStore()

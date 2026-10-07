@@ -26,7 +26,7 @@ export default handler(async (req: Request, context: Context) => {
       return apiError('Solicitud inválida.');
     }
     try {
-      const item = await updateMerchItem(id, form);
+      const item = await updateMerchItem(id, form, auth.user.id);
       return json({ item });
     } catch (err) {
       if (err instanceof MerchValidationError) return apiError(err.message, 400);
@@ -36,7 +36,7 @@ export default handler(async (req: Request, context: Context) => {
 
   if (req.method === 'DELETE') {
     try {
-      await deleteMerchItem(id);
+      await deleteMerchItem(id, auth.user.id);
       return json({ ok: true });
     } catch (err) {
       if (err instanceof MerchValidationError) return apiError(err.message, 404);

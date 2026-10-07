@@ -29,7 +29,7 @@ export default handler(async (req: Request, context: Context) => {
       return apiError('Solicitud inválida.');
     }
     try {
-      const dish = await updateDish(id, form);
+      const dish = await updateDish(id, form, auth.user.id);
       return json({ dish });
     } catch (err) {
       if (err instanceof DishValidationError) return apiError(err.message, 400);
@@ -39,7 +39,7 @@ export default handler(async (req: Request, context: Context) => {
 
   if (req.method === 'DELETE') {
     try {
-      await deleteDish(id);
+      await deleteDish(id, auth.user.id);
       return json({ ok: true });
     } catch (err) {
       if (err instanceof DishValidationError) return apiError(err.message, 404);

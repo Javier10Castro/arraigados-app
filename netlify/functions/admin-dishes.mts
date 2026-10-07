@@ -30,7 +30,7 @@ export default handler(async (req: Request) => {
       return apiError('Solicitud inválida.');
     }
     try {
-      const dish = await createDish(form);
+      const dish = await createDish(form, auth.user.id);
       return json({ dish }, 201);
     } catch (err) {
       if (err instanceof DishValidationError) return apiError(err.message, 400);

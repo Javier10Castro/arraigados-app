@@ -387,10 +387,11 @@ export async function retireNoteAsAdmin(
     if (!note.active) return { outcome: 'already_expired' as const };
 
     await tx.query(`UPDATE "Note" SET "expiresAt" = ${NOW_UTC} WHERE id = $1`, [noteId]);
+    const author = (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [note.attendeeId])).rows[0];
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'note.retire', 'Note', $3, $4::jsonb, ${NOW_UTC})`,
-      [newId(), actorId, noteId, JSON.stringify({ reason, attendeeId: note.attendeeId, text: note.text })],
+      [newId(), actorId, noteId, JSON.stringify({ reason, attendeeId: note.attendeeId, attendeeName: author?.fullName ?? null, text: note.text })],
     );
     return { outcome: 'ok' as const };
   });

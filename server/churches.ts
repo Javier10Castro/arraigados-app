@@ -141,7 +141,7 @@ export async function updateChurch(actorId: string, id: string, input: Partial<C
         presbytery.id,
         id,
       ]);
-      await audit(tx, actorId, 'church.update', id, changes);
+      await audit(tx, actorId, 'church.update', id, { church: name, ...changes });
     });
   } catch (err) {
     if (isUniqueViolation(err)) throw new ChurchError('Esa iglesia ya existe en ese presbiterio.', 409);
@@ -152,9 +152,10 @@ export async function updateChurch(actorId: string, id: string, input: Partial<C
 export async function deleteChurch(actorId: string, id: string): Promise<void> {
   try {
     await withTransaction(async (tx) => {
-      const cur = await tx.query<{ name: string; presbyteryName: string }>(
-        `SELECT c.name, p.name AS "presbyteryName"
-           FROM "Church" c JOIN "Presbytery" p ON p.id = c."presbyteryId" WHERE c.id = $1 FOR UPDATE OF c`,
+      const cur = await tx.query<{ name: string; presbyteryName: string; zoneName: string }>(
+        `SELECT c.name, p.name AS "presbyteryName", z.name AS "zoneName"
+           FROM "Church" c JOIN "Presbytery" p ON p.id = c."presbyteryId" JOIN "Zone" z ON z.id = p."zoneId"
+          WHERE c.id = $1 FOR UPDATE OF c`,
         [id],
       );
       const row = cur.rows[0];
@@ -167,7 +168,7 @@ export async function deleteChurch(actorId: string, id: string): Promise<void> {
           409,
         );
       await tx.query(`DELETE FROM "Church" WHERE id = $1`, [id]);
-      await audit(tx, actorId, 'church.delete', id, { name: row.name, presbytery: row.presbyteryName });
+      await audit(tx, actorId, 'church.delete', id, { name: row.name, presbytery: row.presbyteryName, zone: row.zoneName });
     });
   } catch (err) {
     // 23503 = alguien se registró justo ahora: la llave foránea protege el dato.

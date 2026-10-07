@@ -188,6 +188,7 @@ export async function voidRedemption(id: string, actorId: string, reason: string
       restored = true;
     }
 
+    const who = (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [redemption.attendeeId])).rows[0];
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'redemption.void', 'Redemption', $3, $4::jsonb, ${NOW_UTC})`,
@@ -198,6 +199,7 @@ export async function voidRedemption(id: string, actorId: string, reason: string
         JSON.stringify({
           reason: cleanReason,
           attendeeId: redemption.attendeeId,
+          attendeeName: who?.fullName ?? null,
           originalPulseId: redemption.pulseId,
           restoredPulseId: targetPulseId,
           quantity: redemption.quantity,
