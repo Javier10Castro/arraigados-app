@@ -115,6 +115,44 @@
   color: var(--text-2);
 }
 
+.dates { display: flex; flex-direction: column; gap: 2px; }
+
+.price {
+  margin-top: 5px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--morado);
+}
+
+/* Sin foto: el mismo cuadro de la miniatura con un ícono de platillo. */
+.noPhoto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--morado);
+}
+
+.noShrink { flex: none; }
+
+/* Error / sin platillos (mismo lenguaje que el estado vacío de /programa). */
+.state {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  border: 1.4px dashed rgba(62, 7, 166, 0.3);
+  border-radius: 18px;
+  background: var(--crema);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.state svg { color: var(--morado); flex: none; margin-top: 2px; }
+.state strong { display: block; color: var(--morado-oscuro); font-size: 15px; }
+.state p { margin: 2px 0 10px; }
+
 @media (min-width: 1024px) {
   .segment { max-width: 440px; }
   .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
