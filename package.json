@@ -17,6 +17,7 @@
     "db:respaldo-total": "node scripts/db-respaldo-total.mjs",
     "db:restaurar-total": "node scripts/db-restaurar-total.mjs",
     "db:limpiar-pruebas": "node scripts/db-limpiar-pruebas.mjs",
+    "db:fotos-huerfanas": "node scripts/db-fotos-huerfanas.mjs",
     "db:restaurar": "node scripts/db-restaurar.mjs",
     "db:notas-demo": "node scripts/db-notas-demo.mjs",
     "db:likes-demo": "node scripts/db-likes-demo.mjs",

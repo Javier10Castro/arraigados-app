@@ -1,3 +1,4 @@
+import type { AttendeeProfileView } from './profile';
 /**
  * Contrato entre el frontend de Vite y sus funciones de servidor
  * (netlify/functions). Tipos y constantes que usan ambos lados.
@@ -102,6 +103,8 @@ export type MeResponse = {
   package: PackageSummary & { benefits?: string[] };
   drinksUsed: number;
   drinksRemaining: number;
+  /** Cómo eligió mostrarse (foto / avatar / iniciales). Ausente = aún no ha elegido. Ver shared/profile.ts. */
+  profile?: AttendeeProfileView;
 };
 
 /** Cuerpo de cualquier error de las funciones. */

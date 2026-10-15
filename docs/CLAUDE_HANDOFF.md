@@ -2742,4 +2742,79 @@ Para dejar la app lista para entrega sin tener que usar scripts: botón en el pa
 
 ## 61. Contraste en Admin → Menú · estado de /comida (7 oct 2026)
 - Los títulos de sede en `/admin/menu` usaban el color oscuro de `.label` sobre el fondo morado; ahora van en crema (`.venueTitle` en `Menu.module.css`) y la insignia de conteo también.
-- `/comida` (menú «Más → Comida») **sigue con los datos de ejemplo** de `src/data/app.ts` (`foodMenu`/`foodDays`) y la fecha «Sábado 18 de octubre» (el sábado es el 17). El menú real ya se ve en el carrusel de `/home` y se administra en `/admin/menu`; falta decidir si `/comida` pasa a usar `GET /api/menu`.
+- `/comida` (menú «Más → Comida») **ya usa el menú real**: `api.menu()` (`GET /api/menu`, solo platillos disponibles) filtrado por sede con las pestañas de `foodDays` (VENUE_12VA / VENUE_21RA), con estados de carga, error y vacío, y fechas Sábado 17 / Domingo 18 tomadas de `schedule`. Solo se tocaron `Comida.tsx` y `Comida.module.css`; `foodMenu` en `src/data/app.ts` quedó sin uso.
+
+## 62. Foto de perfil: foto · avatar · iniciales (14 oct 2026)
+**Qué hace:** cada asistente elige en `/perfil` (Más → Mi perfil) cómo aparece: foto propia, avatar de una galería (24 + «el de siempre») o iniciales. Se ve en notas, campana, cabecera, Más, Inicio, gafete y pantallas de Admin/Staff.
+
+**Auditoría previa (hallazgos):** la identidad del asistente es el token `x-pulse-token` (QR) → `Pulse` ACTIVE → `Attendee`; no existía perfil editable. `UserAvatar` es el único componente de avatar y usaba un ajuste **global** (`avatarMode`: blobatar | iniciales). Ya había Netlify Blobs (platillos, mercancía) pero servidos públicamente. `Attendee` es compartida con la app original (Next.js), así que no se altera.
+
+**Decisiones**
+- **Tabla nueva `AttendeeProfile`** (`migrations/009_attendee_profile.sql`): `attendeeId` (PK, FK `ON DELETE CASCADE`), `kind`, `avatarId`, `photoKey`, `updatedAt`, con `CHECK` de consistencia (cada `kind` exige y prohíbe ciertas columnas). Sin fila = se ve como antes. Reversión: `DROP TABLE "AttendeeProfile";`. Es solo aditiva, no destructiva.
+- **Foto privada**: store de Blobs `profile-photos` (no público). Se entrega con **URL firmada** HMAC-SHA256 (`SESSION_SECRET`, dominio `profile-photo-v1`, vence en 24–48 h redondeado al día, `timingSafeEqual`). No hay variables de entorno nuevas. Decisión: las fotos solo las necesitan asistentes y equipo; no se justifica publicarlas.
+- **Validación**: el cliente recorta/re-codifica a JPEG 512×512 (quita EXIF). El servidor **no confía** en eso: exige firma JPEG real (SOI), ≤ 1 MB, 64–2048 px, y vuelve a eliminar segmentos APPn/COM. PNG, scripts y cualquier otro formato se rechazan.
+- **Seguridad**: `PUT /api/profile` deduce la persona **solo del token**; ids del cuerpo se ignoran. La clave del archivo se genera en el servidor (`<attendeeId>-<aleatorio>.jpg`), nunca viene del cliente.
+- **Limpieza**: cada subida usa clave nueva; el archivo anterior se borra **solo después** de que la BD se actualizó; si la BD falla se borra el nuevo. Un error de subida no toca la selección previa. Al borrar asistentes: ver §62.2. (Desde la 4.ª ronda, cambiar a avatar/iniciales **ya no borra** la foto: ver «Opciones guardadas / inactivas» abajo.)
+- **Moderación**: ADMIN puede «Quitar foto» en la ficha del asistente (`attendee.photo_remove` en bitácora).
+- **Lectura**: `POST /api/profiles` (lotes de hasta 60) alimenta `ProfileDirectory` (`src/context/ProfileDirectory.tsx`: caché en memoria, agrupa peticiones, TTL 3 min). Sin `localStorage`.
+- **Prioridad**: la elección del usuario manda sobre el ajuste global `avatarMode`; sin elección rige el global.
+- **Ampliar la galería**: agregar una línea en `AVATAR_GALLERY` (`shared/profile.ts`).
+- **Personalización (14 oct, 2.ª ronda), sin columnas nuevas**: `avatarId` (texto ≤ 24) guarda la receta, nunca imágenes.
+  - *Avatar propio* (constructor): `c.<rostro>.<forma>.<tono>.<intensidad>` → Blobatar con semilla `arraigados-2k26-rostro-N`, `traits.shape`, `hue` y `tone`. La librería no incluye el editor de blobatar.dev; se arma con sus props públicas.
+  - *UI del constructor (14 oct, 3.ª ronda)*: avatar grande a la izquierda y opciones a la derecha en escritorio (≥ 900 px; en móvil, una debajo de otra). Pocas opciones a propósito, definidas en `src/pages/Perfil.tsx`: 6 formas (`SHAPES`), 6 estilos de ojos (`FACES`), 8 colores (`COLORS`) más «Personalizado» (deslizador de matiz 0-359), 5 matices (`TONES`: Pastel, Apagado, Vivo, Profundo, Oscuro) y «Sorpréndeme». OJO: el parámetro `tone` de Blobatar es una posición en una paleta interna que **no** va de claro a oscuro (solo 6 tonos reales: 0-0.19 pastel, 0.20-0.35 apagado, 0.36-0.61 vivo, 0.62-0.79 profundo, 0.80-0.92 «brillante» —casi igual al pastel, por eso no se ofrece— y 0.93-0.99 oscuro), por eso solo se ofrecen valores comprobados; los círculos de color muestran el color real que calcula la librería (`bodyColor`). Se retiró la galería de 24 de la pantalla; el servidor **sigue aceptando** `own`/`a01…a24` y cualquier `c.…` válido, así que lo guardado antes se sigue viendo. Para ofrecer más opciones basta ampliar esas listas.
+  - *Iniciales a gusto*: `i.<posiciones>.<color>`. Se guardan **posiciones** de palabras del nombre (no letras), así que si el nombre cambia las iniciales se actualizan; si ya no existe ninguna de las posiciones se vuelve a las de siempre.
+  - La cámara sobre la vista previa abre el selector de fotos desde cualquier pestaña (el archivo se guarda hasta pulsar «Guardar cambios»).
+  - (Histórico) En esta ronda las iniciales se guardaban dentro de `avatarId`. Hoy la 009 conserva la regla original estricta y la **010** la reemplaza y mueve esos estilos a `initialsId` (ver §62.1).
+
+**Límites conocidos (1.ª ronda; SUPERADOS por §62.2):** el archivo huérfano al borrar asistentes y la falta de límite de intentos se corrigieron/documentaron en §62.2. No uses estas dos líneas como estado actual.
+
+**Pruebas hechas (PGlite + Blobs en memoria + Playwright móvil/escritorio):** 43 comprobaciones de API (3 modos, reemplazo, errores que conservan lo previo, firma alterada/vencida 403, aislamiento entre asistentes, `/api/me`, lotes, moderación y bitácora) y flujo de UI completo con persistencia tras recargar.
+
+### 62.1 Opciones guardadas / inactivas (14 oct 2026, 4.ª ronda)
+**Problema:** al cambiar de Foto a Avatar el servidor borraba la foto (decisión de privacidad de la 1.ª versión) y la persona perdía su selección.
+**Ahora:** las TRES selecciones se conservan en la misma fila de `AttendeeProfile`; `kind` solo marca la **activa**:
+- `photoKey` (foto en Blobs privado), `avatarId` (galería / `c.…`) e `initialsId` (`i.…`, columna nueva). Regla (`CHECK`): `kind='photo'` exige `photoKey`; `kind='avatar'` exige `avatarId`.
+- **Migración `010_attendee_profile_keep_all.sql`** (después de la 009; `db:migrar` corre todas cada vez): agrega `initialsId`, mueve los estilos `i.…` que la 009 guardaba en `avatarId`, y reemplaza el `CHECK`. No borra datos; una transacción; idempotente (probada repitiéndola con datos mixtos). Reversión en el encabezado del archivo. **Hay que aplicarla antes de desplegar**: sin ella el perfil deja de verse (todo se dibuja como siempre) hasta que se aplique.
+- **La foto se borra solo** al subir otra (reemplazo) o con «Eliminar mi foto guardada» (`removePhoto=1`, con confirmación en pantalla), o por moderación Admin. Si la foto era la activa, pasa al avatar guardado o a las iniciales.
+- **Privacidad:** de las demás personas solo se entrega lo ACTIVO (`toView(row, full=false)` en `server/profile.ts`): una foto inactiva no se firma ni sale a terceros. La propia persona recibe todo (en `/api/me`, `GET /api/profile` y en su propia entrada de `POST /api/profiles`) para poder volver a lo guardado.
+- **UI** (`src/pages/Perfil.tsx`): cada pestaña muestra «Activo» o «Guardado»; al abrir una opción guardada pero inactiva aparece una nota («pulsa Guardar para activarla»). Se guarda la opción activa **y** cualquier selección editada aunque no sea la activa.
+- **Avatar e Iniciales en tarjetas plegables** (una abierta a la vez: Forma · Ojos · Color; Palabras · Color de fondo). El color se elige en un **recuadro** (`src/components/ColorBox.tsx`): horizontal = color, vertical = matiz; funciona con mouse, dedo y flechas del teclado.
+- **Avatar en 3 botones** (14 oct, 5.ª ronda): `Default` (guarda `own`: el blobatar que sale del nombre, sin ajustes), `Sorpréndeme` (aleatorio; cada pulsación da otro y se guarda como diseño propio `c.…`) y `Custom` (tarjetas Forma/Ojos/Color; arranca con lo que se ve). «Sorpréndeme» es solo un modo de pantalla (`avModeOv`); lo guardado siempre es Default o Custom. El recuadro de color de las iniciales usaba `hsl(h 58% 40%)` (sintaxis con espacios) dentro de un degradado de 13 paradas y se veía vacío: ahora usa comas y mide 64 px.
+- **Límite conocido:** el Admin solo ve/modera la foto cuando es la activa; una foto inactiva no la ve nadie más (se borra al reemplazarla, eliminarla o si el Admin la quita después de que la persona la reactive).
+
+### 62.2 Auditoría técnica y correcciones H1–H4 (14 oct 2026, 6.ª ronda)
+Tras una auditoría de solo lectura (git, migraciones, seguridad, UX) se corrigieron cuatro hallazgos y se documentó el quinto (respaldos). **Todo se verificó únicamente en local** (base PGlite en memoria + almacén de fotos simulado + Playwright). **No se ha probado contra Neon ni Netlify Blobs reales.** No se hicieron commits, pushes, despliegues ni migraciones contra producción.
+
+**Archivos de código tocados en esta ronda**
+- `server/profile.ts` — `cleanJpeg` reescrito; `photoKeysForAttendees` y `deletePhotoFiles` (nuevos); límite de frecuencia en `saveProfile`; `ProfileError` con `429` y `retryAfter`; metadata `createdAt` en cada foto nueva.
+- `server/pulseRelease.ts`, `server/batches.ts` — borran las fotos de Blobs tras el COMMIT.
+- `server/attendee.ts` — `getMe` tolera cualquier fallo al leer el perfil.
+- `netlify/functions/profile.mts` — responde `429` + `Retry-After`.
+- `scripts/db-fotos-huerfanas.mjs` y `scripts/_fotos.mjs` (nuevos), `scripts/db-limpiar-pruebas.mjs` (aviso), `package.json` (script `db:fotos-huerfanas`; sin dependencias nuevas).
+- Documentación: `README.md` (§1, §6, §7.4, §10, §12–§14, §16, §17), `docs/API.md`, `docs/CLAUDE_HANDOFF.md`, `docs/PLAN_PENDIENTES.md`, `docs/PLAN_RESPALDO.md`.
+- **Sin cambios de esquema**: ninguna migración nueva.
+
+**H1 — Fotos huérfanas al borrar asistentes.** `releasePulse` y `deleteBatch` leen las llaves (`photoKeysForAttendees`, con `to_regclass` para no abortar la transacción si falta la tabla) **antes** del DELETE y llaman a `deletePhotoFiles` **después** del COMMIT. `deletePhotoFiles` nunca lanza: si Blobs falla, la operación termina y se registra `[profile:huerfana] key=<llave> …`. No hay cola persistente (requeriría tabla nueva; propuesta en `PLAN_RESPALDO.md`). `db:fotos-huerfanas` (dry-run por defecto; `--borrar` pide `BORRAR`) compara Blobs contra las llaves de la base, solo borra llaves con el formato propio, nunca una referenciada y nada de menos de 1 h (usa la metadata `createdAt`; las anteriores sin fecha cuentan como antiguas). **`db:limpiar-pruebas` sigue sin borrar archivos** (avisa).
+**H2 — `/api/me` acoplado al perfil.** `getMe` captura cualquier error de `getProfile`, lo registra (`[me] no se pudo leer el perfil…`) y responde sin `profile`. `GET /api/profile` sigue respondiendo 500 si la base falla (esa ruta sí depende del perfil).
+**H3 — Límite de frecuencia sin tablas nuevas.** Cooldown por persona calculado en la base con `updatedAt` (`EXTRACT(EPOCH …)`, UTC): 10 s si sube foto, 2 s en otro guardado. Primera comprobación antes de leer/subir; segunda atómica en el `UPSERT` (`ON CONFLICT … DO UPDATE … WHERE "updatedAt" <= now() - make_interval(secs => $6)`): si pierde (0 filas) se borra la foto recién subida y se responde 429. Un tope diario real requeriría columnas o tabla (pendiente de autorización). La moderación del Admin también actualiza `updatedAt`.
+**H4 — `cleanJpeg`.** Recorre todos los segmentos y escaneos (progresivo y marcadores de reinicio), conserva solo lo necesario, **descarta todo después del EOI** y rechaza: sin EOI, un segundo SOF, segmentos truncados, escaneo sin SOF previo, SOI anidado. La imagen decodificada queda idéntica.
+**H5 — Respaldos (solo documentación).** Los respaldos incluyen la tabla `AttendeeProfile` pero **no** los archivos de `profile-photos` (`FOTO_STORES` no los lista). No se cambió el código de respaldo. Propuesta y advertencias en `docs/PLAN_RESPALDO.md`.
+
+**Pruebas ejecutadas (todas locales; los guiones viven fuera del repo, en un entorno temporal)**
+| Comando / prueba | Resultado real |
+|---|---|
+| `npx tsc --noEmit` | sin errores |
+| `npm run build` | `✓ built` sin errores |
+| API de perfil (`keep.mjs`) | 29 ok, 0 fallos (conservar las 3 selecciones, reemplazo, eliminación, visibilidad, aislamiento, moderación) |
+| Seguridad (`sec.mjs`) | 18 ok, 0 fallos (401/403/405, token ajeno, ids del cliente ignorados, MIME falso, >1 MB, firma alterada/vencida) |
+| H1–H3 (`fix.mjs`) | 33 ok, 0 fallos (desvincular borra el archivo; con Blobs caído se completa y queda `[profile:huerfana]`; `/api/me` 200 sin `profile` con el perfil roto; 429 + `Retry-After`; reintento tras esperar; carrera atómica sin huérfanos; aislamiento por persona; el Admin no depende del límite) |
+| Borrar lote (`batch.mjs`) | 6 ok (confirmación incorrecta no borra fotos; confirmación correcta sí) |
+| `cleanJpeg` (`jpeg.test.mts`) | 43 ok: base, progresivo, EXIF, gris, 4:4:4, píxeles idénticos, EXIF eliminado, bytes tras EOI descartados, rechazos, fuzz de 6000 mutaciones sin excepciones |
+| `classifyPhotos` (lógica de `db:fotos-huerfanas`) | 6 ok |
+| Playwright (escritorio y móvil) | 3 botones de avatar, persistencia tras recargar, mensaje «Espera N s» y reintento correcto |
+Cada guion se corrió sobre un entorno recién iniciado (los datos de uno afectan a otro). El entorno temporal parchea el pool de `pg` para simular fallos de la base.
+
+**NO probado contra servicios reales**: Neon (migraciones 009/010, rendimiento, `make_interval`/`EXTRACT` en la versión real), Netlify Blobs (borrado real, `list`, `getMetadata`), `db:fotos-huerfanas` end-to-end, `netlify dev`, cuenta Staff, fotos HEIC/de cámara real, dispositivos físicos, concurrencia real.
+
+**Pendiente / decisiones del propietario:** aplicar 009 y 010 en rama de Neon y luego producción; probar con servicios reales (checklist en `PLAN_RESPALDO.md`); incluir `profile-photos` en los respaldos; cola/tabla de tareas para reintentos de limpieza; tope diario de cambios; transacción única en la moderación Admin (UPDATE + auditoría); bajar el `max-age` de la foto (12 h) para que la moderación surta efecto antes.
+**Riesgos residuales:** foto huérfana si Blobs falla y nadie corre el script; una URL firmada ya emitida puede servir una foto hasta 24–48 h si el archivo no llegó a borrarse; copia de seguridad inexistente para fotos de perfil; dos dispositivos simultáneos reciben 429 (no pierden datos pero uno debe reintentar).

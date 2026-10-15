@@ -91,6 +91,42 @@ Datos del asistente.
 ```
 `package.benefits` viene de la tabla `PackageBenefit`; si falta la migración 008 el campo se omite y el frontend usa su lista fija.
 
+### Perfil (🎫)
+Cada asistente elige cómo aparece: `photo`, `avatar` o `initials`. Requiere las migraciones **009 y 010**; sin ellas `GET /api/profile` devuelve `{ "profile": null }`, `POST /api/profiles` devuelve `{ "profiles": {} }` y `PUT` responde 503.
+
+**Autenticación y autorización**
+- `GET`/`PUT /api/profile`: cabecera `x-pulse-token` de una pulsera **ACTIVE**. La persona sale **solo del token**; cualquier `attendeeId`/`id` en el cuerpo se ignora. Sin token o con uno inválido/inactivo → `401`. Una cookie de Staff/Admin **no** sirve aquí.
+- `POST /api/profiles`: token de asistente **o** sesión de Staff/Admin (`401`/`403` si no hay ninguna). Cualquiera de ellos puede consultar el perfil **activo** de cualquier id que conozca (es por diseño: se usa para pintar notas y listas).
+- `DELETE /api/admin/attendees/:id/profile-photo`: solo **ADMIN** (cookie). Un token de asistente o un Staff no pueden.
+- `GET /api/profile-photo/:key`: no usa sesión; exige la **firma** de la URL.
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /api/profile` | `{ "profile": { kind, avatarId, initialsId, photoUrl } \| null }`. `kind` es la opción **activa**; las otras selecciones guardadas (avatar, iniciales, foto) también vienen, para poder volver a ellas. `null` = sin elección (se ve como siempre). Si la base falla responde `500` (esta ruta sí depende del perfil). |
+| `PUT /api/profile` (`multipart/form-data`) | Campos: `kind` (**obligatorio**: `photo` \| `avatar` \| `initials`, la opción que queda activa), `avatarId`, `initialsId`, `photo` (JPEG), `removePhoto=1`. **Las tres selecciones se conservan**; cada campo que no se envía se mantiene como estaba. `avatarId`: `own`, `a01`…`a24` o `c.<rostro 0-99>.<forma 0-100>.<color 0-359>.<matiz 0-100>`. `initialsId`: vacío (primera y última palabra del nombre) o `i.<posiciones de palabras, ej. 0-2>.<color 0-359 \| x>` (máx. 3 palabras). Una `photo` nueva **reemplaza** a la anterior (que se borra de Blobs después de guardar); `removePhoto=1` elimina la guardada. `kind=photo` exige tener foto. Responde `{ "profile": … }` con la vista completa de la propia persona. |
+| `POST /api/profiles` `{ "ids": ["…"] }` | → `{ profiles: { [attendeeId]: { kind, avatarId, initialsId, photoUrl } } }`. Máx. 60 ids distintos (el resto se ignora). Solo devuelve asistentes con elección guardada y, de cada **otra** persona, solo lo **activo** (una foto inactiva nunca se firma ni se entrega a terceros); la propia persona recibe todo. Cuerpo que no es JSON o `ids` que no es lista → `400`. |
+| `DELETE /api/admin/attendees/:id/profile-photo` | Quita la foto de una persona (si era la activa, queda con iniciales; se borra el archivo; su avatar e iniciales guardados se conservan) y registra `attendee.photo_remove` en la bitácora. `404` si no tiene foto. No está sujeta al límite de frecuencia. |
+| `GET /api/profile-photo/:key?e=<exp>&s=<firma>` | Sirve la foto (JPEG, `nosniff`, `private, max-age=43200`). `403` si la firma es inválida, fue alterada o venció; `404` si el archivo ya no existe; `405` con otro método. Las URLs se obtienen de los endpoints anteriores y duran 24–48 h. |
+
+**Validación de la foto (servidor; el cliente ya la recorta a 512×512 pero no se confía en eso)**
+- Solo **JPEG real**: se revisan los bytes, no el MIME ni la extensión. Se acepta JPEG base y progresivo.
+- ≤ **1 000 000 bytes** y entre **64 y 2048 px** por lado. Además rige el límite de tamaño de petición de Netlify Functions.
+- Se **eliminan** EXIF/GPS/ICC/miniaturas (segmentos APPn) y comentarios, y **todo lo que venga después del fin de imagen (EOI)**; la imagen decodificada queda idéntica.
+- Se **rechaza** (`400`, «No pudimos leer esa foto…») un archivo sin inicio/fin de imagen, truncado, con segmentos incompletos, con **dos encabezados de imagen (SOF)** o sin datos de imagen. PNG, texto o cualquier otro formato también.
+- Mensajes `400` específicos: foto demasiado pesada / pequeña / grande; avatar o iniciales inválidos; `kind` ausente; «Elige una foto/un avatar para continuar».
+
+**Límite de frecuencia (solo `PUT /api/profile`)**
+- Por persona, medido desde el último cambio de su fila (`updatedAt`, en la base): **10 s** si la petición sube una foto, **2 s** en cualquier otro guardado (incluye `removePhoto`).
+- Se comprueba **dos veces**: al inicio (antes de leer o subir el archivo) y de forma **atómica** dentro del `UPSERT`, así que dos peticiones simultáneas (p. ej. dos dispositivos) no lo saltan; si la segunda pierde, la foto que había subido se borra.
+- Respuesta: `429` `{ "error": "Hiciste un cambio hace un momento. Espera N s e inténtalo de nuevo." }` + cabecera `Retry-After: N`. **No se cambia nada** de lo guardado. Un reintento legítimo funciona esperando esos segundos; la pantalla muestra el mensaje y conserva lo que el usuario estaba editando.
+- Alcance: no aplica a `GET`, a `POST /api/profiles` ni a la moderación del Admin (que sí reinicia el contador de esa persona). **No hay tope diario ni por IP**: es solo un freno entre cambios (ver pendientes).
+
+**Códigos:** `200` · `400` validación · `401` sin sesión/token · `403` sin permiso (Admin) o firma inválida (foto) · `404` sin foto / archivo inexistente · `405` método · `429` demasiado seguido · `503` migraciones sin aplicar · `500` error interno.
+
+**`/api/me` y el perfil opcional:** `GET /api/me` incluye `profile` cuando existe. Si leerlo falla por **cualquier** motivo (migraciones sin aplicar o un error de la base), `/api/me` responde `200` **sin** la clave `profile` y la app dibuja el avatar de siempre; el servidor registra `[me] no se pudo leer el perfil (se responde sin él)` en el log. La sesión del asistente nunca depende del perfil.
+
+**Limpieza de archivos:** al desvincular una pulsera o borrar un lote (rutas de Admin que ya existían) la foto de los asistentes eliminados se borra de Blobs **después** de confirmar la base; si Blobs falla la operación igual termina y se registra `[profile:huerfana] key=…` (ver `docs/PLAN_RESPALDO.md`).
+
 ### `GET /api/menu` 🌐
 `{ "dishes": [{ id, name, description, price, venueId, venueName, imageUrl }] }` — solo platillos **disponibles**.
 
@@ -240,6 +276,8 @@ Todos requieren cookie de **Admin**.
 | `GET /api/admin/blocked-words` | `{ words, max }` (se suman a la lista fija de `shared/moderation.ts`). |
 | `POST /api/admin/blocked-words` `{ "word": "…" }` | → `{ outcome: "ok" \| "exists", word }`. |
 | `PATCH /api/admin/blocked-words/:id` `{ "word": "…" }` · `DELETE …/:id` | Corregir / quitar. |
+
+Moderación de perfiles (solo ADMIN): `DELETE /api/admin/attendees/:id/profile-photo` — ver la sección «Perfil» arriba.
 
 ### 4.8 Avisos
 

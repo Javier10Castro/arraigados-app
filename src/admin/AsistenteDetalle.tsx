@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, CupSoda, Pencil, Unlink } from 'lucide-react';
+import { ChevronLeft, CupSoda, ImageOff, Pencil, Unlink } from 'lucide-react';
 import Button from '../components/Button';
 import DrinkCups from '../components/DrinkCups';
 import ChurchCombobox from '../components/ChurchCombobox';
@@ -9,6 +9,7 @@ import AdminModal from './AdminModal';
 import HeaderDangerButton from './HeaderDangerButton';
 import ReleasePulseModal from './ReleasePulseModal';
 import { useStaffSession } from '../context/StaffSession';
+import { setMyProfile, useProfile } from '../context/ProfileDirectory';
 import { api } from '../lib/api';
 import UserAvatar from '../components/UserAvatar';
 import { Skeleton, SkeletonRegion } from '../components/Skeleton';
@@ -37,6 +38,9 @@ export default function AsistenteDetalle() {
   const [saved, setSaved] = useState(false);
   const { user: me } = useStaffSession();
   const [releasing, setReleasing] = useState(false);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
+  const profile = useProfile(att?.id);
   const navigate = useNavigate();
 
   const load = useCallback(() => {
@@ -67,6 +71,18 @@ export default function AsistenteDetalle() {
           who={att.fullName}
           onClose={() => setReleasing(false)}
           onDone={() => navigate(backTo, { replace: true })}
+        />
+      )}
+      {removingPhoto && att && (
+        <RemovePhotoModal
+          attendeeId={att.id}
+          who={att.fullName}
+          onClose={() => setRemovingPhoto(false)}
+          onDone={() => {
+            setMyProfile(att.id, { kind: 'initials', avatarId: null, initialsId: null, photoUrl: null });
+            setRemovingPhoto(false);
+            setPhotoRemoved(true);
+          }}
         />
       )}
       <Link to={backTo} className={d.back}>
@@ -125,6 +141,20 @@ export default function AsistenteDetalle() {
             {saved && (
               <p className={s.hint} role="status">
                 ✓ Datos corregidos.
+              </p>
+            )}
+            {/* Moderación: quitar una foto de perfil inapropiada (queda en la bitácora). */}
+            {profile?.kind === 'photo' && (
+              <div className={a.cardHead}>
+                <p className={s.hint} style={{ margin: 0 }}>Este asistente subió una foto de perfil.</p>
+                <Button size="sm" variant="outline" onClick={() => setRemovingPhoto(true)}>
+                  <ImageOff size={14} /> Quitar foto
+                </Button>
+              </div>
+            )}
+            {photoRemoved && (
+              <p className={s.hint} role="status">
+                ✓ Foto de perfil eliminada. Ahora se ven sus iniciales.
               </p>
             )}
             <dl className={d.facts}>
@@ -313,6 +343,43 @@ function EditModal({
           </Button>
         </div>
       </form>
+    </AdminModal>
+  );
+}
+
+/** Moderación: confirma y quita la foto de perfil de un asistente (queda con sus iniciales). */
+function RemovePhotoModal({ attendeeId, who, onClose, onDone }: { attendeeId: string; who: string; onClose: () => void; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const go = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.adminRemoveProfilePhoto(attendeeId);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo quitar la foto.');
+      setBusy(false);
+    }
+  };
+  return (
+    <AdminModal title="Quitar foto de perfil" onClose={onClose} busy={busy}>
+      <p style={{ margin: 0 }}>
+        Se borrará la foto de <strong>{who}</strong> y volverá a verse con sus iniciales. Puede subir otra después. Queda registrado en la bitácora.
+      </p>
+      {error && (
+        <p role="alert" style={{ color: '#b3261e', margin: '10px 0 0' }}>
+          {error}
+        </p>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 16 }}>
+        <Button variant="outline" onClick={onClose} disabled={busy}>
+          Cancelar
+        </Button>
+        <Button onClick={() => void go()} disabled={busy}>
+          {busy ? 'Quitando…' : 'Quitar foto'}
+        </Button>
+      </div>
     </AdminModal>
   );
 }

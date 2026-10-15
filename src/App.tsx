@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Programa from './pages/Programa';
 import Beneficios from './pages/Beneficios';
 import Comida from './pages/Comida';
+import Perfil from './pages/Perfil';
 // Instantáneas OCULTO (6 oct 2026): el archivo src/pages/Instantaneas.tsx se conserva. Para volver a mostrarlo:
 // restaurar este import, la ruta de abajo y las entradas en AppShell.tsx, Mas.tsx y admin/nav.ts.
 // import Instantaneas from './pages/Instantaneas';
@@ -145,6 +146,7 @@ export default function App() {
         <Route path="/comida" element={shell(<Comida />)} />
         <Route path="/instantaneas" element={<Navigate to="/home" replace />} />
         <Route path="/recursos" element={shell(<Recursos />)} />
+        <Route path="/perfil" element={shell(<Perfil />)} />
         <Route path="/mas" element={shell(<Mas />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

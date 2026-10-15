@@ -6,6 +6,7 @@ import {
   LogOut,
   MapPin,
   QrCode,
+  UserRound,
   Utensils,
 } from 'lucide-react';
 import ScreenHeader from '../components/ScreenHeader';
@@ -17,6 +18,7 @@ import styles from './Mas.module.css';
 const GafeteViewer = lazy(() => import('./homev2/GafeteViewer'));
 
 const links = [
+  { to: '/perfil', label: 'Mi perfil', desc: 'Foto, avatar o iniciales', Icon: UserRound },
   { to: '/comida', label: 'Comida', desc: 'Menú de ambas sedes', Icon: Utensils },
   // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   // { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },

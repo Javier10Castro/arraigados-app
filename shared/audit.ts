@@ -39,6 +39,7 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'batch.create': { label: 'Creó un lote', category: 'lotes' },
   'batch.delete': { label: 'Borró un lote', category: 'lotes' },
   'attendee.update': { label: 'Corrigió datos de un asistente', category: 'asistentes' },
+  'attendee.photo_remove': { label: 'Quitó la foto de perfil de un asistente', category: 'asistentes' },
   'pulse.reassign': { label: 'Reemplazó una pulsera', category: 'pulseras' },
   'redemption.void': { label: 'Anuló un canje', category: 'canjes' },
   'note.retire': { label: 'Retiró una nota', category: 'notas' },
@@ -245,6 +246,11 @@ function build(row: Row): Built {
         if (label && single[label]) return { title: single[label], parts: [[null, value, label]] };
       }
       return { title: `Corrigió los datos de ${who || 'un asistente'}`, parts };
+    }
+
+    case 'attendee.photo_remove': {
+      const who = attendeeOf(row, m);
+      return { title: `Quitó la foto de perfil de ${who || 'un asistente'}`, parts: [[null, 'Quedó con sus iniciales', 'Resultado']] };
     }
 
     /* ---- Pulseras ---- */

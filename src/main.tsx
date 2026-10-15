@@ -5,6 +5,7 @@ import App from './App';
 import { StaffSessionProvider } from './context/StaffSession';
 import { PulseSessionProvider } from './context/PulseSession';
 import { AppSettingsProvider } from './context/AppSettings';
+import { ProfileDirectorySync } from './context/ProfileDirectory';
 import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,9 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AppSettingsProvider>
         <PulseSessionProvider>
-          <StaffSessionProvider>
-            <App />
-          </StaffSessionProvider>
+          <ProfileDirectorySync>
+            <StaffSessionProvider>
+              <App />
+            </StaffSessionProvider>
+          </ProfileDirectorySync>
         </PulseSessionProvider>
       </AppSettingsProvider>
     </BrowserRouter>

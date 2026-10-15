@@ -22,7 +22,7 @@ import { crearRespaldoTotal, listTables, printTable } from './_respaldo.mjs';
 const simulate = process.argv.includes('--simular');
 
 /** Hijos primero. Solo estas tablas se vacían; todo lo demás se conserva. */
-const CLEAN = ['NoteLike', 'Note', 'NotificationState', 'Redemption', 'Pulse', 'Attendee', 'Batch', 'Announcement', 'InstantView', 'InstantCredit', 'Instant'];
+const CLEAN = ['NoteLike', 'Note', 'NotificationState', 'AttendeeProfile', 'Redemption', 'Pulse', 'Attendee', 'Batch', 'Announcement', 'InstantView', 'InstantCredit', 'Instant'];
 /** AuditLog: solo las entradas de estas entidades (pruebas). Cuentas, iglesias, ajustes, menú... se conservan. */
 const TEST_AUDIT_TYPES = ['Batch', 'Pulse', 'Attendee', 'Redemption', 'Note', 'NoteLike', 'Announcement', 'InstantCredit', 'Instant', 'InstantView'];
 const KEEP = ['User', 'Package', 'PackageBenefit', 'Zone', 'Presbytery', 'Church', 'Venue', 'Dish', 'MerchItem', 'MerchImage', 'BlockedWord', 'InstantConfig'];
@@ -114,6 +114,10 @@ try {
   printTable('Conservado:', kept);
   console.log(`\n✔ Listo: la base quedó limpia y lista para usarse. Los lotes nuevos empiezan en LOTE-${new Date().getFullYear()}-001.`);
   console.log(`  Si necesitas regresar:  npm run db:restaurar-total -- ${rel} --reemplazar\n`);
+  if (toDelete.AttendeeProfile > 0) {
+    console.log(`  ⚠ Se borraron ${toDelete.AttendeeProfile} perfil(es) de la base, pero sus FOTOS siguen en Netlify Blobs (este script no las toca).`);
+    console.log('    Para listarlas y limpiarlas:  npm run db:fotos-huerfanas   (y luego con  -- --borrar)\n');
+  }
 } finally {
   await client.end();
 }

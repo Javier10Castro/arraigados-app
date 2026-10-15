@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
 import { NOW_UTC, newId, query, withTransaction } from './db';
 import { shortToken } from './wristband';
+import { deletePhotoFiles, photoKeysForAttendees } from './profile';
 import {
   BATCH_CODE_RE,
   MANUAL_CODE_SENTINEL_PREFIX,
@@ -460,10 +461,13 @@ export type DeleteBatchResult = { code: string; pulses: number; attendees: numbe
  * notas, likes, canjes y estado de campana) y los canjes hechos con sus pulseras. Un asistente que
  * además tiene una pulsera de OTRO lote (reemplazo) se conserva.
  * `confirmCode` debe ser el nombre exacto del lote (confirmación escrita desde la pantalla).
+ * Las fotos de perfil de esos asistentes (Netlify Blobs) se borran DESPUÉS de confirmar la transacción
+ * (la llave se lee antes del DELETE); si Blobs falla queda registrado `[profile:huerfana]` (ver docs).
  */
 export async function deleteBatch(actorId: string, id: string, confirmCode: string): Promise<DeleteBatchResult> {
+  let photoKeys: string[] = [];
   try {
-    return await withTransaction(async (tx) => {
+    const result = await withTransaction(async (tx) => {
       const b = await tx.query<{ code: string }>(`SELECT code FROM "Batch" WHERE id = $1 FOR UPDATE`, [id]);
       if (!b.rowCount) throw new BatchError('Ese lote ya no existe.');
       const code = b.rows[0].code;
@@ -480,6 +484,7 @@ export async function deleteBatch(actorId: string, id: string, confirmCode: stri
       ).rows.map((r) => r.id);
 
       const has = async (t: string) => Boolean((await tx.query(`SELECT to_regclass($1) AS t`, [`public."${t}"`])).rows[0].t);
+      photoKeys = await photoKeysForAttendees(tx, orphan);
       let notes = 0;
       if (orphan.length) {
         if (await has('Note')) {
@@ -522,6 +527,8 @@ export async function deleteBatch(actorId: string, id: string, confirmCode: stri
       );
       return result;
     });
+    await deletePhotoFiles(photoKeys); // ya confirmada la base; nunca lanza
+    return result;
   } catch (err) {
     if ((err as { code?: string }).code === '23503') {
       throw new BatchError('No se pudo borrar: hay datos que dependen de este lote. Usa el script db:limpiar-pruebas.');

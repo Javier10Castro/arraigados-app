@@ -40,6 +40,7 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 - **Notas**: publica una frase de hasta 60 caracteres que dura 24 horas; da *like* a las de otros.
 - **Campana de notificaciones**: avisos del equipo y likes recibidos.
 - **Comida** (`/comida`), **Recursos**, **Más**.
+- **Mi perfil** (`/perfil`, Más → Mi perfil): elige cómo aparece en notas, campana, gafete y listas: **foto** propia, **avatar** (*Default*, *Sorpréndeme* o *Custom*) o **iniciales** (qué palabras del nombre y color de fondo). Las tres opciones se conservan; solo una está activa (ver §7.4).
 
 ### Para el Staff (cuenta con correo y contraseña)
 - **Escanear** la pulsera con la cámara (o escribir el código de respaldo `AR26-XXXXX`) y ver los datos y el saldo de aguas del asistente.
@@ -169,7 +170,7 @@ Todas son **solo de servidor** (el frontend no usa ninguna). Se documentan en [`
 | `PUBLIC_BASE_URL` | Solo en producción | Dominio con el que se arma el QR de cada pulsera: `{PUBLIC_BASE_URL}/p/{token}`. Sin `/` al final. **Queda grabado en cada QR impreso**: fíjalo al dominio oficial definitivo **antes** de imprimir pulseras reales. En desarrollo déjala vacía. |
 | `OWNER_EMAIL` | No | Cuenta principal protegida (por defecto `javiercastro9912@gmail.com`): no se puede eliminar. |
 | `PROGRAM_REMINDERS` | No | Poner `off` para apagar los recordatorios automáticos del programa en la campana (por defecto están activos). |
-| `NETLIFY_SITE_ID`, `NETLIFY_AUTH_TOKEN` | No | Solo para que `db:respaldo-total` también respalde/restaure las **fotos** (Netlify Blobs). La app no las necesita. |
+| `NETLIFY_SITE_ID`, `NETLIFY_AUTH_TOKEN` | No | Solo para los **scripts**: que `db:respaldo-total` respalde/restaure las fotos de platillos y mercancía (Netlify Blobs) y para `db:fotos-huerfanas` (§7.4). La app no las necesita (Netlify las configura sola). |
 
 Generar un `SESSION_SECRET` en PowerShell:
 
@@ -200,6 +201,8 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `006_announcements.sql` | `Announcement`, `NotificationState` (avisos y "visto" de la campana). |
 | `007_announcement_live.sql` | Columna `live` (etiqueta "EN VIVO"). |
 | `008_package_benefits.sql` | `PackageBenefit` (lo que incluye cada kit) y **siembra** los beneficios actuales. |
+| `009_attendee_profile.sql` | `AttendeeProfile` (foto / avatar / iniciales de cada asistente). Solo **agrega** una tabla; no toca `Attendee`. |
+| `010_attendee_profile_keep_all.sql` | Agrega `initialsId` y relaja la regla para conservar **las 3 selecciones a la vez** (`kind` = la activa). No borra datos. |
 
 Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se puede correr las veces que haga falta. Las semillas solo corren **al crear la tabla**, así que volver a migrar **no resucita** datos que borraste.
 
@@ -211,6 +214,34 @@ Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se pue
 
 ### 7.3 Almacenamiento de imágenes
 Fotos de platillos y mercancía: **Netlify Blobs**. Se sirven públicas por `/api/dish-image/:key` y `/api/merch-image/:key`; la *key* cambia en cada reemplazo, así que la caché es agresiva y segura.
+
+### 7.4 Perfil del asistente (foto · avatar · iniciales)
+Cada asistente elige en `/perfil` cómo se ve. Las **tres opciones se conservan** (`kind` marca la activa); de las demás personas solo se entrega la activa.
+
+| Modalidad | Qué guarda | Dónde |
+|---|---|---|
+| **Foto** | JPEG de 512 px (el navegador la recorta y limpia) | Netlify Blobs **privado** (`profile-photos`); en la base solo su llave (`photoKey`) |
+| **Avatar** | Texto corto: `own` (Default), `c.<rostro>.<forma>.<color>.<matiz>` (Sorpréndeme/Custom) o `a01…a24` | `AttendeeProfile.avatarId` |
+| **Iniciales** | Texto corto con las *posiciones* de las palabras del nombre y el color (se actualizan si el nombre cambia) | `AttendeeProfile.initialsId` |
+
+- **Requisitos:** migraciones **009 y 010** (`npm run db:migrar`; sin ellas el perfil no se ve y guardar responde 503). `SESSION_SECRET` (ya obligatoria) firma las URLs de las fotos. **No hay dependencias npm ni variables nuevas** (usa `@netlify/blobs` y `blobatar`, ya instaladas).
+- **Fotos privadas:** no hay URL pública; se sirven con URL firmada (HMAC) que caduca en 24–48 h y solo se entrega a asistentes con pulsera activa o al equipo.
+- **Validación de la foto (servidor):** solo JPEG real (se revisan los bytes, no el MIME ni la extensión), ≤ 1 MB, 64–2048 px; se quitan EXIF/GPS/comentarios y **todo lo que venga después del fin de imagen**; se rechaza un JPEG sin fin de imagen, con dos encabezados de imagen o truncado. Detalle en [`docs/API.md`](docs/API.md).
+- **Límite de frecuencia:** cada persona debe esperar **10 s** entre cambios si sube foto y **2 s** si no; si no, `429` con `Retry-After` y el mensaje «Espera N s». No cambia nada guardado. No hay tope diario (ver [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md)).
+- **Limpieza de fotos:** al **desvincular una pulsera** o **borrar un lote**, la foto se borra de Blobs **después** de confirmar la base. Si Blobs falla, la operación se completa y el archivo queda huérfano (se registra `[profile:huerfana] key=…`): `npm run db:fotos-huerfanas` lo lista y, con `-- --borrar`, lo elimina. `db:limpiar-pruebas` **no** borra archivos. Detalle y límites en [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md).
+- ⚠️ **Los respaldos actuales NO incluyen las fotos de perfil** (sí la tabla). Ver [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md).
+- **Probarlo en desarrollo** (en una rama de Neon de pruebas, nunca en producción):
+  ```
+  npm run db:migrar
+  npm run dev
+  ```
+  1. Admin (`/login`) → Lotes → crea un lote de prueba y abre el enlace `/p/<token>` de una pulsera para registrarte.
+  2. Más → **Mi perfil**: prueba Foto, Avatar (Default / Sorpréndeme / Custom) e Iniciales; pulsa *Guardar cambios* y **recarga**: debe persistir.
+  3. Sube una foto y cambia a Avatar: la foto queda «Guardada» (no se borra). Dos guardados seguidos muestran «Espera N s».
+  4. Admin → Asistentes → detalle: **Quitar foto** (queda en la bitácora). Admin → Asistentes → detalle → *Desvincular pulsera* (solo la cuenta propietaria) con una pulsera de prueba: la foto debe desaparecer de Blobs.
+  5. `npx tsc --noEmit` y `npm run build` sin errores.
+
+  > Las fotos usan Netlify Blobs. Con `netlify dev` se espera un almacén local, pero **no se ha verificado en este repositorio**: las pruebas hechas fueron con un almacén simulado, no con Blobs ni Neon reales. Avatares e iniciales no usan Blobs.
 
 ---
 
@@ -247,6 +278,7 @@ Detalles de seguridad:
 | `/homev2` | Asistente | Home clásico, sin animación (respaldo). |
 | `/home/mercancia` | Asistente | Galería de mercancía. |
 | `/programa`, `/beneficios`, `/comida`, `/recursos`, `/mas` | Asistente | Secciones de la app. |
+| `/perfil` | Asistente | **Mi perfil**: elegir foto, avatar o iniciales (Más → Mi perfil). |
 | `/staff` | Staff/Admin | Escáner y canje de aguas. |
 | `/cuenta/contrasena` | Staff/Admin | Cambiar contraseña. |
 | `/admin` → `/admin/dashboard` | Admin | Panel (ver tabla en §1). |
@@ -281,8 +313,11 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 | `GET /api/packages` | 🌐 | Kits activos. |
 | `GET /api/pulse/:token` | 🌐 | Estado de una pulsera: `not_found` · `invalidated` · `active` · `unclaimed` (+ kit). |
 | `POST /api/claim` | 🌐 | Reclama una pulsera `{ token, fullName, ageRange, churchId }` → `outcome`: `claimed` · `already_active` · `invalidated` · `not_found`. |
-| `GET /api/me` | 🎫 | Datos del asistente, su kit (con `benefits`) y aguas usadas/restantes. |
+| `GET /api/me` | 🎫 | Datos del asistente, su kit (con `benefits`), aguas usadas/restantes y, si lo hay, su `profile`. Si el perfil no se puede leer, responde igual **sin** `profile`. |
 | `GET /api/menu` | 🌐 | Platillos **disponibles**. |
+| `GET` · `PUT /api/profile` | 🎫 | Lee / guarda la imagen de perfil propia (la identidad sale del token, nunca del cuerpo). `PUT` tiene límite de frecuencia (`429` + `Retry-After`). |
+| `POST /api/profiles` | 🎫 · 👷 | Perfiles de varios asistentes (máx. 60 ids) para pintar sus avatares. |
+| `GET /api/profile-photo/:key?e=&s=` | firmada | Foto de perfil desde Blobs **privado**; exige firma vigente. |
 | `GET /api/merch` | 🌐 | Catálogo de mercancía. |
 | `GET /api/dish-image/:key` · `GET /api/merch-image/:key` | 🌐 | Imágenes desde Netlify Blobs. |
 | `GET /api/settings` | 🌐 | Configuración global (modo de avatar). |
@@ -372,6 +407,7 @@ curl -H 'x-pulse-token: AbCdEfGh12345678' https://redjuveniltijuana.com/api/me
 | `npm run db:respaldo-total` | **Respaldo completo** (todas las tablas + fotos si hay token de Netlify). Solo lectura. |
 | `npm run db:restaurar-total -- <carpeta> [--reemplazar]` | Restaura un respaldo total (verifica su integridad antes). |
 | `npm run db:limpiar-pruebas [-- --simular]` | **Deja la base lista para el evento** (ver §13). |
+| `npm run db:fotos-huerfanas [-- --borrar]` | Compara las fotos de perfil de Blobs con la base y lista las **huérfanas**; con `--borrar` las elimina (pide escribir `BORRAR`). Por defecto solo lee. Necesita `NETLIFY_SITE_ID`/`NETLIFY_AUTH_TOKEN` en `.env` (§7.4). |
 | `npm run db:respaldo` / `db:restaurar` / `db:borrar-respaldo` | Scripts antiguos (reemplazados por los "total"). |
 | `npm run db:notas-demo` / `db:likes-demo` | Datos de demostración de Notas (`-- --limpiar` los borra). |
 | `npm run db:renombrar-kits` | Utilidad histórica para renombrar kits. |
@@ -394,6 +430,7 @@ Guía completa en [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md). Resumen:
    - **Borra:** notas y likes, avisos, canjes, pulseras, asistentes, lotes, Instantáneas y la bitácora de esas pruebas.
    - **Conserva:** todas las cuentas (Admin y Staff), kits, beneficios, zonas/presbiterios/iglesias, menú, mercancía, palabras bloqueadas y configuración.
    - ⚠️ Borra **todas** las pulseras y asistentes, aunque sean reales. Córrelo **antes** de generar los lotes definitivos.
+   - ⚠️ **Fotos de perfil:** este script borra los perfiles de la base pero **no** los archivos de Blobs (avisa al terminar); límpialos con `npm run db:fotos-huerfanas`. Los respaldos tampoco las incluyen: **no limpies las fotos si aún podrías restaurar** (ver `docs/PLAN_RESPALDO.md`).
 4. Desde el panel también puedes **borrar lotes de prueba** uno por uno (Admin → Lotes → lote → ícono de bote).
 5. **Orden recomendado:** respaldo → borrar lotes de prueba → (si quedan datos sueltos) `db:limpiar-pruebas` → crear lotes definitivos con `PUBLIC_BASE_URL` ya fijado.
 
@@ -407,6 +444,7 @@ Checklist antes de desplegar:
 - [ ] Variables de entorno configuradas en Netlify (`DATABASE_URL`, `SESSION_SECRET`, `PUBLIC_BASE_URL`; opcional `OWNER_EMAIL`).
 - [ ] Migraciones aplicadas (`npm run db:migrar`) contra la base de producción.
 - [ ] `npm run build` pasa sin errores.
+- [ ] **Perfil:** migraciones 009 y 010 aplicadas **antes** de desplegar (primero en una rama de Neon) y checklist de `docs/PLAN_RESPALDO.md` («Verificaciones antes de desplegar») completado.
 - [ ] Dominio definitivo fijado **antes** de imprimir pulseras reales.
 
 Flujo habitual de cambios (PowerShell, un comando por línea):
@@ -443,6 +481,8 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 |---|---|
 | `Falta SESSION_SECRET…` / error 500 al iniciar sesión | `.env` sin `SESSION_SECRET` (≥32 caracteres) o sin reiniciar `npm run dev`. |
 | `Falta DATABASE_URL` | Falta en `.env` (o en las variables de Netlify en producción). |
+| Mi perfil dice «Esta función todavía no está disponible» o el perfil no se ve | Falta aplicar las migraciones 009 y 010 (`npm run db:migrar`). |
+| Mi perfil dice «Hiciste un cambio hace un momento. Espera N s» | Es el límite de frecuencia (`429`): espera esos segundos y vuelve a pulsar Guardar (§7.4). |
 | Una pantalla del panel dice "Falta aplicar la migración" | Corre `npm run db:migrar` contra esa base (p. ej. 008 para Beneficios). |
 | "Kits" aparece deshabilitado ("Etapa 5") o una pantalla nueva no aparece | Estás viendo una versión anterior: sube los cambios (`git push`) y espera el despliegue, o reinicia `npm run dev`. |
 | Los QR no se generan en producción | Falta `PUBLIC_BASE_URL` (sin `/` al final). |
@@ -461,7 +501,7 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 |---|---|
 | [`docs/MANUAL_ADMIN.pdf`](docs/MANUAL_ADMIN.pdf) | **Manual de uso para administradores** (PDF con capturas reales, 32 páginas). |
 | [`docs/API.md`](docs/API.md) | **Referencia completa de la API** (cuerpos, respuestas, errores, ejemplos). |
-| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§61), con cada decisión. **Empieza aquí para entender el porqué.** |
+| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§62), con cada decisión. **Empieza aquí para entender el porqué.** |
 | [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md) | Qué falta por hacer y su estado. |
 | [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md) | Plan y comandos de respaldo, restauración y limpieza. |
 | [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/CONEXION_NEON.md`](docs/CONEXION_NEON.md), [`docs/PLAN_DOMINIO.md`](docs/PLAN_DOMINIO.md), [`docs/MIGRATION_TO_RED.md`](docs/MIGRATION_TO_RED.md) | Infraestructura, conexión a Neon, dominio y migración. |

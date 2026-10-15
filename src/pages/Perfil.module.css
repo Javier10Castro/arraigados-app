@@ -1,0 +1,251 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 16px 18px;
+  border-radius: var(--r-card);
+  background: linear-gradient(100deg, #1e0263dd, #3e07a670), url('../assets/brand/flyer-shapes.webp') center / cover;
+  border: 1px solid #f2f7d799;
+  color: #fff;
+  box-shadow: var(--shadow-pop);
+  text-align: center;
+}
+
+/* Vista previa grande: mismo círculo para foto, avatar e iniciales. */
+.bigAvatar,
+.emptyPhoto {
+  --av: 148px; /* móvil; en escritorio se agranda (ver .layout) */
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  border: 3px solid var(--crema);
+  background: var(--morado);
+  color: var(--crema);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--av) * 0.39);
+  box-shadow: 0 8px 24px rgba(8, 0, 32, 0.45);
+}
+.emptyPhoto {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  background: rgba(242, 247, 215, 0.12);
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.16s ease;
+}
+.emptyPhoto:hover:not(:disabled) { background: rgba(242, 247, 215, 0.22); }
+.emptyPhoto:focus-visible { outline: 2px solid var(--crema); outline-offset: 3px; }
+.emptyPhoto:disabled { cursor: default; }
+
+.name { margin-top: 8px; font-size: 18px; font-weight: 700; }
+.hint { font-size: 12.5px; color: rgba(255, 255, 255, 0.78); }
+
+/* Selector Foto | Avatar | Iniciales (mismo lenguaje que las pestañas de /comida). */
+.segment {
+  display: flex;
+  background: #f2f7d71a;
+  border: 1px solid #f2f7d77a;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-card);
+}
+.segmentItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex: 1;
+  min-height: 50px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--crema);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  text-shadow: 0 1px 2px rgba(8, 0, 32, 0.7);
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+.segmentItem:focus-visible { outline: 2px solid var(--crema); outline-offset: 2px; }
+.segmentActive { background: var(--crema); color: var(--morado-oscuro); text-shadow: none; }
+
+.panel {
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+}
+.photoPanel { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.photoPanel p, .initialsNote { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.initialsNote strong { color: var(--morado-oscuro); letter-spacing: 0.04em; }
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 48px; /* objetivo táctil cómodo */
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.tile:hover { transform: translateY(-1px); }
+.tile:focus-visible { outline: 2px solid var(--morado); outline-offset: 2px; }
+.tileOn { border-color: var(--morado); background: #fff; }
+
+.ok, .error {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ok { background: var(--crema); color: #0d6b45; font-weight: 600; }
+.error { background: var(--crema); color: #a1262c; font-weight: 600; }
+
+.actions { display: flex; flex-direction: column; gap: 8px; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } .tile { transition: none; } }
+
+/* Vista previa con cámara: el botón abre el selector de fotos. */
+.avatarWrap { position: relative; display: inline-grid; }
+.cameraBtn {
+  position: absolute;
+  right: -4px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px; /* objetivo táctil cómodo */
+  border-radius: 50%;
+  border: 2px solid var(--crema);
+  background: var(--morado);
+  color: var(--crema);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(8, 0, 32, 0.45);
+}
+.cameraBtn:focus-visible { outline: 2px solid var(--crema); outline-offset: 2px; }
+.cameraBtn:disabled { opacity: 0.7; cursor: default; }
+
+/* Avatar: tres botones (Default · Sorpréndeme · Custom) */
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.modeHelp { margin: 0; font-size: 13px; color: var(--text-soft, #4a4560); line-height: 1.4; }
+.mode{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--morado-oscuro);
+  font: 600 13px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.modeOn { background: var(--morado); border-color: var(--morado); color: #fff; }
+.mode:focus-visible,
+.chip:focus-visible,
+.swatch:focus-visible,
+.linkBtn:focus-visible{ outline: 2px solid var(--morado); outline-offset: 2px; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.swatchOn { box-shadow: 0 0 0 3px var(--morado); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+.chip:disabled { opacity: 0.45; cursor: default; }
+.chipLetter {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--morado-oscuro);
+  font-family: var(--font-display);
+}
+.chipOn { border-color: var(--morado); background: var(--morado); color: var(--crema); }
+.linkBtn { align-self: flex-start; padding: 8px 0; border: 0; background: none; color: var(--morado); font: 600 14px var(--font-body); text-decoration: underline; cursor: pointer; }
+
+/* Dos mitades en escritorio: vista previa grande a la izquierda, opciones a la derecha. */
+.layout { display: flex; flex-direction: column; gap: 16px; }
+.controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 900px) {
+  .layout { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .hero { position: sticky; top: 24px; min-height: 420px; justify-content: center; padding: 40px 24px; }
+  .bigAvatar, .emptyPhoto { --av: 240px; }
+  .name { font-size: 22px; }
+  .cameraBtn { width: 48px; height: 48px; right: 6px; bottom: 10px; }
+}
+.options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.options .tile { aspect-ratio: 1 / 0.8; }
+
+/* Estado de cada opción: Activo / Guardado. */
+.badge { font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
+.badgeOn { opacity: 1; }
+.segmentActive .badge { color: var(--morado); }
+.note { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--crema); color: var(--morado-oscuro); font-size: 13.5px; line-height: 1.45; font-weight: 600; }
+
+/* Tarjetas plegables (Avatar e Iniciales). */
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card { border: 1px solid var(--line); border-radius: 16px; background: var(--surface-2); overflow: hidden; transition: border-color 0.16s ease, background-color 0.16s ease; }
+.cardOpen { border-color: var(--morado); background: #fff; }
+.cardHead { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 14px; border: 0; background: none; color: var(--text); font: 600 15px var(--font-body); text-align: left; cursor: pointer; }
+.cardHead:focus-visible { outline: 2px solid var(--morado); outline-offset: -2px; border-radius: 16px; }
+.cardTitle { flex: 1; }
+.cardSummary { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.chevron { flex: none; color: var(--text-2); transition: transform 0.2s ease; }
+.cardOpen .chevron { transform: rotate(180deg); }
+.cardBody { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 16px; }
+.dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+.initialsPill { display: inline-grid; place-items: center; min-width: 30px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--morado); color: var(--crema); font-family: var(--font-display); letter-spacing: 0.04em; }
+.boxHelp { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.boxEnds { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); margin-top: -6px; }
+
+/* Eliminar foto: confirmación en línea. */
+.danger { color: #a1262c; }
+.confirm { width: 100%; padding: 12px; border: 1px solid #a1262c55; border-radius: 14px; background: #fff; text-align: center; }
+.confirm p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; color: var(--text); }
+.confirmBtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .chevron, .card { transition: none; } }
+
+.photoPanel .linkBtn { align-self: center; display: inline-flex; align-items: center; gap: 6px; }

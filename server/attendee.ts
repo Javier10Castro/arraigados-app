@@ -1,5 +1,6 @@
 import { NOW_UTC, newId, query, withTransaction } from './db';
 import { getBenefitLabels } from './benefits';
+import { getProfile } from './profile';
 import { deriveCity, type Church } from '../shared/churches';
 import {
   QR_TOKEN_RE,
@@ -165,6 +166,13 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
   if (!r) return { ok: false, status: 'not_found' };
   if (r.status === 'INVALIDATED') return { ok: false, status: 'invalidated' };
   if (r.status === 'UNCLAIMED' || !r.fullName || !r.attendeeId) return { ok: false, status: 'unclaimed' };
+  // El perfil es OPCIONAL: null = aún no personalizó, migraciones 009/010 sin aplicar, o la consulta falló.
+  // Un fallo aquí nunca debe tirar /api/me (de eso depende toda la sesión del asistente): se registra y se
+  // responde sin `profile`, y la app dibuja el avatar de siempre.
+  const profile = await getProfile(r.attendeeId).catch((err: unknown) => {
+    console.error('[me] no se pudo leer el perfil (se responde sin él):', err instanceof Error ? err.message : err);
+    return null;
+  });
   const benefits = await getBenefitLabels(r.packageId); // null = migración 008 sin aplicar -> el cliente usa la lista fija
 
   return {
@@ -181,6 +189,7 @@ export async function getMe(token: string): Promise<{ ok: true; me: MeResponse }
       package: { name: r.packageName, price: r.price, includedDrinks: r.includedDrinks, ...(benefits ? { benefits } : {}) },
       drinksUsed: r.drinksUsed,
       drinksRemaining: Math.max(r.includedDrinks - r.drinksUsed, 0),
+      ...(profile ? { profile } : {}),
     },
   };
 }

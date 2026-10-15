@@ -1,4 +1,5 @@
 import { withTransaction } from './db';
+import { deletePhotoFiles, photoKeysForAttendees } from './profile';
 
 export class PulseReleaseError extends Error {}
 
@@ -14,15 +15,19 @@ export type ReleaseResult = { attendeeName: string; redemptions: number; notes: 
  * - Borra también de la bitácora todo lo que hablaba de ese asistente, sus pulseras, canjes y notas
  *   (registro, correcciones, anulaciones, reemplazos, notas retiradas).
  * - NO escribe nada en la bitácora.
+ * - Su foto de perfil (Netlify Blobs) se borra DESPUÉS de confirmar la transacción: la llave se lee antes de
+ *   que el DELETE arrastre la fila de perfil. Si Blobs falla, queda registrado `[profile:huerfana]` (ver docs).
  */
 export async function releasePulse(pulseId: string): Promise<ReleaseResult> {
-  return withTransaction(async (tx) => {
+  let photoKeys: string[] = [];
+  const result = await withTransaction(async (tx) => {
     const p = await tx.query<{ attendeeId: string | null }>(`SELECT "attendeeId" FROM "Pulse" WHERE id = $1 FOR UPDATE`, [pulseId]);
     if (!p.rowCount) throw new PulseReleaseError('Esa pulsera ya no existe.');
     const attendeeId = p.rows[0].attendeeId;
     if (!attendeeId) throw new PulseReleaseError('Esa pulsera no está vinculada a nadie.');
 
     const att = await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [attendeeId]);
+    photoKeys = await photoKeysForAttendees(tx, [attendeeId]);
     const has = async (t: string) => Boolean((await tx.query(`SELECT to_regclass($1) AS t`, [`public."${t}"`])).rows[0].t);
     const ids = async (sql: string) => (await tx.query<{ id: string }>(sql, [attendeeId])).rows.map((r) => r.id);
 
@@ -75,4 +80,6 @@ export async function releasePulse(pulseId: string): Promise<ReleaseResult> {
 
     return { attendeeName: att.rows[0]?.fullName ?? '', redemptions, notes };
   });
+  await deletePhotoFiles(photoKeys); // ya confirmada la base; nunca lanza
+  return result;
 }

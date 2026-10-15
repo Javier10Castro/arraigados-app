@@ -294,4 +294,9 @@ sección "Etapa 9" del Admin deshabilitada como está.
 - ✅ Auditoría con mensajes concretos y registro de Menú y Mercancía — §59.
 - ✅ Contraste de los títulos de sede en `/admin/menu` — §61.
 - ✅ Manual de administradores: `docs/MANUAL_ADMIN.pdf`.
-- ⏳ `/comida` sigue con datos de ejemplo (§61).
+- ✅ `/comida` ya muestra el menú real (`GET /api/menu`, filtrado por sede) — §61.
+- **Perfil (foto / avatar / iniciales) — `CLAUDE_HANDOFF.md` §62.** Distinguimos tres estados:
+  - ✅ **Terminado y verificado en local** (base PGlite + Blobs simulados + Playwright; sin servicios reales): conservar las 3 selecciones, 3 botones de avatar, tarjetas y recuadro de color, limpieza de fotos al desvincular pulsera / borrar lote (con Blobs caído incluido), `/api/me` tolerante a fallos del perfil, límite de frecuencia (`429`), `cleanJpeg` estricto (EOI, SOF duplicado).
+  - 📝 **Documentado, sin implementar:** respaldo/restauración de fotos de perfil (hoy **no** están en los respaldos), tope diario de cambios, cola persistente de limpieza (ver propuestas en `PLAN_RESPALDO.md`).
+  - ⏳ **Pendiente de aprobación / de servicios reales:** aplicar migraciones 009 y 010 en una rama de Neon y luego en producción; pruebas de integración contra **Netlify Blobs y Neon reales** (incluida `db:fotos-huerfanas`); prueba con una cuenta Staff y con dispositivos/fotos de cámara reales; decidir si se añade `profile-photos` a los respaldos; decidir si se crea tabla de tareas/cola para reintentos de limpieza (requiere migración nueva); no hay pruebas automatizadas en el repo (las ejecutadas viven en un entorno temporal fuera de él).
+  - ⚠️ **Limitaciones restantes:** una foto huérfana por fallo de Blobs no se reintenta sola (solo `db:fotos-huerfanas`); condición de carrera entre dos dispositivos se resuelve con `429` pero no hay bloqueo de fila; los respaldos no incluyen fotos de perfil.

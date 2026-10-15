@@ -1,4 +1,5 @@
 import type { AdminAuditFilters, AdminAuditResponse } from '../../shared/audit';
+import type { ProfileResponse, ProfilesResponse } from '../../shared/profile';
 import type {
   AdminAnnouncementFilters,
   AdminAnnouncementsResponse,
@@ -187,6 +188,19 @@ export const api = {
   },
   retireNote: (id: string, body: RetireNoteRequest) =>
     postJson<RetireNoteResponse>(`/api/admin/notes/${encodeURIComponent(id)}/retire`, body),
+  // Perfil del asistente (foto / avatar / iniciales). La identidad sale del token, nunca de un id.
+  profile: (token: string) => request<ProfileResponse>('/api/profile', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  saveProfile: (token: string, form: FormData) =>
+    request<ProfileResponse>('/api/profile', { method: 'PUT', headers: { [PULSE_TOKEN_HEADER]: token }, body: form }),
+  /** Perfiles de varias personas (asistente con su token, o staff con su sesión). */
+  profiles: (ids: string[], token?: string) =>
+    request<ProfilesResponse>('/api/profiles', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(token ? { [PULSE_TOKEN_HEADER]: token } : {}) },
+      body: JSON.stringify({ ids }),
+    }),
+  adminRemoveProfilePhoto: (attendeeId: string) =>
+    request<{ ok: true }>(`/api/admin/attendees/${encodeURIComponent(attendeeId)}/profile-photo`, { method: 'DELETE' }),
   notifications: (token: string) =>
     request<NotificationsResponse>('/api/notifications', { headers: { [PULSE_TOKEN_HEADER]: token } }),
   notificationsSeen: (token: string) =>
