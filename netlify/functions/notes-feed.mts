@@ -1,6 +1,7 @@
-import type { Config } from '@netlify/functions';
+import type { Config, Context } from '@netlify/functions';
 import { listNotesFeed } from '../../server/notes';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, withAttendeeLimit } from '../../server/rateLimit';
 import { PULSE_TOKEN_HEADER } from '../../shared/api';
 
 /**
@@ -8,11 +9,13 @@ import { PULSE_TOKEN_HEADER } from '../../shared/api';
  * asistentes (primer nombre + id para el avatar; nunca datos personales).
  * Identidad por x-pulse-token, igual que /api/notes.
  */
-export default handler(async (req: Request) => {
-  if (req.method !== 'GET') return methodNotAllowed('GET');
-  const result = await listNotesFeed(req.headers.get(PULSE_TOKEN_HEADER) ?? '');
-  if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
-  return json({ notes: result.notes });
-});
+export default handler(async (req: Request, context: Context) =>
+  withAttendeeLimit(req, context, RULES.att_feed, async () => {
+    if (req.method !== 'GET') return methodNotAllowed('GET');
+    const result = await listNotesFeed(req.headers.get(PULSE_TOKEN_HEADER) ?? '');
+    if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
+    return json({ notes: result.notes });
+  }),
+);
 
 export const config: Config = { path: '/api/notes/feed' };

@@ -2,6 +2,7 @@ import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { DishValidationError, autoFetchDishImage } from '../../server/dishes';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import type { AutoImageSearchRequest } from '../../shared/api';
 
 /**
@@ -31,6 +32,9 @@ export default handler(async (req: Request) => {
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
   if (req.method !== 'POST') return methodNotAllowed('POST');
+  // Llama a un servicio externo (Openverse): 30 búsquedas / 10 min por Admin.
+  const blocked = await guardUser(RULES.admin_imgsearch, auth.user.id);
+  if (blocked) return blocked;
 
   let body: AutoImageSearchRequest;
   try {

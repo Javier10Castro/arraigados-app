@@ -2,6 +2,7 @@ import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { BatchError, createBatch, listBatches, listPackagesForBatch, suggestBatchCode } from '../../server/batches';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import { MAX_BATCH_PULSES, MIN_BATCH_PULSES, type CreateBatchRequest } from '../../shared/api';
 
 /**
@@ -30,6 +31,8 @@ export default handler(async (req: Request) => {
   }
 
   if (req.method !== 'POST') return methodNotAllowed('GET, POST');
+  const blocked = await guardUser(RULES.admin_heavy, auth.user.id); // crear un lote genera cientos de pulseras
+  if (blocked) return blocked;
 
   let body: CreateBatchRequest;
   try {

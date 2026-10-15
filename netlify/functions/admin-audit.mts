@@ -2,6 +2,7 @@ import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { AuditClearError, canClearAudit, clearAudit, listAudit } from '../../server/audit';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import { parsePageSize } from '../../shared/api';
 import type { AuditCategory } from '../../shared/audit';
 
@@ -16,6 +17,8 @@ export default handler(async (req: Request) => {
 
   // DELETE { confirm: 'BORRAR BITACORA' } -> vacía la bitácora (deja una entrada que lo registra).
   if (req.method === 'DELETE') {
+    const blocked = await guardUser(RULES.admin_danger, auth.user.id);
+    if (blocked) return blocked;
     if (!canClearAudit(auth.user.email)) return apiError('No tienes permiso para vaciar la bitácora.', 403);
     const body = (await req.json().catch(() => ({}))) as { confirm?: string };
     try {

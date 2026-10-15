@@ -300,3 +300,9 @@ sección "Etapa 9" del Admin deshabilitada como está.
   - 📝 **Documentado, sin implementar:** respaldo/restauración de fotos de perfil (hoy **no** están en los respaldos), tope diario de cambios, cola persistente de limpieza (ver propuestas en `PLAN_RESPALDO.md`).
   - ⏳ **Pendiente de aprobación / de servicios reales:** aplicar migraciones 009 y 010 en una rama de Neon y luego en producción; pruebas de integración contra **Netlify Blobs y Neon reales** (incluida `db:fotos-huerfanas`); prueba con una cuenta Staff y con dispositivos/fotos de cámara reales; decidir si se añade `profile-photos` a los respaldos; decidir si se crea tabla de tareas/cola para reintentos de limpieza (requiere migración nueva); no hay pruebas automatizadas en el repo (las ejecutadas viven en un entorno temporal fuera de él).
   - ⚠️ **Limitaciones restantes:** una foto huérfana por fallo de Blobs no se reintenta sola (solo `db:fotos-huerfanas`); condición de carrera entre dos dispositivos se resuelve con `429` pero no hay bloqueo de fila; los respaldos no incluyen fotos de perfil.
+
+## 15. Rate limiting (14 oct 2026) — `CLAUDE_HANDOFF.md` §63, `RATE_LIMITING.md`
+- ✅ **Terminado y probado en local** (PostgreSQL local + mocks; sin servicios reales): contadores atómicos, límites por endpoint, pruebas automatizadas (`npm run test:ratelimit`).
+- ⏳ **Pendiente de autorización:** aplicar `011_rate_limit.sql` en una rama de Neon y luego en producción **antes** de desplegar.
+- ⏳ **Pendiente de servicios reales:** verificar en Netlify que `context.ip` no es falsificable desde el cliente; probar contra Neon real; prueba de carga con la IP compartida de la sede.
+- 📝 **Decisiones del propietario:** límites en lecturas públicas, compromiso de `login_id`, reglas de plataforma de Netlify, fallo abierto con tabla faltante.

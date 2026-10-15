@@ -1,8 +1,9 @@
 import type { Config } from '@netlify/functions';
 import { authorize, sessionCookie } from '../../server/auth';
 import { isOwnerEmail } from '../../server/owner';
-import { UserError, changeOwnPassword } from '../../server/users';
+import { UserError, WRONG_CURRENT_PASSWORD, changeOwnPassword } from '../../server/users';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser, refund, scope } from '../../server/rateLimit';
 import type { ChangePasswordRequest } from '../../shared/api';
 
 /**
@@ -20,12 +21,21 @@ export default handler(async (req: Request) => {
   } catch {
     return apiError('Solicitud inválida.');
   }
+  // Adivinar la contraseña actual desde una sesión robada: 5 intentos / 15 min por cuenta (se devuelve si sale bien).
+  const pwdHit = { rule: RULES.pwd_user, id: scope(auth.user.id) };
+  const blocked = await guardUser(RULES.pwd_user, auth.user.id);
+  if (blocked) return blocked;
   try {
     const newHash = await changeOwnPassword(auth.user.id, auth.user.passwordHash, body.currentPassword, body.newPassword);
+    await refund([pwdHit]);
     const { passwordHash: _omit, ...user } = auth.user;
     return json({ ...user, mustChangePassword: false, isOwner: isOwnerEmail(user.email) }, 200, { 'set-cookie': sessionCookie(req, user.id, newHash) });
   } catch (err) {
-    if (err instanceof UserError) return apiError(err.message, 400);
+    if (err instanceof UserError) {
+      // Solo adivinar la contraseña ACTUAL gasta intentos; un error al escribir la nueva (muy corta, igual a la actual) se devuelve.
+      if (err.message !== WRONG_CURRENT_PASSWORD) await refund([pwdHit]);
+      return apiError(err.message, 400);
+    }
     throw err;
   }
 });

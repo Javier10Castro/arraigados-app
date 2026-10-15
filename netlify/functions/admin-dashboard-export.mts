@@ -3,6 +3,7 @@ import { authorize } from '../../server/auth';
 import { DashboardError, parseFilters } from '../../server/dashboard';
 import { buildDashboardPdf, buildDashboardXlsx } from '../../server/dashboardExport';
 import { apiError, handler, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 
 /**
  * GET /api/admin/dashboard/export?format=pdf|xlsx&period=&zoneId=&presbyteryId=&churchId=&packageId=
@@ -19,6 +20,8 @@ export default handler(async (req: Request) => {
   if (req.method !== 'GET') return methodNotAllowed('GET');
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
+  const blocked = await guardUser(RULES.admin_heavy, auth.user.id);
+  if (blocked) return blocked;
 
   const qs = new URL(req.url).searchParams;
   const format = qs.get('format');

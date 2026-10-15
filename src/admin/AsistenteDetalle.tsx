@@ -8,7 +8,6 @@ import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
 import HeaderDangerButton from './HeaderDangerButton';
 import ReleasePulseModal from './ReleasePulseModal';
-import { useStaffSession } from '../context/StaffSession';
 import { setMyProfile, useProfile } from '../context/ProfileDirectory';
 import { api } from '../lib/api';
 import UserAvatar from '../components/UserAvatar';
@@ -36,7 +35,6 @@ export default function AsistenteDetalle() {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const { user: me } = useStaffSession();
   const [releasing, setReleasing] = useState(false);
   const [removingPhoto, setRemovingPhoto] = useState(false);
   const [photoRemoved, setPhotoRemoved] = useState(false);
@@ -59,7 +57,7 @@ export default function AsistenteDetalle() {
     <AdminShell
       title="Asistente"
       action={
-        me?.isOwner && att && active ? (
+        att && active ? (
           <HeaderDangerButton label="Desvincular pulsera" icon={Unlink} onClick={() => setReleasing(true)} />
         ) : undefined
       }

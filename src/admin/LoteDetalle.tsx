@@ -7,7 +7,6 @@ import AdminShell from './AdminShell';
 import ConfirmTypeModal from './ConfirmTypeModal';
 import HeaderDangerButton from './HeaderDangerButton';
 import ReleasePulseModal from './ReleasePulseModal';
-import { useStaffSession } from '../context/StaffSession';
 import { api, batchFileUrls, downloadFile } from '../lib/api';
 import {
   PAPER_SIZE_LABELS,
@@ -64,7 +63,6 @@ export default function LoteDetalle() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
-  const { user: me } = useStaffSession();
   const [releasing, setReleasing] = useState<{ id: string; label: string; who: string } | null>(null);
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Math.floor(Number(params.get('pagina') ?? 1)) || 1);
@@ -419,7 +417,7 @@ export default function LoteDetalle() {
                           </td>
                           <td className={d.act}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                            {me?.isOwner && p.attendeeId && p.status === 'ACTIVE' && (
+                            {p.attendeeId && p.status === 'ACTIVE' && (
                               <button
                                 type="button"
                                 className={s.iconBtn}

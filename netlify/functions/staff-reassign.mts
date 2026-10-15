@@ -2,6 +2,7 @@ import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { reassignPulse } from '../../server/staff';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import type { ReassignRequest } from '../../shared/api';
 
 /**
@@ -13,6 +14,8 @@ export default handler(async (req: Request) => {
   if (req.method !== 'POST') return methodNotAllowed('POST');
   const auth = await authorize(req);
   if ('response' in auth) return auth.response;
+  const blocked = await guardUser(RULES.staff_reassign, auth.user.id);
+  if (blocked) return blocked;
   let body: ReassignRequest;
   try {
     body = (await req.json()) as ReassignRequest;

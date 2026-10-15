@@ -2725,7 +2725,7 @@ Para dejar la app lista para entrega sin tener que usar scripts: botón en el pa
 - **Vaciar bitácora** (`/admin/auditoria`, botón "Vaciar bitácora"): `DELETE /api/admin/audit` `{confirm:'BORRAR BITACORA'}` → `clearAudit()` en `server/audit.ts`: borra TODO `AuditLog` y **no deja ninguna entrada propia** (la bitácora queda en cero; cambio del 6 oct tarde). Es lo único que borra la bitácora desde la app.
 - Orden recomendado para entregar: borrar los lotes de prueba → (si quedan datos sueltos) `npm run db:limpiar-pruebas -- --simular` → vaciar la bitácora al final (así solo queda el rastro de lo que se haga ya en producción).
 - **Restricción (7 oct 2026):** "Vaciar bitácora" solo la puede usar la cuenta `javiercastro9912@gmail.com` (`canClearAudit()` → `isOwnerEmail()` en `server/owner.ts`; se puede cambiar con la variable de entorno `OWNER_EMAIL`, que reemplaza a la antigua `AUDIT_CLEAR_EMAIL`). La pantalla recibe `canClear` en `GET /api/admin/audit` y a los demás Admin no les muestra el botón; además el servidor responde 403 a `DELETE /api/admin/audit` si no es esa cuenta. "Borrar lote" sigue disponible para todos los Admin.
-- **Desvincular pulsera** (herramienta de pruebas): `POST /api/admin/pulses/:id/release` (`netlify/functions/admin-pulse-release.mts`, `releasePulse()` en `server/pulseRelease.ts`; 403 si no es el propietario; **no escribe en la bitácora**). Deja la pulsera como recién creada: borra al asistente con sus canjes, notas, likes y estado de campana, vuelve a UNCLAIMED la pulsera activa (`updatedAt = createdAt`), deja INVALIDATED las deshabilitadas y **borra de la bitácora** todo lo que hablaba de ese asistente. Botón en `AsistenteDetalle.tsx` (cabecera, «Desvincular pulsera») y en `LoteDetalle.tsx` (ícono en la fila de pulseras ACTIVAS), con `ReleasePulseModal.tsx`. Ante un 500 devuelve el error real (para diagnosticar). Si «no funciona»: revisar `OWNER_EMAIL` en Netlify, que el deploy esté hecho y Ctrl+F5.
+- **Desvincular pulsera** (herramienta de pruebas): `POST /api/admin/pulses/:id/release` (`netlify/functions/admin-pulse-release.mts`, `releasePulse()` en `server/pulseRelease.ts`; desde §64 la puede usar cualquier cuenta ADMIN (antes solo el propietario); **no escribe en la bitácora**). Deja la pulsera como recién creada: borra al asistente con sus canjes, notas, likes y estado de campana, vuelve a UNCLAIMED la pulsera activa (`updatedAt = createdAt`), deja INVALIDATED las deshabilitadas y **borra de la bitácora** todo lo que hablaba de ese asistente. Botón en `AsistenteDetalle.tsx` (cabecera, «Desvincular pulsera») y en `LoteDetalle.tsx` (ícono en la fila de pulseras ACTIVAS), con `ReleasePulseModal.tsx`. Ante un 500 devuelve el error real (para diagnosticar). Si «no funciona»: revisar que el deploy esté hecho y Ctrl+F5.
 
 ## 59. Auditoría legible + menú y mercancía auditados (7 oct 2026)
 - Los mensajes de `/admin/auditoria` se arman en `shared/audit.ts` como «quién/qué → qué hizo → sobre qué → resultado»: `auditSummary()` (titular + detalle), `auditDetails()` (modal), `auditTarget()` (columna «Sobre»: nombre → código → correo; nunca un id técnico) y género correcto («Cuenta eliminada», «Pulsera eliminada»). `user.update` y `attendee.update` muestran solo los campos que cambiaron (asistentes en el orden Nombre, Edad, Iglesia, Presbiterio, Zona, Paquete…).
@@ -2818,3 +2818,40 @@ Cada guion se corrió sobre un entorno recién iniciado (los datos de uno afecta
 
 **Pendiente / decisiones del propietario:** aplicar 009 y 010 en rama de Neon y luego producción; probar con servicios reales (checklist en `PLAN_RESPALDO.md`); incluir `profile-photos` en los respaldos; cola/tabla de tareas para reintentos de limpieza; tope diario de cambios; transacción única en la moderación Admin (UPDATE + auditoría); bajar el `max-age` de la foto (12 h) para que la moderación surta efecto antes.
 **Riesgos residuales:** foto huérfana si Blobs falla y nadie corre el script; una URL firmada ya emitida puede servir una foto hasta 24–48 h si el archivo no llegó a borrarse; copia de seguridad inexistente para fotos de perfil; dos dispositivos simultáneos reciben 429 (no pierden datos pero uno debe reintentar).
+
+---
+
+## 63. Rate limiting con contadores en Neon (14 oct 2026)
+
+Guía completa: [`RATE_LIMITING.md`](RATE_LIMITING.md). Aquí solo la bitácora de decisiones.
+
+**Qué se hizo.** Auditoría de solo lectura y límites por riesgo en login, cambio de contraseña, reclamo de pulsera, consulta de token, endpoints de asistente, fotos de perfil, canje/búsqueda/reasignación de Staff y acciones pesadas o destructivas de Admin. Cada ruta tiene política explícita o exclusión documentada (tabla en `RATE_LIMITING.md`).
+
+**Archivos.** Nuevos: `server/rateLimit.ts`, `migrations/011_rate_limit.sql`, `scripts/test-ratelimit.mjs`, `tests/rate-limit/*`, `docs/RATE_LIMITING.md`. Modificados: `server/auth.ts`, `server/users.ts` (constante `WRONG_CURRENT_PASSWORD`), funciones de `netlify/functions/` (auth-login, auth-password, claim, pulse, me, notes*, notifications*, profiles, profile, staff-*, admin-*), `package.json`, `.env.example` (solo comentario), README, API.md, PLAN_PENDIENTES.
+
+**Decisiones.**
+- Almacén distribuido en Neon (no hay Redis/KV y Blobs no tiene incremento atómico): una fila por clave, `INSERT … ON CONFLICT DO UPDATE` atómico con el reloj de la base; ventana fija. Claves = regla + HMAC con `SESSION_SECRET` (no se guarda IP, correo ni token).
+- IP solo de `context.ip` (v6 → /64); nunca `X-Forwarded-For`. Que Netlify sobrescriba siempre `x-nf-client-connection-ip` **no está verificado en producción**.
+- La sede comparte una IP pública: los límites por IP cuentan **fallos** con umbrales altos; lo estricto va por token, cuenta o pareja correo+IP.
+- Orden: autenticar/autorizar → límite → trabajo. Login no revela si la cuenta existe (mismo mensaje y mismo 429).
+- Fallo abierto en lecturas/registro/canje (no frenar el congreso); cerrado (503) en login y contraseña. Tabla inexistente (42P01) deja pasar y se registra, para que desplegar antes de migrar no rompa la app.
+- Timeout del almacén 8 s (arranque en frío de Neon).
+- Lecturas públicas e imágenes quedan excluidas a propósito (bloquearían a toda la sede); documentado.
+- Este apartado reemplaza en lo relativo a límites a §62.2 H3 (cooldown de perfil sigue vigente y se suma al límite por token de subida).
+
+**Pruebas (local).** `npm run test:ratelimit`: unitarias + integración contra PostgreSQL 16 **local** (`arraigados_test*`; el guion rechaza cualquier otra base). Cubren ventanas, Retry-After, aislamiento, IP falsificada, fallo del almacén, concurrencia (100 simultáneas → exactamente el máximo permitido), login, claim, canje sin duplicados, subida/borrado de foto y regresión Admin. Resultados exactos en el informe final de la sesión.
+
+**NO probado:** Neon real, Netlify real (`context.ip`, resistencia a suplantación), carga a escala de sede, interfaz del navegador ante un 429, `claim_ip` con volumen real.
+
+**Pendiente:** aplicar 011 en rama de Neon y luego producción (antes de desplegar); decidir límites en lecturas públicas, compromiso de `login_id` (un atacante puede bloquear el login de un correo ajeno durante la ventana), reglas de plataforma de Netlify (`config.rateLimit`, no implementadas), y si el fallo abierto por tabla faltante debe pasar a cerrado tras migrar.
+
+---
+
+## 64. «Desvincular pulsera» para todos los Administradores (15 oct 2026)
+
+Antes solo la cuenta propietaria (`OWNER_EMAIL`) podía desvincular una pulsera. Ahora **cualquier cuenta con rol ADMIN** puede.
+
+- **Servidor:** `netlify/functions/admin-pulse-release.mts` quita la comprobación `isOwnerEmail`. Sigue exigiendo `authorize(req, ['ADMIN'])` (Staff → 403, sin sesión → 401) y el límite `admin_danger` (§63).
+- **Interfaz:** `AsistenteDetalle.tsx` (botón de cabecera) y `LoteDetalle.tsx` (ícono en pulseras ACTIVAS) ya no dependen de `me.isOwner`; se quitó el `useStaffSession` que quedó sin uso.
+- **No cambia:** «Vaciar bitácora» (`canClearAudit`) y la protección de la cuenta propietaria contra eliminación siguen siendo solo del propietario.
+- **Aviso:** la acción **borra** al asistente con sus canjes, notas, likes y entradas de bitácora, y **no deja registro**. Con más personas pudiéndola usar, conviene registrar quién la ejecutó (pendiente, requiere tu aprobación porque cambia lo que la herramienta hace).

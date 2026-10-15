@@ -2,7 +2,8 @@ import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { redeemOne } from '../../server/staff';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
-import type { RedeemRequest } from '../../shared/api';
+import { RULES, guard, scope } from '../../server/rateLimit';
+import { normalizeStaffCode, type RedeemRequest } from '../../shared/api';
 
 /**
  * POST /api/staff/redeem -- descuenta 1 agua fresca. Redemption.createdById =
@@ -20,6 +21,14 @@ export default handler(async (req: Request) => {
   } catch {
     return apiError('Solicitud inválida.');
   }
+  // Frenos contra automatización (NO sustituyen la idempotencyKey ni el UPDATE condicional de redeemOne):
+  // por cuenta de Staff y por pulsera. Un doble toque legítimo no gasta nada extra de saldo.
+  const code = normalizeStaffCode(body?.manualCode);
+  const blocked = await guard([
+    { rule: RULES.staff_redeem, id: scope(staff.id) },
+    ...(code ? [{ rule: RULES.redeem_pulse, id: scope('pulse', code) }] : []),
+  ]);
+  if (blocked) return blocked;
   return json(await redeemOne(body.manualCode, body.idempotencyKey, staff.id));
 });
 

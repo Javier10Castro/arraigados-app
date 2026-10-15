@@ -212,9 +212,12 @@ export async function resetPassword(actorId: string, userId: string, temporaryPa
 }
 
 /** El propio usuario cambia su contraseña (obligatorio si la actual es temporal). */
+/** Mensaje cuando la contraseña ACTUAL no coincide (el límite de intentos solo cuenta estos fallos). */
+export const WRONG_CURRENT_PASSWORD = 'La contraseña actual no es correcta.';
+
 export async function changeOwnPassword(userId: string, currentHash: string, currentPassword: string, newPassword: string) {
   if (!(await bcrypt.compare(String(currentPassword ?? ''), currentHash))) {
-    throw new UserError('La contraseña actual no es correcta.');
+    throw new UserError(WRONG_CURRENT_PASSWORD);
   }
   const problem = passwordProblem(String(newPassword ?? ''));
   if (problem) throw new UserError(problem);

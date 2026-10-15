@@ -4,6 +4,7 @@ import { BatchError, batchTokens, deleteBatch, getBatch, pulseTokenInBatch } fro
 import { baseUrlOrEmpty, publicBaseUrl, qrCardPng } from '../../server/wristband';
 import { buildBatchPdf } from '../../server/wristbandPdf';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import { PAPER_SIZES, type PaperSize } from '../../shared/api';
 
 /**
@@ -19,6 +20,11 @@ export default handler(async (req: Request, context: Context) => {
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
   if (req.method !== 'GET' && req.method !== 'DELETE') return methodNotAllowed('GET, DELETE');
+  // Borrar un lote es destructivo y el PDF del lote es pesado: límite propio por Admin.
+  if (req.method === 'DELETE' || new URL(req.url).pathname.endsWith('/pdf')) {
+    const blocked = await guardUser(req.method === 'DELETE' ? RULES.admin_danger : RULES.admin_heavy, auth.user.id);
+    if (blocked) return blocked;
+  }
 
   const path = new URL(req.url).pathname;
   const id = context.params.id ?? '';

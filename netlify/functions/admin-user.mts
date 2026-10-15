@@ -2,6 +2,7 @@ import type { Config, Context } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { UserError, deleteUser, resetPassword, updateUser } from '../../server/users';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import type { ResetPasswordRequest, UpdateUserRequest } from '../../shared/api';
 
 /**
@@ -13,6 +14,8 @@ import type { ResetPasswordRequest, UpdateUserRequest } from '../../shared/api';
 export default handler(async (req: Request, context: Context) => {
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
+  const blocked = await guardUser(RULES.admin_user_w, auth.user.id); // editar / borrar cuenta / restablecer contraseña
+  if (blocked) return blocked;
   const id = context.params.id ?? '';
   const isPassword = new URL(req.url).pathname.endsWith('/password');
   if (req.method === 'DELETE' && !isPassword) {

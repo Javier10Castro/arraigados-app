@@ -127,7 +127,7 @@ arraigados-app/
 ├── netlify/functions/        Backend: un archivo .mts por endpoint /api/*
 ├── server/                   Lógica del backend (db, auth, batches, users, audit, benefits…)
 ├── shared/                   Tipos y constantes compartidos cliente/servidor
-├── migrations/               Migraciones SQL propias (001–008), idempotentes
+├── migrations/               Migraciones SQL propias (001–011), idempotentes
 ├── scripts/                  Utilidades de base de datos (migrar, respaldo, limpieza…)
 ├── docs/                     Documentación detallada y planes
 ├── public/                   Archivos estáticos
@@ -203,6 +203,7 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `008_package_benefits.sql` | `PackageBenefit` (lo que incluye cada kit) y **siembra** los beneficios actuales. |
 | `009_attendee_profile.sql` | `AttendeeProfile` (foto / avatar / iniciales de cada asistente). Solo **agrega** una tabla; no toca `Attendee`. |
 | `010_attendee_profile_keep_all.sql` | Agrega `initialsId` y relaja la regla para conservar **las 3 selecciones a la vez** (`kind` = la activa). No borra datos. |
+| `011_rate_limit.sql` | Crea la tabla `RateLimit` (contadores del límite de frecuencia: clave con huella HMAC, conteo y fin de ventana). No toca tablas existentes ni guarda datos personales. **Pendiente de aplicar** (primero en rama de Neon). Ver [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md). |
 
 Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se puede correr las veces que haga falta. Las semillas solo corren **al crear la tabla**, así que volver a migrar **no resucita** datos que borraste.
 
@@ -238,7 +239,7 @@ Cada asistente elige en `/perfil` cómo se ve. Las **tres opciones se conservan*
   1. Admin (`/login`) → Lotes → crea un lote de prueba y abre el enlace `/p/<token>` de una pulsera para registrarte.
   2. Más → **Mi perfil**: prueba Foto, Avatar (Default / Sorpréndeme / Custom) e Iniciales; pulsa *Guardar cambios* y **recarga**: debe persistir.
   3. Sube una foto y cambia a Avatar: la foto queda «Guardada» (no se borra). Dos guardados seguidos muestran «Espera N s».
-  4. Admin → Asistentes → detalle: **Quitar foto** (queda en la bitácora). Admin → Asistentes → detalle → *Desvincular pulsera* (solo la cuenta propietaria) con una pulsera de prueba: la foto debe desaparecer de Blobs.
+  4. Admin → Asistentes → detalle: **Quitar foto** (queda en la bitácora). Admin → Asistentes → detalle → *Desvincular pulsera* (cualquier cuenta Administrador) con una pulsera de prueba: la foto debe desaparecer de Blobs.
   5. `npx tsc --noEmit` y `npm run build` sin errores.
 
   > Las fotos usan Netlify Blobs. Con `netlify dev` se espera un almacén local, pero **no se ha verificado en este repositorio**: las pruebas hechas fueron con un almacén simulado, no con Blobs ni Neon reales. Avatares e iniciales no usan Blobs.
@@ -263,6 +264,7 @@ Detalles de seguridad:
 - **Cuenta protegida** (`OWNER_EMAIL`): su cuenta **nunca** se puede eliminar (ni por otro Admin). Tampoco se puede eliminar la cuenta propia ni al **último Admin activo**.
 - **Moderación:** las notas pasan un filtro de lenguaje en cliente y servidor (`shared/moderation.ts` + palabras del Admin); el servidor responde **422** si hay groserías.
 - Cabeceras de seguridad (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`) en `netlify.toml`.
+- **Límite de frecuencia (rate limiting):** login, reclamo de pulsera, consulta de token, canje, fotos de perfil y acciones de Admin tienen límites por regla, con contadores atómicos en Neon (tabla `RateLimit`, migración 011). Se mide por cuenta, token o pareja correo+IP; la IP viene solo de `context.ip` de Netlify (nunca de `X-Forwarded-For`) y los límites por IP cuentan **fallos** con umbrales altos porque la sede comparte una IP pública. Primero se autentica y después se consume cupo. Política de fallo por regla (abierto/cerrado) y detalle en [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md).
 
 ---
 
@@ -300,6 +302,7 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 - Base: `/api`. JSON salvo donde se indica (PDF, PNG, Excel, `multipart/form-data` en Menú y Mercancía).
 - Éxito: `200` (`201` al crear). Error: `{ "error": "mensaje en español" }` con `400` (datos inválidos), `401` (sin sesión), `403` (sin permiso), `404`, `405` (método no permitido), `409` (conflicto), `422` (moderación), `500` (error del servidor, mensaje genérico).
 - Las respuestas llevan `cache-control: no-store` (salvo imágenes e iglesias).
+- Límite de frecuencia: `429` con `{ "error": "…", "code": "rate_limited" }` y cabecera `Retry-After` (segundos); `503` con `code: "rate_limit_unavailable"` si el contador falla en una regla de fallo cerrado. Ver [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md).
 - Fechas en **ISO UTC**; el evento usa la zona `America/Tijuana`. Dinero en **centavos**.
 - Listas paginadas: `?page=` (desde 0) y `?pageSize=` (10, 25 o 50) → `{ total, page, pageSize, rows, … }`.
 
@@ -412,6 +415,7 @@ curl -H 'x-pulse-token: AbCdEfGh12345678' https://redjuveniltijuana.com/api/me
 | `npm run db:notas-demo` / `db:likes-demo` | Datos de demostración de Notas (`-- --limpiar` los borra). |
 | `npm run db:renombrar-kits` | Utilidad histórica para renombrar kits. |
 | `npm run moderacion:probar` | Prueba el filtro de lenguaje. |
+| `npm run test:ratelimit` | Pruebas del límite de frecuencia (unitarias + integración). Las de integración necesitan `TEST_DATABASE_URL` hacia un PostgreSQL **local** llamado `arraigados_test*` (nunca Neon/producción; el guion se niega). Ver `docs/RATE_LIMITING.md`. |
 | `npm run plantilla:base64` | Regenera la plantilla de la tarjeta QR. |
 
 ---
@@ -444,6 +448,7 @@ Checklist antes de desplegar:
 - [ ] Variables de entorno configuradas en Netlify (`DATABASE_URL`, `SESSION_SECRET`, `PUBLIC_BASE_URL`; opcional `OWNER_EMAIL`).
 - [ ] Migraciones aplicadas (`npm run db:migrar`) contra la base de producción.
 - [ ] `npm run build` pasa sin errores.
+- [ ] **Rate limiting:** migración 011 aplicada **antes** de desplegar (primero en rama de Neon). Si falta, el límite no se aplica (se registra en logs) y la app sigue funcionando. Checklist completo en `docs/RATE_LIMITING.md`.
 - [ ] **Perfil:** migraciones 009 y 010 aplicadas **antes** de desplegar (primero en una rama de Neon) y checklist de `docs/PLAN_RESPALDO.md` («Verificaciones antes de desplegar») completado.
 - [ ] Dominio definitivo fijado **antes** de imprimir pulseras reales.
 
@@ -481,6 +486,8 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 |---|---|
 | `Falta SESSION_SECRET…` / error 500 al iniciar sesión | `.env` sin `SESSION_SECRET` (≥32 caracteres) o sin reiniciar `npm run dev`. |
 | `Falta DATABASE_URL` | Falta en `.env` (o en las variables de Netlify en producción). |
+| «Demasiados intentos. Espera N…» (`429`) en login, registro, canje o fotos | Es el límite de frecuencia: espera los segundos de `Retry-After`. Para un bloqueo legítimo ver «Operación» en `docs/RATE_LIMITING.md`. |
+| `503` «rate_limit_unavailable» | El contador (Neon) no respondió en una regla de fallo cerrado (login/contraseña). Reintenta en unos segundos; revisa Neon. |
 | Mi perfil dice «Esta función todavía no está disponible» o el perfil no se ve | Falta aplicar las migraciones 009 y 010 (`npm run db:migrar`). |
 | Mi perfil dice «Hiciste un cambio hace un momento. Espera N s» | Es el límite de frecuencia (`429`): espera esos segundos y vuelve a pulsar Guardar (§7.4). |
 | Una pantalla del panel dice "Falta aplicar la migración" | Corre `npm run db:migrar` contra esa base (p. ej. 008 para Beneficios). |
@@ -501,7 +508,8 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 |---|---|
 | [`docs/MANUAL_ADMIN.pdf`](docs/MANUAL_ADMIN.pdf) | **Manual de uso para administradores** (PDF con capturas reales, 32 páginas). |
 | [`docs/API.md`](docs/API.md) | **Referencia completa de la API** (cuerpos, respuestas, errores, ejemplos). |
-| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§62), con cada decisión. **Empieza aquí para entender el porqué.** |
+| [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§63), con cada decisión. **Empieza aquí para entender el porqué.** |
+| [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md) | **Límite de frecuencia**: riesgos, arquitectura, límites por endpoint, fallo abierto/cerrado, pruebas, operación y pasos antes de desplegar. |
 | [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md) | Qué falta por hacer y su estado. |
 | [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md) | Plan y comandos de respaldo, restauración y limpieza. |
 | [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/CONEXION_NEON.md`](docs/CONEXION_NEON.md), [`docs/PLAN_DOMINIO.md`](docs/PLAN_DOMINIO.md), [`docs/MIGRATION_TO_RED.md`](docs/MIGRATION_TO_RED.md) | Infraestructura, conexión a Neon, dominio y migración. |

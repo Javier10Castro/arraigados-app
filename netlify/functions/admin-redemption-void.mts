@@ -2,6 +2,7 @@ import type { Config, Context } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { RedemptionVoidError, voidRedemption } from '../../server/redemptions';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
+import { RULES, guardUser } from '../../server/rateLimit';
 import type { VoidRedemptionRequest } from '../../shared/api';
 
 /**
@@ -17,6 +18,8 @@ export default handler(async (req: Request, context: Context) => {
   if (req.method !== 'POST') return methodNotAllowed('POST');
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
+  const blocked = await guardUser(RULES.admin_danger, auth.user.id);
+  if (blocked) return blocked;
 
   const id = context.params.id ?? '';
   if (!id) return apiError('Ese canje no existe.', 404);

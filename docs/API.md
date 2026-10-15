@@ -38,6 +38,8 @@ El cliente del frontend que consume todo esto es [`src/lib/api.ts`](../src/lib/a
 | `405` | Método no permitido (cabecera `allow` indica los válidos). |
 | `409` | Conflicto (duplicado, pulsera en estado incompatible, migración pendiente…). |
 | `422` | Moderación: la nota contiene lenguaje no permitido. |
+| `429` | Límite de frecuencia: `{ "error": "…", "code": "rate_limited" }` + `Retry-After` (s) y `RateLimit-Limit/Remaining/Reset/Policy`. No se cambia nada guardado; reintentar tras esperar. Detalle y límites en [`RATE_LIMITING.md`](RATE_LIMITING.md). |
+| `503` | (además de migraciones pendientes) `code: "rate_limit_unavailable"` + `Retry-After: 5`: el contador falló en una regla de fallo cerrado (solo login y cambio de contraseña). |
 | `500` | Error inesperado; mensaje genérico (el detalle queda en el log del servidor). |
 
 ### Autenticación
@@ -69,6 +71,8 @@ Estado público de una pulsera (sin datos personales). Solo acepta el `qrToken` 
 ```
 `status`: `not_found` · `invalidated` · `active` · `unclaimed` (solo esta incluye `package`).
 
+Límite: los tokens inexistentes se cuentan por IP (solo fallos, umbral alto); superado, `429`. Consultar tokens válidos no consume cupo.
+
 ### `POST /api/claim` 🌐
 Reclama una pulsera (registro).
 
@@ -76,6 +80,8 @@ Reclama una pulsera (registro).
 { "token": "AbCdEfGh12345678", "fullName": "María López", "ageRange": "19-21", "churchId": "<id>" }
 ```
 `ageRange` ∈ `16-18, 19-21, 22-24, 25-27, 28-30, 31-34, 35+`. Respuesta `{ "outcome": "claimed" | "already_active" | "invalidated" | "not_found" }`. Es seguro reintentar: reclamar dos veces la misma pulsera devuelve `already_active`.
+
+Límites: por IP (umbral alto, la sede comparte IP), por token y por tokens inexistentes; `429` + `Retry-After` al superarse. No cambia el resultado de un reclamo válido.
 
 ### `GET /api/me` 🎫
 Datos del asistente.
@@ -121,7 +127,7 @@ Cada asistente elige cómo aparece: `photo`, `avatar` o `initials`. Requiere las
 - Respuesta: `429` `{ "error": "Hiciste un cambio hace un momento. Espera N s e inténtalo de nuevo." }` + cabecera `Retry-After: N`. **No se cambia nada** de lo guardado. Un reintento legítimo funciona esperando esos segundos; la pantalla muestra el mensaje y conserva lo que el usuario estaba editando.
 - Alcance: no aplica a `GET`, a `POST /api/profiles` ni a la moderación del Admin (que sí reinicia el contador de esa persona). **No hay tope diario ni por IP**: es solo un freno entre cambios (ver pendientes).
 
-**Códigos:** `200` · `400` validación · `401` sin sesión/token · `403` sin permiso (Admin) o firma inválida (foto) · `404` sin foto / archivo inexistente · `405` método · `429` demasiado seguido · `503` migraciones sin aplicar · `500` error interno.
+**Códigos:** `200` · `400` validación · `401` sin sesión/token · `403` sin permiso (Admin) o firma inválida (foto) · `404` sin foto / archivo inexistente · `405` método · `429` demasiado seguido (cooldown de perfil o límite por token; foto: `att_photo`) · `503` migraciones sin aplicar · `500` error interno.
 
 **`/api/me` y el perfil opcional:** `GET /api/me` incluye `profile` cuando existe. Si leerlo falla por **cualquier** motivo (migraciones sin aplicar o un error de la base), `/api/me` responde `200` **sin** la clave `profile` y la app dibuja el avatar de siempre; el servidor registra `[me] no se pudo leer el perfil (se responde sin él)` en el log. La sesión del asistente nunca depende del perfil.
 
@@ -167,7 +173,7 @@ Sirven la imagen (Netlify Blobs). Caché agresiva (la `key` cambia al reemplazar
 ```json
 { "email": "persona@redjuveniltijuana.com", "password": "********" }
 ```
-→ `200` con `{ id, name, email, role, mustChangePassword }` y cabecera `Set-Cookie: arr_staff=…`. `401` si los datos no coinciden o la cuenta está desactivada.
+→ `200` con `{ id, name, email, role, mustChangePassword }` y cabecera `Set-Cookie: arr_staff=…`. `401` si los datos no coinciden o la cuenta está desactivada (mismo mensaje en ambos casos: no revela si la cuenta existe). Límites por pareja correo+IP, por IP y por correo; `429` con el mismo formato exista o no la cuenta; un inicio correcto devuelve el cupo del intento. `503` si el contador no responde (fallo cerrado).
 
 ### `POST /api/auth/logout` 🌐
 Borra la cookie (no requiere sesión).
@@ -176,7 +182,7 @@ Borra la cookie (no requiere sesión).
 `{ id, name, email, role, mustChangePassword? }` — el usuario de la sesión vigente.
 
 ### `POST /api/auth/password` 👷
-`{ "currentPassword": "…", "newPassword": "…" }`. Cambia la contraseña, **cierra las demás sesiones** de la cuenta y emite una sesión nueva. Es lo único permitido con contraseña temporal.
+`{ "currentPassword": "…", "newPassword": "…" }`. Cambia la contraseña, **cierra las demás sesiones** de la cuenta y emite una sesión nueva. Es lo único permitido con contraseña temporal. Límite por cuenta (contraseña actual incorrecta consume cupo; éxito y errores de validación lo devuelven); `429` al superarlo.
 
 ### `GET /api/staff/pulse?token=<qrToken>` o `?code=AR26-XXXXX` 👷
 Consulta una pulsera por QR o código manual.
@@ -190,6 +196,7 @@ Descuenta exactamente 1 agua fresca.
 ```json
 { "manualCode": "AR26-7K3MQ", "idempotencyKey": "<uuid generado al abrir el modal>" }
 ```
+Límites: por Staff y por pulsera; `429` + `Retry-After`. El límite se evalúa **después** de autenticar y **antes** de descontar; no altera la idempotencia ni evita descuentos duplicados.
 `outcome`: `ok` (+`drinksRemaining`) · `already_processed` (misma `idempotencyKey`: **no** vuelve a descontar) · `insufficient_balance` · `pulse_not_active`. El canje queda a nombre del Staff de la **sesión**.
 
 ### `POST /api/staff/reassign` 👷

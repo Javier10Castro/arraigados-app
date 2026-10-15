@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { query } from './db';
 import { apiError } from './http';
+import { RULES, guardUser } from './rateLimit';
 import type { StaffRole, StaffUser } from '../shared/api';
 
 /**
@@ -201,6 +202,10 @@ export async function authorize(
   if (user.mustChangePassword && !allowPending) {
     return { response: apiError('Primero crea tu contraseña personal.', 403, { mustChangePassword: true }) };
   }
+  // Tope general por cuenta (RULES.staff_base). Va DESPUÉS de autenticar y autorizar: sin sesión válida no se
+  // gasta cuota ni se escribe nada; una cuenta con sesión no puede inundar la base.
+  const blocked = await guardUser(RULES.staff_base, user.id);
+  if (blocked) return { response: blocked };
   return { user };
 }
 

@@ -6,7 +6,7 @@ export class PulseReleaseError extends Error {}
 export type ReleaseResult = { attendeeName: string; redemptions: number; notes: number };
 
 /**
- * HERRAMIENTA DE PRUEBAS (solo la cuenta dueña, ver server/owner.ts). Deja la pulsera EXACTAMENTE como
+ * HERRAMIENTA DE PRUEBAS (cualquier cuenta con rol ADMIN; ver netlify/functions/admin-pulse-release.mts). Deja la pulsera EXACTAMENTE como
  * recién creada: sin dueño, sin canjes y sin ningún rastro de haberse usado.
  *
  * - Borra al asistente con sus canjes, notas, likes y estado de notificaciones.
