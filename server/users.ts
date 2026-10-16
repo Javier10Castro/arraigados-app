@@ -18,6 +18,7 @@ import type { AdminUserRow, CreateUserRequest, StaffRole, UpdateUserRequest } fr
 export class UserError extends Error {}
 
 const ROLES: StaffRole[] = ['ADMIN', 'STAFF'];
+const OWNER_PROTECTED = 'Esta cuenta está protegida: solo su dueño puede administrarla.';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cleanName(name: unknown) {
@@ -118,6 +119,9 @@ export async function updateUser(actorId: string, userId: string, input: UpdateU
     );
     const before = rows[0];
     if (!before) throw new UserError('Esa cuenta no existe.');
+    // La cuenta propietaria (server/owner.ts) no se puede modificar desde otra cuenta (ni siquiera otro Admin):
+    // evita que se le baje el rol, se desactive o se le tome el control. Validado aquí, en el servidor.
+    if (isOwnerEmail(before.email) && userId !== actorId) throw new UserError(OWNER_PROTECTED);
 
     const after = {
       name: input.name !== undefined ? cleanName(input.name) : before.name,
@@ -196,6 +200,10 @@ export async function resetPassword(actorId: string, userId: string, temporaryPa
   if (problem) throw new UserError(problem);
   const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_COST);
   await withTransaction(async (tx) => {
+    // Nadie restablece la contraseña de la cuenta propietaria (ella usa "Cambiar mi contraseña"): sin esto, otro Admin
+    // podría entrar con la contraseña temporal y adueñarse de la cuenta.
+    const target = (await tx.query<{ email: string }>(`SELECT email FROM "User" WHERE id = $1`, [userId])).rows[0];
+    if (target && isOwnerEmail(target.email)) throw new UserError(OWNER_PROTECTED);
     const res = await tx.query(`UPDATE "User" SET "passwordHash" = $2, "updatedAt" = ${NOW_UTC} WHERE id = $1`, [
       userId,
       passwordHash,

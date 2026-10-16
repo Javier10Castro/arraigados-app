@@ -78,6 +78,8 @@ export type PulseStatusResponse =
   | { status: 'not_found' }
   | { status: 'invalidated' }
   | { status: 'active' }
+  /** Reservada para una cuenta del equipo: no es registrable ni da acceso de asistente. */
+  | { status: 'team' }
   | { status: 'unclaimed'; package: PackageSummary };
 
 /** POST /api/claim */
@@ -85,6 +87,7 @@ export type ClaimRequest = { token: string; fullName: string; ageRange: string; 
 export type ClaimResponse =
   | { outcome: 'claimed' }
   | { outcome: 'already_active' }
+  | { outcome: 'team' }
   | { outcome: 'invalidated' }
   | { outcome: 'not_found' };
 
@@ -182,7 +185,10 @@ export type AdminBatchRow = {
   /** Filas reales de "Pulse" del lote. */
   total: number;
   unclaimed: number;
+  /** Reclamadas por ASISTENTES (no incluye las del equipo). */
   active: number;
+  /** Asignadas a una cuenta Staff/Admin (vínculo vigente en "StaffPulse"). No cuentan como asistentes. */
+  team: number;
   invalidated: number;
 };
 
@@ -206,6 +212,10 @@ export type AdminPulseRow = {
   attendeeName: string | null;
   /** Attendee.id (semilla del avatar); null si la pulsera no está reclamada. */
   attendeeId: string | null;
+  /** true = pulsera reservada para una cuenta del equipo (`status` sigue siendo ACTIVE, `attendeeId` null). */
+  team: boolean;
+  /** Nombre de la cuenta del equipo dueña (solo si `team`). */
+  teamMemberName: string | null;
   /** Número de la pulsera dentro del lote (1..N, por orden de creación). Estable aunque se filtre. */
   position: number;
 };
@@ -224,7 +234,7 @@ export type AdminBatchDetail = AdminBatchRow & {
   /** Origen de los QR (PUBLIC_BASE_URL o el de desarrollo); '' si no hay dominio. */
   qrBase: string;
 };
-export type BatchPulseFilters = { page?: number; pageSize?: number; q?: string; status?: PulseStatus | '' };
+export type BatchPulseFilters = { page?: number; pageSize?: number; q?: string; status?: PulseStatus | 'TEAM' | '' };
 
 /** GET /api/admin/batches: el listado y los paquetes que necesita el alta. */
 export type AdminBatchesResponse = {
@@ -351,6 +361,21 @@ export type StaffPulseResponse =
       package: { name: string; includedDrinks: number };
       drinksUsed: number;
       drinksRemaining: number;
+    }
+  | {
+      /**
+       * Pulsera de una cuenta del EQUIPO (Staff/Admin), no de un asistente. Solo nombre y rol: nunca iglesia ni
+       * datos personales. `isSelf` = la cuenta que consulta es la dueña de la pulsera (autocanje);
+       * `selfRedeemAllowed` es solo informativo para la pantalla: el servidor vuelve a decidir al canjear.
+       */
+      status: 'team';
+      manualCode: string;
+      member: { name: string; role: StaffRole };
+      package: { name: string; includedDrinks: number };
+      drinksUsed: number;
+      drinksRemaining: number;
+      isSelf: boolean;
+      selfRedeemAllowed: boolean;
     };
 
 /** GET /api/staff/search?q=…&churchId=… -- solo pulseras ACTIVAS. */
@@ -385,7 +410,9 @@ export type RedeemResponse =
   | { outcome: 'ok'; drinksRemaining: number }
   | { outcome: 'already_processed'; drinksRemaining: number }
   | { outcome: 'insufficient_balance'; drinksRemaining: number }
-  | { outcome: 'pulse_not_active' };
+  | { outcome: 'pulse_not_active' }
+  /** El dueño de la pulsera es quien escanea y su autocanje no está permitido: no se descontó nada. */
+  | { outcome: 'self_redeem_not_allowed' };
 
 /** GET /api/staff/history -- los canjes del Staff de la sesión (los más recientes primero). */
 export type StaffHistoryRow = {
@@ -395,6 +422,8 @@ export type StaffHistoryRow = {
   pulseLabel: string;
   quantity: number;
   status: RedemptionStatus;
+  /** true = el beneficiario es una cuenta del equipo (no un asistente). */
+  team?: boolean;
 };
 export type StaffHistoryResponse = { rows: StaffHistoryRow[] };
 
@@ -432,7 +461,14 @@ export type AdminRedemptionFilters = {
 export type AdminRedemptionRow = {
   id: string;
   createdAt: string;
-  attendeeId: string;
+  /** null = el beneficiario es una cuenta del equipo (ver `beneficiaryUserId`). */
+  attendeeId: string | null;
+  /** Cuenta del equipo beneficiaria (solo en canjes de equipo). */
+  beneficiaryUserId?: string | null;
+  /** true = canje de una pulsera de equipo. `attendeeName` trae entonces el nombre de la cuenta. */
+  team?: boolean;
+  /** true = autocanje (beneficiario = quien ejecutó el canje). */
+  selfRedeem?: boolean;
   attendeeName: string;
   pulseLabel: string;
   packageName: string;
@@ -1005,3 +1041,79 @@ export type AdminKitRow = {
   expectedIncome: number;
 };
 export type AdminKitsResponse = { kits: AdminKitRow[]; totals: { total: number; active: number; expectedIncome: number } };
+
+
+/* ------------------------------------------------------------------ */
+/* Pulseras del EQUIPO y autocanje (migración 012_staff_selfredeem.sql)  */
+/*                                                                      */
+/* Una cuenta Staff/Admin puede tener UNA pulsera vinculada por un Admin */
+/* (tabla "StaffPulse"). Ese vínculo NO crea un asistente. El permiso de */
+/* AUTOCANJE (escanear la propia pulsera) lo deciden, en este orden:     */
+/*   1. la excepción individual ("SelfRedeemOverride": allow | deny),    */
+/*   2. el interruptor global del rol ("SelfRedeemSetting"),             */
+/*   3. si algo falla o falta: NO permitido.                             */
+/* Canjear la pulsera de OTRA persona del equipo no depende de esto.     */
+/* ------------------------------------------------------------------ */
+
+export type SelfRedeemMode = 'allow' | 'deny';
+export type SelfRedeemSettings = Record<StaffRole, boolean>;
+export type SelfRedeemUserRow = {
+  userId: string;
+  name: string;
+  email: string;
+  role: StaffRole;
+  active: boolean;
+  /** null = hereda el interruptor global. */
+  override: SelfRedeemMode | null;
+  /** Permiso EFECTIVO calculado en el servidor. */
+  effective: boolean;
+  source: 'override' | 'global' | 'default';
+};
+/** GET /api/admin/selfredeem. `users` solo viene para la cuenta propietaria (las excepciones son suyas). */
+export type SelfRedeemOverview = { settings: SelfRedeemSettings; isOwner: boolean; users?: SelfRedeemUserRow[] };
+/** PATCH /api/admin/selfredeem -- { scope:'global', role, allowed } o { scope:'user', userId, mode } (solo propietaria). */
+export type UpdateSelfRedeemRequest =
+  | { scope: 'global'; role: StaffRole; allowed: boolean }
+  | { scope: 'user'; userId: string; mode: SelfRedeemMode | 'inherit' };
+
+/** GET /api/staff-me -- la pulsera propia de la cuenta del equipo en sesión (el servidor la deduce de la sesión). */
+export type StaffMeResponse =
+  | { state: 'none' }
+  | { state: 'invalid' }
+  | {
+      state: 'active';
+      member: { id: string; name: string; role: StaffRole };
+      package: PackageSummary & { benefits?: string[] };
+      drinksUsed: number;
+      drinksRemaining: number;
+      /** Informativo (¿puede escanear su propia pulsera?). El servidor decide al canjear. */
+      selfRedeemAllowed: boolean;
+    };
+
+/** Admin -> Usuarios -> Pulsera del equipo. */
+export type AdminStaffPulseInfo =
+  | { linked: false }
+  | {
+      linked: true;
+      pulseLabel: string;
+      pulseStatus: 'UNCLAIMED' | 'ACTIVE' | 'INVALIDATED';
+      packageName: string;
+      includedDrinks: number;
+      drinksUsed: number;
+      since: string;
+    };
+/** POST (vincular) y PUT (reemplazar) /api/admin/staff-pulse. `code` = `manualCode` que devuelve /api/staff/pulse. */
+export type StaffPulseLinkRequest = { userId: string; code: string };
+export type StaffPulseLinkResponse =
+  | { outcome: 'ok'; pulseLabel: string; packageName: string; drinksRemaining: number }
+  | { outcome: 'pulse_not_found' }
+  | { outcome: 'pulse_in_use' } //         ya pertenece a un asistente (o está activa por otra vía)
+  | { outcome: 'pulse_linked' } //         ya está vinculada a otra cuenta del equipo
+  | { outcome: 'pulse_invalidated' }
+  | { outcome: 'user_not_found' }
+  | { outcome: 'user_inactive' }
+  | { outcome: 'user_has_pulse' } //       la cuenta ya tiene una (para cambiarla: reemplazar)
+  | { outcome: 'no_link' } //              reemplazar / desvincular sin tener pulsera
+  | { outcome: 'same_pulse' }
+  | { outcome: 'different_kit'; oldKit: string; newKit: string };
+export type StaffPulseUnlinkResponse = { outcome: 'ok'; pulse: 'released' | 'invalidated' } | { outcome: 'no_link' } | { outcome: 'user_not_found' };

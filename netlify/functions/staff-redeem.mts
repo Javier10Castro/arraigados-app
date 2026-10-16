@@ -29,7 +29,8 @@ export default handler(async (req: Request) => {
     ...(code ? [{ rule: RULES.redeem_pulse, id: scope('pulse', code) }] : []),
   ]);
   if (blocked) return blocked;
-  return json(await redeemOne(body.manualCode, body.idempotencyKey, staff.id));
+  // Quien canjea (y su rol, para el permiso de autocanje) sale SIEMPRE de la sesión; el cuerpo solo trae código y llave.
+  return json(await redeemOne(body.manualCode, body.idempotencyKey, { id: staff.id, role: staff.role }));
 });
 
 export const config: Config = { path: '/api/staff/redeem' };

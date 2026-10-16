@@ -1,5 +1,11 @@
 // npm run db:limpiar-pruebas              limpia de verdad (pide confirmación)
 // npm run db:limpiar-pruebas -- --simular solo MUESTRA qué borraría (no cambia ni respalda nada)
+// npm run db:limpiar-pruebas -- --incluir-equipo   ⚠ ADEMÁS borra las pulseras asignadas a cuentas Staff/Admin
+//                                                  (tabla "StaffPulse"); pide una SEGUNDA confirmación escrita.
+//
+// ASIGNACIONES DEL EQUIPO ("StaffPulse", migración 012): son datos OPERATIVOS (quién tiene qué pulsera). Por defecto
+// este script NO las borra: si existe alguna, se DETIENE antes de respaldar o tocar nada y explica qué hacer.
+// La limpieza destructiva de esas asignaciones solo ocurre con --incluir-equipo.
 //
 // Deja la base lista para el evento: borra TODO lo generado durante las pruebas y conserva lo que
 // se configura una vez. Todo en UNA transacción: o se borra todo o nada.
@@ -20,20 +26,41 @@ import { ask, connect } from './_db.mjs';
 import { crearRespaldoTotal, listTables, printTable } from './_respaldo.mjs';
 
 const simulate = process.argv.includes('--simular');
+const includeTeam = process.argv.includes('--incluir-equipo');
+const unknownFlags = process.argv.slice(2).filter((a) => a !== '--simular' && a !== '--incluir-equipo');
+if (unknownFlags.length) {
+  console.error(`Opción desconocida: ${unknownFlags.join(' ')}. Opciones válidas: --simular, --incluir-equipo.`);
+  process.exit(1);
+}
 
 /** Hijos primero. Solo estas tablas se vacían; todo lo demás se conserva. */
 const CLEAN = ['NoteLike', 'Note', 'NotificationState', 'AttendeeProfile', 'Redemption', 'Pulse', 'Attendee', 'Batch', 'Announcement', 'InstantView', 'InstantCredit', 'Instant'];
 /** AuditLog: solo las entradas de estas entidades (pruebas). Cuentas, iglesias, ajustes, menú... se conservan. */
 const TEST_AUDIT_TYPES = ['Batch', 'Pulse', 'Attendee', 'Redemption', 'Note', 'NoteLike', 'Announcement', 'InstantCredit', 'Instant', 'InstantView'];
-const KEEP = ['User', 'Package', 'PackageBenefit', 'Zone', 'Presbytery', 'Church', 'Venue', 'Dish', 'MerchItem', 'MerchImage', 'BlockedWord', 'InstantConfig'];
+const KEEP = ['User', 'Package', 'PackageBenefit', 'Zone', 'Presbytery', 'Church', 'Venue', 'Dish', 'MerchItem', 'MerchImage', 'BlockedWord', 'InstantConfig', 'SelfRedeemSetting', 'SelfRedeemOverride'];
 
 const { client, host, database } = connect();
 await client.connect();
 try {
   const existing = new Set(await listTables(client));
-  const clean = CLEAN.filter((t) => existing.has(t));
+  // "StaffPulse" solo se vacía con --incluir-equipo (y siempre ANTES que "Pulse", que la referencia con RESTRICT).
+  const cleanOrder = includeTeam ? CLEAN.flatMap((t) => (t === 'Pulse' ? ['StaffPulse', t] : [t])) : CLEAN;
+  const clean = cleanOrder.filter((t) => existing.has(t));
   const count = async (t) => (await client.query(`SELECT count(*)::int AS n FROM "${t}"`)).rows[0].n;
   const auditWhere = `"entityType" = ANY($1)`;
+
+  // Salvaguarda: asignaciones de pulsera a cuentas del equipo.
+  const team = existing.has('StaffPulse')
+    ? (await client.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE "unlinkedAt" IS NULL)::int AS vigentes FROM "StaffPulse"`)).rows[0]
+    : { total: 0, vigentes: 0 };
+  if (team.total > 0 && !includeTeam) {
+    console.error(`\n✖ Hay ${team.vigentes} pulsera(s) asignada(s) a cuentas del equipo (${team.total} vínculo(s) en total, con historial).`);
+    console.error('  Son datos operativos y este script NO los borra por defecto. No se respaldó ni se borró nada.');
+    console.error('  · Para conservarlas: no uses esta limpieza (borra TODAS las pulseras); borra solo los lotes de prueba desde Admin.');
+    console.error('  · Para limpiar TAMBIÉN las asignaciones del equipo (destructivo, con doble confirmación):');
+    console.error('      npm run db:limpiar-pruebas -- --incluir-equipo\n');
+    process.exit(1);
+  }
 
   const toDelete = {};
   for (const t of clean) toDelete[t] = await count(t);
@@ -43,7 +70,7 @@ try {
   const kept = {};
   for (const t of KEEP.filter((t) => existing.has(t))) kept[t] = await count(t);
   kept['AuditLog (resto)'] = (await client.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE NOT (${auditWhere})`, [TEST_AUDIT_TYPES])).rows[0].n;
-  const unknown = [...existing].filter((t) => !CLEAN.includes(t) && !KEEP.includes(t) && t !== 'AuditLog');
+  const unknown = [...existing].filter((t) => !CLEAN.includes(t) && !KEEP.includes(t) && t !== 'AuditLog' && t !== 'StaffPulse');
 
   console.log(`Base: ${database} @ ${host}${simulate ? '   (SIMULACIÓN: no se cambia nada)' : ''}`);
   printTable('Se va a BORRAR:', toDelete);
@@ -72,12 +99,24 @@ try {
     process.exit(0);
   }
 
+  if (includeTeam && team.total > 0) {
+    console.log(`\n⚠⚠ --incluir-equipo: también se BORRARÁN ${team.total} vínculo(s) pulsera↔cuenta del equipo (${team.vigentes} vigente(s)).`);
+    console.log('   Después, Staff/Admin quedarán sin pulsera y un Admin tendrá que asignarlas de nuevo.');
+  }
   console.log('\n⚠ Esto borra TODAS las pulseras, lotes y registros de asistentes, incluso si alguno fuera real.');
   console.log('  Antes se guarda un respaldo total y se puede regresar con db:restaurar-total --reemplazar.');
   const answer = await ask('\nEscribe LIMPIAR TODO para continuar (cualquier otra cosa cancela): ');
   if (answer !== 'LIMPIAR TODO') {
     console.log('Cancelado. No se borró nada.\n');
     process.exit(0);
+  }
+
+  if (includeTeam && team.total > 0) {
+    const second = await ask('Segunda confirmación. Escribe BORRAR ASIGNACIONES DEL EQUIPO para continuar: ');
+    if (second !== 'BORRAR ASIGNACIONES DEL EQUIPO') {
+      console.log('Cancelado. No se borró nada.\n');
+      process.exit(0);
+    }
   }
 
   const backup = await crearRespaldoTotal(client, { base: `${database} @ ${host}`, prefijo: 'antes-de-limpiar' });
@@ -87,6 +126,11 @@ try {
 
   await client.query('BEGIN');
   try {
+    if (existing.has('StaffPulse') && !includeTeam) {
+      // Defensa en profundidad (carrera con un Admin que asigne una pulsera mientras tanto): nunca borrar pulseras con vínculo.
+      const n = (await client.query(`SELECT count(*)::int AS n FROM "StaffPulse"`)).rows[0].n;
+      if (n > 0) throw new Error('Apareció una asignación de pulsera del equipo; se cancela para no borrarla.');
+    }
     for (const t of clean) await client.query(`DELETE FROM "${t}"`);
     await client.query(`DELETE FROM "AuditLog" WHERE ${auditWhere}`, [TEST_AUDIT_TYPES]);
 

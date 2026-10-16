@@ -24,7 +24,9 @@ const unaccent = (expr: string) => `translate(lower(${expr}), 'áéíóúüñ', 
 type Row = {
   id: string;
   createdAt: string;
-  attendeeId: string;
+  /** null = canje de una pulsera de EQUIPO (el beneficiario es la cuenta `beneficiaryUserId`). */
+  attendeeId: string | null;
+  beneficiaryUserId: string | null;
   attendeeName: string;
   pulseCode: string;
   packageName: string;
@@ -42,6 +44,7 @@ function toRow(r: Row): AdminRedemptionRow {
     id: r.id,
     createdAt: r.createdAt,
     attendeeId: r.attendeeId,
+    ...(r.attendeeId === null ? { beneficiaryUserId: r.beneficiaryUserId, team: true, selfRedeem: r.beneficiaryUserId === r.staffId } : {}),
     attendeeName: r.attendeeName,
     pulseLabel: pulseCodeLabel(r.pulseCode),
     packageName: r.packageName,
@@ -68,7 +71,8 @@ export async function listRedemptions(f: AdminRedemptionFilters): Promise<AdminR
   };
 
   const words = String(f.q ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
-  for (const w of words) add((n) => `${unaccent('a."fullName"')} LIKE ${unaccent(`$${n}`)}`, `%${w}%`);
+  // Canjes de equipo: el nombre es el de la cuenta beneficiaria (bu.name); los de asistentes siguen igual.
+  for (const w of words) add((n) => `${unaccent('COALESCE(a."fullName", bu.name)')} LIKE ${unaccent(`$${n}`)}`, `%${w}%`);
   if (f.manualCode) add((n) => `p."manualCode" ILIKE $${n}`, `%${f.manualCode}%`);
   if (f.staffId) add((n) => `r."createdById" = $${n}`, f.staffId);
   if (f.from) add((n) => `${local('r."createdAt"')} >= $${n}::date`, f.from);
@@ -84,7 +88,8 @@ export async function listRedemptions(f: AdminRedemptionFilters): Promise<AdminR
 
   const from = `
     FROM "Redemption" r
-    JOIN "Attendee" a ON a.id = r."attendeeId"
+    LEFT JOIN "Attendee" a ON a.id = r."attendeeId"
+    LEFT JOIN "User" bu ON bu.id = r."beneficiaryUserId"
     JOIN "Pulse" p ON p.id = r."pulseId"
     JOIN "Package" k ON k.id = r."packageId"
     JOIN "User" u ON u.id = r."createdById"
@@ -106,7 +111,7 @@ export async function listRedemptions(f: AdminRedemptionFilters): Promise<AdminR
 
   const { rows } = await query<Row>(
     `SELECT r.id, to_char(r."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-            r."attendeeId", a."fullName" AS "attendeeName", p."manualCode" AS "pulseCode",
+            r."attendeeId", r."beneficiaryUserId", COALESCE(a."fullName", bu.name) AS "attendeeName", p."manualCode" AS "pulseCode",
             k.name AS "packageName", r.quantity, r."createdById" AS "staffId", u.name AS "staffName",
             to_char(v."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "voidedAtRaw", vu.name AS "voidedByName", v.reason AS "voidReason"
        ${from}
@@ -150,10 +155,11 @@ export async function voidRedemption(id: string, actorId: string, reason: string
   return withTransaction(async (tx) => {
     const { rows } = await tx.query<{
       id: string;
-      attendeeId: string;
+      attendeeId: string | null;
+      beneficiaryUserId: string | null;
       pulseId: string;
       quantity: number;
-    }>(`SELECT id, "attendeeId", "pulseId", quantity FROM "Redemption" WHERE id = $1 FOR UPDATE`, [id]);
+    }>(`SELECT id, "attendeeId", "beneficiaryUserId", "pulseId", quantity FROM "Redemption" WHERE id = $1 FOR UPDATE`, [id]);
     const redemption = rows[0];
     if (!redemption) return { outcome: 'not_found' as const };
 
@@ -169,15 +175,26 @@ export async function voidRedemption(id: string, actorId: string, reason: string
     // medio), la pulsera ACTIVA actual del mismo asistente. Si no hay
     // ninguna pulsera activa, se anula igual pero no hay dónde restaurar
     // (caso raro, documentado en docs/CLAUDE_HANDOFF.md).
-    const target = await tx.query<{ id: string }>(
-      // ORDER BY (id = $1) DESC: si la pulsera del canje original sigue
-      // activa, gana ella; si no, cualquier otra pulsera ACTIVE del mismo
-      // asistente (a lo más una existe, por el índice único de Neon).
-      `SELECT id FROM "Pulse" WHERE status = 'ACTIVE' AND (id = $1 OR "attendeeId" = $2)
-        ORDER BY (id = $1) DESC
-        LIMIT 1`,
-      [redemption.pulseId, redemption.attendeeId],
-    );
+    // Canje de EQUIPO (attendeeId NULL): la "otra" pulsera es la ACTIVA y vinculada a la misma cuenta beneficiaria
+    // (StaffPulse), nunca la de un asistente. Canje de asistente: igual que siempre.
+    const target = redemption.attendeeId
+      ? await tx.query<{ id: string }>(
+          // ORDER BY (id = $1) DESC: si la pulsera del canje original sigue
+          // activa, gana ella; si no, cualquier otra pulsera ACTIVE del mismo
+          // asistente (a lo más una existe, por el índice único de Neon).
+          `SELECT id FROM "Pulse" WHERE status = 'ACTIVE' AND (id = $1 OR "attendeeId" = $2)
+            ORDER BY (id = $1) DESC
+            LIMIT 1`,
+          [redemption.pulseId, redemption.attendeeId],
+        )
+      : await tx.query<{ id: string }>(
+          `SELECT p.id FROM "Pulse" p
+            WHERE p.status = 'ACTIVE'
+              AND (p.id = $1 OR p.id IN (SELECT sp."pulseId" FROM "StaffPulse" sp WHERE sp."userId" = $2 AND sp."unlinkedAt" IS NULL))
+            ORDER BY (p.id = $1) DESC
+            LIMIT 1`,
+          [redemption.pulseId, redemption.beneficiaryUserId],
+        );
     const targetPulseId = target.rows[0]?.id ?? null;
     let restored = false;
     if (targetPulseId) {
@@ -188,7 +205,9 @@ export async function voidRedemption(id: string, actorId: string, reason: string
       restored = true;
     }
 
-    const who = (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [redemption.attendeeId])).rows[0];
+    const who = redemption.attendeeId
+      ? (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [redemption.attendeeId])).rows[0]
+      : (await tx.query<{ fullName: string }>(`SELECT name AS "fullName" FROM "User" WHERE id = $1`, [redemption.beneficiaryUserId])).rows[0];
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'redemption.void', 'Redemption', $3, $4::jsonb, ${NOW_UTC})`,
@@ -199,6 +218,7 @@ export async function voidRedemption(id: string, actorId: string, reason: string
         JSON.stringify({
           reason: cleanReason,
           attendeeId: redemption.attendeeId,
+          ...(redemption.attendeeId ? {} : { team: true, beneficiaryUserId: redemption.beneficiaryUserId }),
           attendeeName: who?.fullName ?? null,
           originalPulseId: redemption.pulseId,
           restoredPulseId: targetPulseId,

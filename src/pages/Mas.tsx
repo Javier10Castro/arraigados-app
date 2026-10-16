@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeftRight,
   ChevronRight,
   IdCard,
   LogOut,
@@ -12,6 +13,7 @@ import {
 import ScreenHeader from '../components/ScreenHeader';
 import RingsMark from '../components/RingsMark';
 import { firstName, usePulseSession } from '../context/PulseSession';
+import { useTeamNav } from '../context/useTeamNav';
 import UserAvatar from '../components/UserAvatar';
 import styles from './Mas.module.css';
 
@@ -28,6 +30,7 @@ const links = [
 export default function Mas() {
   const navigate = useNavigate();
   const { me, signOut } = usePulseSession();
+  const team = useTeamNav();
   const [gafeteOpen, setGafeteOpen] = useState(false);
   const fullName = me?.attendee.fullName ?? '';
   const name = firstName(fullName);
@@ -54,6 +57,7 @@ export default function Mas() {
       <section className={styles.section}>
         <h2 className="label">Secciones</h2>
         <ul className={styles.list}>
+          {!team.isTeam && (
           <li>
             <button type="button" className={`${styles.row} ${styles.rowButton}`} onClick={() => setGafeteOpen(true)}>
               <span className={styles.rowIcon} aria-hidden="true">
@@ -66,7 +70,8 @@ export default function Mas() {
               <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
             </button>
           </li>
-          {links.map(({ to, label, desc, Icon }) => (
+          )}
+          {links.filter((l) => !(team.isTeam && l.to === '/perfil')).map(({ to, label, desc, Icon }) => (
             <li key={to}>
               <NavLink to={to} className={styles.row}>
                 <span className={styles.rowIcon} aria-hidden="true">
@@ -86,18 +91,33 @@ export default function Mas() {
       <section className={styles.section}>
         <h2 className="label">Cuenta</h2>
         <ul className={styles.list}>
-          <li>
-            <button type="button" className={`${styles.row} ${styles.logoutRow}`} onClick={logout}>
-              <span className={`${styles.rowIcon} ${styles.logoutIcon}`} aria-hidden="true">
-                <LogOut size={18} strokeWidth={2} />
-              </span>
-              <span className={styles.rowBody}>
-                <strong>Cerrar sesión</strong>
-                <span>Para volver a entrar, escanea tu pulsera</span>
-              </span>
-              <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
-            </button>
-          </li>
+          {team.isTeam ? (
+            <li>
+              <button type="button" className={`${styles.row} ${styles.rowButton}`} onClick={team.toTeam}>
+                <span className={styles.rowIcon} aria-hidden="true">
+                  <ArrowLeftRight size={18} strokeWidth={2} />
+                </span>
+                <span className={styles.rowBody}>
+                  <strong>Volver a mi equipo</strong>
+                  <span>Regresa a tu panel sin cerrar sesión</span>
+                </span>
+                <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
+              </button>
+            </li>
+          ) : (
+            <li>
+              <button type="button" className={`${styles.row} ${styles.logoutRow}`} onClick={logout}>
+                <span className={`${styles.rowIcon} ${styles.logoutIcon}`} aria-hidden="true">
+                  <LogOut size={18} strokeWidth={2} />
+                </span>
+                <span className={styles.rowBody}>
+                  <strong>Cerrar sesión</strong>
+                  <span>Para volver a entrar, escanea tu pulsera</span>
+                </span>
+                <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
+              </button>
+            </li>
+          )}
         </ul>
       </section>
 

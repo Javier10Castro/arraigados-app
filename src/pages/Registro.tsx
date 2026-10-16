@@ -159,6 +159,10 @@ const INVALIDATED = {
   title: 'Esta pulsera ya no es válida',
   body: 'Si perdiste tu pulsera y ya te dieron una nueva, escanea la nueva. Si crees que es un error, acércate a un miembro del staff.',
 };
+const TEAM = {
+  title: 'Esta pulsera está reservada',
+  body: 'Esta pulsera está asignada al equipo de Arraigados y no se puede registrar como asistente. Si recibiste una pulsera como asistente y llegaste aquí, acércate a un miembro del staff.',
+};
 
 function PulseFlow({ token }: { token: string }) {
   const navigate = useNavigate();
@@ -185,6 +189,8 @@ function PulseFlow({ token }: { token: string }) {
           setFlow({ kind: 'form', pkg: res.package });
         } else if (res.status === 'invalidated') {
           setFlow({ kind: 'notice', ...INVALIDATED });
+        } else if (res.status === 'team') {
+          setFlow({ kind: 'notice', ...TEAM });
         } else {
           setFlow({ kind: 'notice', ...NOT_FOUND });
         }
@@ -200,7 +206,7 @@ function PulseFlow({ token }: { token: string }) {
       <RegisterForm
         token={token}
         pkg={flow.pkg}
-        onUnavailable={(which) => setFlow({ kind: 'notice', ...(which === 'invalidated' ? INVALIDATED : NOT_FOUND) })}
+        onUnavailable={(which) => setFlow({ kind: 'notice', ...(which === 'invalidated' ? INVALIDATED : which === 'team' ? TEAM : NOT_FOUND) })}
       />
     );
   }
@@ -246,7 +252,7 @@ function RegisterForm({
 }: {
   token: string;
   pkg: PackageSummary;
-  onUnavailable: (which: 'invalidated' | 'not_found') => void;
+  onUnavailable: (which: 'invalidated' | 'not_found' | 'team') => void;
 }) {
   const navigate = useNavigate();
   const { setToken } = usePulseSession();

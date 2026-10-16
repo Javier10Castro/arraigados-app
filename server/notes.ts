@@ -174,15 +174,27 @@ const FEED_MAX = 40;
 export async function listNotesFeed(token: string): Promise<{ ok: true; notes: NoteFeedItem[] } | { ok: false; status: 'not_found' }> {
   const attendeeId = await resolveActiveAttendeeId(token);
   if (!attendeeId) return { ok: false, status: 'not_found' };
+  return { ok: true, notes: await feedNotes(attendeeId) };
+}
 
+/**
+ * Carrusel para la vista de visitante de una cuenta del EQUIPO (solo lectura): las mismas notas públicas y vigentes, sin
+ * excluir ninguna (el equipo no tiene nota propia) y con `likedByMe` siempre falso. La autorización (cookie del equipo) la
+ * hace quien llama; aquí no hay identidad de asistente.
+ */
+export async function listNotesFeedForTeam(): Promise<NoteFeedItem[]> {
+  return feedNotes(null);
+}
+
+async function feedNotes(attendeeId: string | null): Promise<NoteFeedItem[]> {
   const { rows } = await query<{ id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; fullName: string; likeCount: number; likedByMe: boolean }>(
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
             a.id AS "attendeeId", a."fullName",
             0 AS "likeCount", -- el contador es SOLO del dueño de la nota: en las notas de otros nunca se envía
-            EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."attendeeId" = $1) AS "likedByMe"
+            EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."attendeeId" = $1::text) AS "likedByMe"
        FROM "Note" n
        JOIN "Attendee" a ON a.id = n."attendeeId"
-      WHERE n."visibility" = 'PUBLIC' AND n."expiresAt" > ${NOW_UTC} AND n."attendeeId" <> $1
+      WHERE n."visibility" = 'PUBLIC' AND n."expiresAt" > ${NOW_UTC} AND ($1::text IS NULL OR n."attendeeId" <> $1::text)
       ORDER BY n."createdAt" DESC
       LIMIT ${FEED_MAX * 2}`,
     [attendeeId],
@@ -201,7 +213,7 @@ export async function listNotesFeed(token: string): Promise<{ ok: true; notes: N
       likeCount: Number(r.likeCount),
       likedByMe: r.likedByMe,
     }));
-  return { ok: true, notes };
+  return notes;
 }
 
 /**

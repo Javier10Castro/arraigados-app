@@ -74,6 +74,13 @@ import {
   type AdminMerchResponseSingle,
   type PublicMerchResponse,
   type MerchReorderRequest,
+  type StaffMeResponse,
+  type AdminStaffPulseInfo,
+  type StaffPulseLinkRequest,
+  type StaffPulseLinkResponse,
+  type StaffPulseUnlinkResponse,
+  type SelfRedeemOverview,
+  type UpdateSelfRedeemRequest,
 } from '../../shared/api';
 
 /** Error de la API con el código HTTP y, si aplica, el estado de la pulsera. */
@@ -136,6 +143,8 @@ export const api = {
   removeMyNote: (token: string) =>
     request<RemoveNoteResponse>('/api/notes', { method: 'DELETE', headers: { [PULSE_TOKEN_HEADER]: token } }),
   notesFeed: (token: string) => request<NotesFeedResponse>('/api/notes/feed', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  /** Vista de visitante del equipo (solo lectura): sin x-pulse-token, autentica la cookie del equipo. */
+  notesFeedTeam: () => request<NotesFeedResponse>('/api/notes/feed'),
   noteLikers: (token: string) => request<NoteLikersResponse>('/api/notes/likers', { headers: { [PULSE_TOKEN_HEADER]: token } }),
   toggleNoteLike: (token: string, noteId: string) =>
     request<ToggleNoteLikeResponse>(`/api/notes/${encodeURIComponent(noteId)}/like`, {
@@ -148,15 +157,28 @@ export const api = {
   logout: () => postJson<{ ok: true }>('/api/auth/logout', {}),
   staffMe: () => request<StaffUser>('/api/auth/me'),
   changePassword: (body: ChangePasswordRequest) => postJson<StaffUser>('/api/auth/password', body),
-  staffPulse: (by: { token: string } | { code: string }) =>
+  staffPulse: (by: { token: string } | { code: string } | { wallet: string }) =>
     request<StaffPulseResponse>(
-      'token' in by ? `/api/staff/pulse?token=${encodeURIComponent(by.token)}` : `/api/staff/pulse?code=${encodeURIComponent(by.code)}`,
+      'token' in by
+        ? `/api/staff/pulse?token=${encodeURIComponent(by.token)}`
+        : 'wallet' in by
+          ? `/api/staff/pulse?wallet=${encodeURIComponent(by.wallet)}`
+          : `/api/staff/pulse?code=${encodeURIComponent(by.code)}`,
     ),
   staffSearch: (q: string, churchId: string) =>
     request<StaffSearchResult[]>(`/api/staff/search?q=${encodeURIComponent(q)}&churchId=${encodeURIComponent(churchId)}`),
+  /** La pulsera PROPIA de la cuenta del equipo en sesión (experiencia de visitante). Solo la cookie; no envía ids. */
+  staffOwnPulse: () => request<StaffMeResponse>('/api/staff-me'),
   redeem: (body: RedeemRequest) => postJson<RedeemResponse>('/api/staff/redeem', body),
   reassign: (body: ReassignRequest) => postJson<ReassignResponse>('/api/staff/reassign', body),
   staffHistory: () => request<StaffHistoryResponse>('/api/staff/history'),
+
+  // Credencial digital (Apple / Google Wallet). Asistente: token de su pulsera; equipo: sin token (cookie). Nunca se envía un id.
+  walletStatus: () => request<{ apple: boolean; google: boolean }>('/api/wallet/status'),
+  walletAppleTicket: (token?: string) =>
+    request<{ url: string }>('/api/wallet/apple-ticket', { method: 'POST', headers: token ? { [PULSE_TOKEN_HEADER]: token } : {} }),
+  walletGoogle: (token?: string) =>
+    request<{ url: string }>('/api/wallet/google', { method: 'POST', headers: token ? { [PULSE_TOKEN_HEADER]: token } : {} }),
 
   // Admin -> Canjes (Etapa 6, parte Admin)
   adminRedemptions: (f: AdminRedemptionFilters) => {
@@ -264,6 +286,28 @@ export const api = {
     }),
   resetUserPassword: (id: string, temporaryPassword: string) =>
     postJson<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}/password`, { temporaryPassword }),
+
+  // Admin -> Pulsera de una cuenta del equipo (solo Admin; el servidor lo revalida)
+  adminStaffPulseInfo: (userId: string) =>
+    request<AdminStaffPulseInfo>(`/api/admin/staff-pulse?userId=${encodeURIComponent(userId)}`),
+  adminLinkStaffPulse: (body: StaffPulseLinkRequest) => postJson<StaffPulseLinkResponse>('/api/admin/staff-pulse', body),
+  adminReplaceStaffPulse: (body: StaffPulseLinkRequest) =>
+    request<StaffPulseLinkResponse>('/api/admin/staff-pulse', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  adminUnlinkStaffPulse: (userId: string) =>
+    request<StaffPulseUnlinkResponse>(`/api/admin/staff-pulse?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+
+  // Admin -> Autocanje (interruptores globales: Admin; excepciones por persona: solo la cuenta propietaria)
+  adminSelfRedeem: () => request<SelfRedeemOverview>('/api/admin/selfredeem'),
+  adminUpdateSelfRedeem: (body: UpdateSelfRedeemRequest) =>
+    request<SelfRedeemOverview>('/api/admin/selfredeem', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 
   // Admin -> Menú (3 oct 2026). Crear/editar van por FormData (multipart),
   // no JSON, porque pueden llevar el archivo de la foto -- ver shared/api.ts.

@@ -69,7 +69,7 @@ Estado público de una pulsera (sin datos personales). Solo acepta el `qrToken` 
 ```json
 { "status": "unclaimed", "package": { "name": "Kit - B", "price": 15000, "includedDrinks": 3 } }
 ```
-`status`: `not_found` · `invalidated` · `active` · `unclaimed` (solo esta incluye `package`).
+`status`: `not_found` · `invalidated` · `active` · `team` (reservada para una cuenta del equipo: hay un vínculo vigente en `StaffPulse`; una pulsera ACTIVE sin asistente **y sin vínculo** sigue siendo `active`; sin datos del miembro) · `unclaimed` (solo esta incluye `package`).
 
 Límite: los tokens inexistentes se cuentan por IP (solo fallos, umbral alto); superado, `429`. Consultar tokens válidos no consume cupo.
 
@@ -79,7 +79,7 @@ Reclama una pulsera (registro).
 ```json
 { "token": "AbCdEfGh12345678", "fullName": "María López", "ageRange": "19-21", "churchId": "<id>" }
 ```
-`ageRange` ∈ `16-18, 19-21, 22-24, 25-27, 28-30, 31-34, 35+`. Respuesta `{ "outcome": "claimed" | "already_active" | "invalidated" | "not_found" }`. Es seguro reintentar: reclamar dos veces la misma pulsera devuelve `already_active`.
+`ageRange` ∈ `16-18, 19-21, 22-24, 25-27, 28-30, 31-34, 35+`. Respuesta `{ "outcome": "claimed" | "already_active" | "team" | "invalidated" | "not_found" }`. Es seguro reintentar: reclamar dos veces la misma pulsera devuelve `already_active`. `team` = la pulsera está reservada para una cuenta del equipo: nunca se registra como asistente.
 
 Límites: por IP (umbral alto, la sede comparte IP), por token y por tokens inexistentes; `429` + `Retry-After` al superarse. No cambia el resultado de un reclamo válido.
 
@@ -152,11 +152,21 @@ Sirven la imagen (Netlify Blobs). Caché agresiva (la `key` cambia al reemplazar
 | `GET /api/notes` | `{ notes: Note[] }` — mis notas (activas y vencidas). |
 | `POST /api/notes` `{ "text": "…" }` | Publica (máx. **60** caracteres, vigente **24 h**, siempre una activa: reemplaza la anterior). `422` si hay lenguaje no permitido. → `{ note }`. |
 | `DELETE /api/notes` | Quita (vence) la nota activa. → `{ "removed": 0 \| 1 }`. |
-| `GET /api/notes/feed` | `{ notes: NoteFeedItem[] }` — notas vigentes públicas de **otros** (solo `firstName` y `attendeeId` para el avatar). |
+| `GET /api/notes/feed` | `{ notes: NoteFeedItem[] }` — notas vigentes públicas de **otros** (solo `firstName` y `attendeeId` para el avatar). Sin `x-pulse-token`: con la cookie `arr_staff` válida devuelve las mismas notas en solo lectura (vista de visitante del equipo); sin cookie, 401. |
 | `POST /api/notes/:id/like` | Alterna like → `{ liked, likeCount }`. No se puede dar like a la propia. |
 | `GET /api/notes/likers` | `{ likers: [{ attendeeId, firstName }] }` — quién dio like a mis notas. |
 
 `Note` = `{ id, text, createdAt, expiresAt, visibility, likeCount, likedByMe }`.
+
+### Credencial digital — Apple / Google Wallet (🎫 o 👷)
+Detalle, seguridad y configuración en [`WALLET.md`](WALLET.md). Un solo archivo de funciones (`wallet.mts`). **Ninguna ruta acepta ids de pulsera/asistente/cuenta**: la identidad sale del token `x-pulse-token` (asistente) o de la cookie `arr_staff` (equipo con pulsera vinculada); si llegan ambos, manda el token.
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /api/wallet/status` 🌐 | `{ apple: boolean, google: boolean }`: qué plataformas están configuradas (sin detalles). |
+| `POST /api/wallet/apple-ticket` | → `{ url: "/api/wallet/apple?t=…" }` boleto firmado de 90 s. `401` sin credencial / pulsera inválida o deshabilitada, `404 no_pulse` cuenta del equipo sin pulsera, `409 invalidated` pulsera del equipo deshabilitada, `503 not_configured`, `429`. |
+| `GET /api/wallet/apple?t=<boleto>` | El `.pkpass` (`application/vnd.apple.pkpass`). El boleto es la credencial; `401 ticket_expired` si falta, venció o se alteró; se relee el estado de la pulsera (deshabilitada/borrada → `401`). |
+| `POST /api/wallet/google` | → `{ url: "https://pay.google.com/gp/v/save/<JWT>" }` (JWT RS256 con clase y objeto genéricos). Mismos errores que el boleto. |
 
 ### Notificaciones (🎫)
 
@@ -184,9 +194,9 @@ Borra la cookie (no requiere sesión).
 ### `POST /api/auth/password` 👷
 `{ "currentPassword": "…", "newPassword": "…" }`. Cambia la contraseña, **cierra las demás sesiones** de la cuenta y emite una sesión nueva. Es lo único permitido con contraseña temporal. Límite por cuenta (contraseña actual incorrecta consume cupo; éxito y errores de validación lo devuelven); `429` al superarlo.
 
-### `GET /api/staff/pulse?token=<qrToken>` o `?code=AR26-XXXXX` 👷
-Consulta una pulsera por QR o código manual.
-`status`: `not_found` · `unclaimed` (+`manualCode`, `packageName`) · `invalidated` · `active` (+`attendee`, `package`, `drinksUsed`, `drinksRemaining`).
+### `GET /api/staff/pulse?token=<qrToken>` · `?code=AR26-XXXXX` · `?wallet=AR26W1.…` 👷
+Consulta una pulsera por QR, código manual o por el **QR de la credencial digital** (`wallet`: se valida la firma con `WALLET_QR_SECRET` y se lee el estado actual de la pulsera; firma inválida, secreto sin configurar o pulsera inexistente → `not_found`). Ver [`WALLET.md`](WALLET.md).
+`status`: `not_found` · `unclaimed` (+`manualCode`, `packageName`) · `invalidated` · `team` (pulsera de una cuenta del equipo: solo nombre y rol) · `active` (+`attendee`, `package`, `drinksUsed`, `drinksRemaining`).
 
 ### `GET /api/staff/search?q=&churchId=` 👷
 Busca asistentes con pulsera **activa**: `[{ manualCode, fullName, churchName, packageName, includedDrinks, drinksRemaining }]`.
@@ -197,7 +207,10 @@ Descuenta exactamente 1 agua fresca.
 { "manualCode": "AR26-7K3MQ", "idempotencyKey": "<uuid generado al abrir el modal>" }
 ```
 Límites: por Staff y por pulsera; `429` + `Retry-After`. El límite se evalúa **después** de autenticar y **antes** de descontar; no altera la idempotencia ni evita descuentos duplicados.
-`outcome`: `ok` (+`drinksRemaining`) · `already_processed` (misma `idempotencyKey`: **no** vuelve a descontar) · `insufficient_balance` · `pulse_not_active`. El canje queda a nombre del Staff de la **sesión**.
+`outcome`: `ok` (+`drinksRemaining`) · `already_processed` (misma `idempotencyKey`: **no** vuelve a descontar) · `insufficient_balance` · `pulse_not_active` · `self_redeem_not_allowed` (la pulsera es de la propia cuenta que escanea y su autocanje no está permitido; no se descuenta nada). El canje queda a nombre del Staff de la **sesión**. Una pulsera de **equipo** (Staff/Admin) se canjea igual; el beneficiario es la cuenta dueña (`Redemption.beneficiaryUserId`), y es *autocanje* cuando coincide con quien canjea. Ver [`EQUIPO_PULSERA_AUTOCANJE.md`](EQUIPO_PULSERA_AUTOCANJE.md).
+
+### `GET /api/staff-me` 👷
+La pulsera **propia** de la cuenta del equipo en sesión (vista de visitante). No acepta ningún id: el servidor usa la sesión. `{ "state": "none" }` · `{ "state": "invalid" }` (pulsera deshabilitada) · `{ "state": "active", member, package, drinksUsed, drinksRemaining, selfRedeemAllowed }`. No es credencial de asistente: `/api/me` y las rutas de asistente siguen exigiendo `x-pulse-token`.
 
 ### `POST /api/staff/reassign` 👷
 Reemplaza una pulsera: `{ "manualCode": "<actual>", "newToken": "<qrToken de la nueva>" }`.
@@ -305,6 +318,18 @@ Moderación de perfiles (solo ADMIN): `DELETE /api/admin/attendees/:id/profile-p
 
 Presbiterios y zonas son **fijos** (no hay endpoints para modificarlos).
 
+### 4.9b Pulsera de una cuenta del equipo y autocanje
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /api/admin/staff-pulse?userId=` | `{ linked:false }` o `{ linked:true, pulseLabel, pulseStatus, packageName, includedDrinks, drinksUsed, since }`. |
+| `POST /api/admin/staff-pulse` `{ userId, code }` | Vincula una pulsera **sin registrar** (UNCLAIMED, sin asistente). `outcome`: `ok` · `pulse_not_found` · `pulse_in_use` (de un asistente) · `pulse_linked` (de otra cuenta) · `pulse_invalidated` · `user_not_found` · `user_inactive` · `user_has_pulse`. Auditoría `staffpulse.link`. |
+| `PUT /api/admin/staff-pulse` `{ userId, code }` | Reemplaza por otra del **mismo kit**; la anterior queda deshabilitada y se conserva el consumo. `different_kit`, `no_link`, `same_pulse`… Auditoría `staffpulse.replace`. |
+| `DELETE /api/admin/staff-pulse?userId=` | Desvincula (la pulsera queda deshabilitada; el historial se conserva). Auditoría `staffpulse.unlink`. |
+| `GET /api/admin/selfredeem` | `{ settings:{STAFF,ADMIN}, isOwner, users? }`. `users` (con excepción y permiso efectivo) **solo** si la sesión es la cuenta propietaria. |
+| `PATCH /api/admin/selfredeem` `{ scope:'global', role, allowed }` | Interruptor global por rol (cualquier Admin). Auditoría `selfredeem.global_update`. |
+| `PATCH /api/admin/selfredeem` `{ scope:'user', userId, mode:'inherit'\|'allow'\|'deny' }` | Excepción individual. **Solo la cuenta propietaria** (`403` para cualquier otro). `inherit` borra la excepción. Auditoría `selfredeem.override_set`. |
+
 ### 4.10 Usuarios
 
 | Endpoint | Descripción |
@@ -312,7 +337,7 @@ Presbiterios y zonas son **fijos** (no hay endpoints para modificarlos).
 | `GET /api/admin/users` | `[{ id, name, email, role, active, createdAt, pendingPassword, protected }]`. `protected: true` = cuenta protegida (nunca eliminable). |
 | `POST /api/admin/users` `{ name, email, role: "ADMIN"\|"STAFF", temporaryPassword }` | Crea la cuenta con contraseña **temporal** (8 a 72 bytes) → `201 { id }`. |
 | `PATCH /api/admin/users/:id` `{ name?, role?, active? }` | No puedes quitarte el rol ni desactivarte; siempre debe quedar un Admin activo. |
-| `POST /api/admin/users/:id/password` `{ temporaryPassword }` | Restablece (nueva temporal) y cierra las sesiones de esa cuenta. |
+| `POST /api/admin/users/:id/password` `{ temporaryPassword }` | Restablece (nueva temporal) y cierra las sesiones de esa cuenta. **No** se puede restablecer la de la cuenta propietaria (ni cambiarle rol/estado desde otra cuenta). |
 | `DELETE /api/admin/users/:id` | **Elimina** la cuenta. `400` si es la cuenta protegida, la propia, el último Admin activo, o si tiene historial que la referencia (en ese caso: desactívala). Auditoría `user.delete`. |
 
 ### 4.11 Auditoría

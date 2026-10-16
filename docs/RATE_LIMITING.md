@@ -66,6 +66,7 @@ Fuente única: `RULES` en `server/rateLimit.ts`. «Fallo» = qué pasa si el alm
 | `redeem_pulse` | 15 / min | pulsera | cerrado | Ráfagas sobre una misma pulsera. El saldo y los dobles toques los sigue resolviendo la transacción. |
 | `staff_reassign` | 20 / 10 min | cuenta | cerrado | Reemplazo de pulsera. |
 | `admin_heavy` | 12 / 10 min | cuenta | cerrado | Exportar dashboard, PDF de lote, crear lote. |
+| `wallet` | 12 / 10 min | pulsera (asistente) · cuenta (equipo) | abierto | Credencial digital: boleto de Apple, enlace de Google y entrega del `.pkpass`. Ver `WALLET.md`. |
 | `admin_imgsearch` | 30 / 10 min | cuenta | cerrado | Búsqueda en Openverse (servicio externo). |
 | `admin_user_w` | 20 / 10 min | cuenta | cerrado | Crear/editar/borrar cuentas, restablecer contraseñas. |
 | `admin_danger` | 20 / 10 min | cuenta | cerrado | Vaciar bitácora, borrar lote, desvincular pulsera, anular canje. |
@@ -125,8 +126,10 @@ RateLimit-Policy: 5;w=900
 | Registro y pulseras | `POST /api/claim` | `claim_ip` + `claim_token` + `tok_miss_ip` |
 |  | `GET /api/pulse/:token` | `tok_miss_ip` (solo fallos) |
 | Asistente | `/api/me`, `/api/profile`, `/api/profiles`, `/api/notes`, `/api/notes/feed`, `/api/notes/:id/like`, `/api/notes/likers`, `/api/notifications`, `/api/notifications/seen` | reglas `att_*` (§4) + consulta de `bad_token_ip` |
+| Asistente / equipo | `POST /api/wallet/apple-ticket`, `POST /api/wallet/google` (asistente: token → `wallet` por pulsera + consulta de `bad_token_ip`; equipo: `staff_base` + `wallet` por cuenta) y `GET /api/wallet/apple?t=` (`wallet` por pulsera, solo con boleto válido) | `wallet` |
+|  | `GET /api/wallet/status` | **Excluida:** solo booleanos de configuración, sin base de datos. |
 | Staff | `GET /api/staff/search` | `staff_base` + `staff_lookup` |
-|  | `GET /api/staff/pulse` | `staff_base` + `staff_lookup` + `staff_miss` |
+|  | `GET /api/staff/pulse` (`?token=`, `?code=` o `?wallet=`) | `staff_base` + `staff_lookup` + `staff_miss` |
 |  | `POST /api/staff/redeem` | `staff_base` + `staff_redeem` + `redeem_pulse` |
 |  | `POST /api/staff/reassign` | `staff_base` + `staff_reassign` |
 |  | `GET /api/staff/history` | `staff_base` |

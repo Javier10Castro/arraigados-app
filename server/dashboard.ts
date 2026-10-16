@@ -102,7 +102,18 @@ const POP_FROM = `
   JOIN "Presbytery" pr ON pr.id = c."presbyteryId"
   JOIN "Zone" z ON z.id = pr."zoneId"`;
 
-/** Canjes con la geografía del asistente y el kit del canje. */
+/**
+ * Pulsera con vínculo VIGENTE de una cuenta del equipo (StaffPulse, migración 012). No es de un asistente: NO cuenta como
+ * pulsera activa, ni en los totales de pulseras, ni en las aguas incluidas/usadas de este tablero.
+ */
+const notTeamPulse = (alias: string) =>
+  `NOT EXISTS (SELECT 1 FROM "StaffPulse" tsp WHERE tsp."pulseId" = ${alias}.id AND tsp."unlinkedAt" IS NULL)`;
+
+/**
+ * Canjes con la geografía del asistente y el kit del canje.
+ * OJO: el JOIN a "Attendee" es INTERNO a propósito -> los canjes de EQUIPO (attendeeId NULL, migración 012) quedan
+ * FUERA de todos los indicadores de asistentes (canjes, por Staff, por día/hora, actividad). Se ven en /admin/canjes.
+ */
 const RED_FROM = `
   FROM "Redemption" r
   JOIN "Attendee" a ON a.id = r."attendeeId"
@@ -274,7 +285,7 @@ export async function getDashboard(f: Required<DashboardFilters>): Promise<Dashb
 
   // Pulseras y lotes: SIN filtros en SQL (se filtran por kit en JS; las alertas los necesitan completos).
   const pulsesQ = query<{ packageId: string; status: string; count: number }>(
-    `SELECT "packageId", status::text AS status, count(*)::int AS count FROM "Pulse" GROUP BY 1, 2`,
+    `SELECT p."packageId", p.status::text AS status, count(*)::int AS count FROM "Pulse" p WHERE ${notTeamPulse('p')} GROUP BY 1, 2`,
   );
   const batchesQ = query<DashboardResponse['batches'][number] & { createdAt: string }>(
     `SELECT b.id, b.code, b.status, b."packageId", k.name AS "packageName",
@@ -285,17 +296,17 @@ export async function getDashboard(f: Required<DashboardFilters>): Promise<Dashb
             ${iso('b."createdAt"')} AS "createdAt"
        FROM "Batch" b
        JOIN "Package" k ON k.id = b."packageId"
-       LEFT JOIN "Pulse" p ON p."batchId" = b.id
+       LEFT JOIN "Pulse" p ON p."batchId" = b.id AND ${notTeamPulse('p')}
       GROUP BY b.id, b.code, b.status, b."packageId", k.name, b."createdAt"
       ORDER BY b."createdAt" DESC, b.code DESC`,
   );
 
   // Saldo global de aguas y última actividad (para las alertas; sin filtros).
   const globalQ = query<{ included: string | null; used: string | null; lastReg: string | null; lastRed: string | null }>(
-    `SELECT (SELECT sum(k."includedDrinks") FROM "Pulse" p JOIN "Package" k ON k.id = p."packageId" WHERE p.status = 'ACTIVE') AS included,
-            (SELECT sum(LEAST(p."drinksUsed", k."includedDrinks")) FROM "Pulse" p JOIN "Package" k ON k.id = p."packageId" WHERE p.status = 'ACTIVE') AS used,
+    `SELECT (SELECT sum(k."includedDrinks") FROM "Pulse" p JOIN "Package" k ON k.id = p."packageId" WHERE p.status = 'ACTIVE' AND ${notTeamPulse('p')}) AS included,
+            (SELECT sum(LEAST(p."drinksUsed", k."includedDrinks")) FROM "Pulse" p JOIN "Package" k ON k.id = p."packageId" WHERE p.status = 'ACTIVE' AND ${notTeamPulse('p')}) AS used,
             (SELECT ${iso('max("createdAt")')} FROM "Attendee") AS "lastReg",
-            (SELECT ${iso('max("createdAt")')} FROM "Redemption") AS "lastRed"`,
+            (SELECT ${iso('max("createdAt")')} FROM "Redemption" WHERE "attendeeId" IS NOT NULL) AS "lastRed"`,
   );
 
   const activityQ = recentActivity(f, periodDay);

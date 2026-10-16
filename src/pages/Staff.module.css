@@ -333,6 +333,15 @@
   cursor: pointer;
 }
 
+.accountSwitch { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; color: #f2f7d7; }
+
+.accountDone {
+  padding: 4px 8px;
+  font-size: 13px;
+  color: rgba(242, 247, 215, 0.75);
+  cursor: default;
+}
+
 /* Etapa 3: "Mis canjes recientes" (historial propio del Staff, compacto). */
 .history {
   width: 100%;

@@ -1,0 +1,14 @@
+.card { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 20px; background: rgba(242, 247, 215, 0.1); border: 1px solid rgba(242, 247, 215, 0.25); }
+.card h2 { margin: 0; font-size: 17px; }
+.card p { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(242, 247, 215, 0.85); }
+.ok { border-color: rgba(120, 220, 150, 0.6); }
+.okHead { display: flex; align-items: center; gap: 10px; }
+.okIcon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%; background: #1f9d55; color: #fff; }
+.warn { border-color: rgba(255, 190, 90, 0.6); }
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.input { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(242, 247, 215, 0.4); background: rgba(0, 0, 0, 0.18); color: #f2f7d7; font: inherit; }
+.label { font-size: 13px; color: rgba(242, 247, 215, 0.8); }
+.error { margin: 0; font-size: 13px; color: #ffb3b6; }
+.ghost { padding: 12px 16px; border-radius: 999px; border: 1px solid rgba(242, 247, 215, 0.55); background: transparent; color: #f2f7d7; font: inherit; font-weight: 700; cursor: pointer; }
+.ghost:disabled { opacity: 0.5; cursor: progress; }
+.ghost:focus-visible { outline: 3px solid #f2f7d7; outline-offset: 2px; }

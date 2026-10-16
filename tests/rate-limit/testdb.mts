@@ -39,7 +39,7 @@ CREATE TABLE "AuditLog"(id text primary key, "entityType" text, "entityId" text,
 
 const MIGRATIONS = [
   '002_notes', '005_blocked_words', '006_announcements', '007_announcement_live', '008_package_benefits',
-  '009_attendee_profile', '010_attendee_profile_keep_all', '011_rate_limit',
+  '009_attendee_profile', '010_attendee_profile_keep_all', '011_rate_limit', '012_staff_selfredeem',
 ];
 
 /** Borra y recrea el esquema y aplica las migraciones necesarias. Devuelve un cliente conectado. */

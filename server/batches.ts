@@ -100,11 +100,16 @@ type BatchListRow = {
   total: number;
   unclaimed: number;
   active: number;
+  team: number;
   invalidated: number;
 };
 
 /**
  * Lotes con sus conteos de pulseras.
+ *
+ * Clasificación (migración 012): una pulsera ACTIVE con vínculo vigente en "StaffPulse" es del EQUIPO (`team`), no de un
+ * asistente: NO entra en `active` (reclamadas por asistentes). `total` = unclaimed + active + team + invalidated. El LEFT JOIN a
+ * "StaffPulse" no duplica filas: el índice único parcial garantiza a lo más un vínculo vigente por pulsera.
  *
  * `count(p.id) FILTER (...)` y no `count(*) FILTER (...)`: con LEFT JOIN, un
  * lote sin pulseras produce una fila con p.id = NULL y `count(*)` contaría esa
@@ -118,12 +123,14 @@ function listSql(where = ''): string {
          to_char(b."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
          count(p.id)::int AS total,
          count(p.id) FILTER (WHERE p.status = 'UNCLAIMED')::int AS unclaimed,
-         count(p.id) FILTER (WHERE p.status = 'ACTIVE')::int AS active,
+         count(p.id) FILTER (WHERE p.status = 'ACTIVE' AND sp.id IS NULL)::int AS active,
+         count(p.id) FILTER (WHERE p.status = 'ACTIVE' AND sp.id IS NOT NULL)::int AS team,
          count(p.id) FILTER (WHERE p.status = 'INVALIDATED')::int AS invalidated
     FROM "Batch" b
     JOIN "Package" k ON k.id = b."packageId"
     JOIN "User" u ON u.id = b."createdById"
     LEFT JOIN "Pulse" p ON p."batchId" = b.id
+    LEFT JOIN "StaffPulse" sp ON sp."pulseId" = p.id AND sp."unlinkedAt" IS NULL
    ${where}
    GROUP BY b.id, b.code, b.status, b.quantity, b."packageId", k.name, k.price, u.name, b."createdAt"
    ORDER BY b."createdAt" DESC, b.code DESC`;
@@ -166,9 +173,14 @@ export async function getBatch(id: string, base: string, opts: BatchPulseQuery =
   const params: unknown[] = [id];
   const where: string[] = [];
   const status = String(opts.status ?? '').toUpperCase();
-  if (status === 'UNCLAIMED' || status === 'ACTIVE' || status === 'INVALIDATED') {
+  if (status === 'UNCLAIMED' || status === 'INVALIDATED') {
     params.push(status);
     where.push(`n.status = $${params.length}`);
+  } else if (status === 'ACTIVE') {
+    // «Reclamadas» = por asistentes (las del equipo tienen su propio filtro).
+    where.push(`n.status = 'ACTIVE' AND NOT n.team`);
+  } else if (status === 'TEAM') {
+    where.push(`n.team`);
   }
   const q = String(opts.q ?? '').trim().slice(0, 80);
   if (q) {
@@ -191,10 +203,13 @@ export async function getBatch(id: string, base: string, opts: BatchPulseQuery =
       SELECT p.id, p."qrToken", p."manualCode", p.status::text AS status, k.name AS "packageName",
              p."drinksUsed", p."createdAt", p."claimedAt",
              a."fullName" AS "attendeeName", p."attendeeId",
+             (sp.id IS NOT NULL) AS team, tu.name AS "teamMemberName",
              row_number() OVER (ORDER BY p."createdAt" ASC, p.id ASC)::int AS position
         FROM "Pulse" p
         JOIN "Package" k ON k.id = p."packageId"
         LEFT JOIN "Attendee" a ON a.id = p."attendeeId"
+        LEFT JOIN "StaffPulse" sp ON sp."pulseId" = p.id AND sp."unlinkedAt" IS NULL
+        LEFT JOIN "User" tu ON tu.id = sp."userId"
        WHERE p."batchId" = $1
     )`;
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -214,13 +229,15 @@ export async function getBatch(id: string, base: string, opts: BatchPulseQuery =
     claimedAt: string | null;
     attendeeName: string | null;
     attendeeId: string | null;
+    team: boolean;
+    teamMemberName: string | null;
     position: number;
   }>(
     `${numbered}
      SELECT n.id, n."qrToken", n.status, n."packageName", n."drinksUsed",
             to_char(n."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
             to_char(n."claimedAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "claimedAt",
-            n."attendeeName", n."attendeeId", n.position
+            n."attendeeName", n."attendeeId", n.team, n."teamMemberName", n.position
        FROM n ${whereSql}
       ORDER BY n.position ASC
       LIMIT ${pageSize} OFFSET ${page * pageSize}`,
@@ -473,6 +490,15 @@ export async function deleteBatch(actorId: string, id: string, confirmCode: stri
       const code = b.rows[0].code;
       if (String(confirmCode ?? '').trim() !== code) throw new BatchError(`Para borrar escribe exactamente: ${code}`);
 
+      // Una pulsera asignada a una cuenta del equipo (StaffPulse vigente) no se borra por accidente con el lote.
+      const teamLinked = await tx.query(
+        `SELECT 1 FROM "StaffPulse" sp JOIN "Pulse" p ON p.id = sp."pulseId" WHERE p."batchId" = $1 AND sp."unlinkedAt" IS NULL LIMIT 1`,
+        [id],
+      );
+      if (teamLinked.rowCount) {
+        throw new BatchError('Este lote tiene una pulsera asignada a una cuenta del equipo. Desvincúlala primero (Admin → Usuarios).');
+      }
+
       // Asistentes que quedarían sin ninguna pulsera fuera de este lote.
       const orphan = (
         await tx.query<{ id: string }>(
@@ -515,6 +541,8 @@ export async function deleteBatch(actorId: string, id: string, confirmCode: stri
           [id],
         );
       }
+      // Historial de vínculos YA cerrados de las pulseras de este lote (la FK a "Pulse" lo exige).
+      await tx.query(`DELETE FROM "StaffPulse" WHERE "pulseId" IN (SELECT id FROM "Pulse" WHERE "batchId" = $1)`, [id]);
       const pulses = (await tx.query(`DELETE FROM "Pulse" WHERE "batchId" = $1`, [id])).rowCount ?? 0;
       if (orphan.length) await tx.query(`DELETE FROM "Attendee" WHERE id = ANY($1::text[])`, [orphan]);
       await tx.query(`DELETE FROM "Batch" WHERE id = $1`, [id]);

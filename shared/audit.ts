@@ -41,7 +41,12 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'attendee.update': { label: 'Corrigió datos de un asistente', category: 'asistentes' },
   'attendee.photo_remove': { label: 'Quitó la foto de perfil de un asistente', category: 'asistentes' },
   'pulse.reassign': { label: 'Reemplazó una pulsera', category: 'pulseras' },
+  'staffpulse.link': { label: 'Vinculó una pulsera a una cuenta del equipo', category: 'pulseras' },
+  'staffpulse.unlink': { label: 'Desvinculó la pulsera de una cuenta del equipo', category: 'pulseras' },
+  'staffpulse.replace': { label: 'Reemplazó la pulsera de una cuenta del equipo', category: 'pulseras' },
   'redemption.void': { label: 'Anuló un canje', category: 'canjes' },
+  'selfredeem.global_update': { label: 'Cambió el autocanje por rol', category: 'ajustes' },
+  'selfredeem.override_set': { label: 'Cambió el autocanje de una persona', category: 'ajustes' },
   'note.retire': { label: 'Retiró una nota', category: 'notas' },
   'blocked_word.add': { label: 'Bloqueó una palabra', category: 'notas' },
   'blocked_word.remove': { label: 'Desbloqueó una palabra', category: 'notas' },
@@ -265,6 +270,21 @@ function build(row: Row): Built {
       return { title: 'Reemplazó una pulsera', parts: [[null, water, 'Aguas'], [null, 'pulsera anterior invalidada', 'Pulsera anterior']] };
     }
 
+    case 'staffpulse.link': {
+      const who = str(m.memberName) || 'una cuenta del equipo';
+      return { title: `Vinculó una pulsera a ${who}`, parts: [[null, str(m.label), 'Pulsera'], [null, str(m.kit), 'Kit']] };
+    }
+    case 'staffpulse.unlink': {
+      const who = str(m.memberName) || 'una cuenta del equipo';
+      const what = m.pulse === 'released' ? 'quedó libre (sin uso)' : 'quedó deshabilitada (tenía historial)';
+      return { title: `Desvinculó la pulsera de ${who}`, parts: [[null, str(m.label), 'Pulsera'], [null, what, 'Resultado']] };
+    }
+    case 'staffpulse.replace': {
+      const who = str(m.memberName) || 'una cuenta del equipo';
+      const codes = str(m.oldLabel) && str(m.label) ? `${str(m.oldLabel)} → ${str(m.label)}` : '';
+      return { title: `Reemplazó la pulsera de ${who}`, parts: [...(codes ? ([[null, codes, 'Pulseras']] as Part[]) : []), [null, 'pulsera anterior invalidada', 'Pulsera anterior']] };
+    }
+
     /* ---- Canjes ---- */
     case 'redemption.void': {
       const who = str(m.attendeeName) || str(row.entityName);
@@ -354,6 +374,15 @@ function build(row: Row): Built {
       return { title: `Eliminó el artículo ${quote(text(m.name))} de mercancía`, parts: [[null, m.price != null ? money(m.price) : 'Precio por definir', 'Precio']] };
 
     /* ---- Ajustes ---- */
+    case 'selfredeem.global_update': {
+      const role = m.role === 'ADMIN' ? 'Admin' : 'Staff';
+      return { title: `${m.value ? 'Permitió' : 'Bloqueó'} el autocanje a ${role}`, parts: [[null, `${m.previous ? 'permitido' : 'bloqueado'} → ${m.value ? 'permitido' : 'bloqueado'}`, 'Cambio']] };
+    }
+    case 'selfredeem.override_set': {
+      const who = str(m.name) || str(row.entityName) || 'una persona';
+      const label = (x: unknown) => (x === 'allow' ? 'permitir' : x === 'deny' ? 'bloquear' : 'heredar el ajuste global');
+      return { title: `Cambió el autocanje de ${who}`, parts: [[null, `${label(m.previous)} → ${label(m.value)}`, 'Cambio']] };
+    }
     case 'setting.update': {
       const label = row.entityId === 'avatarMode' ? 'el tipo de avatar' : `el ajuste ${text(row.entityId)}`;
       const v = (x: unknown) => AVATAR[String(x)] ?? text(x);
@@ -447,8 +476,8 @@ export function auditTarget(row: Row): string {
       found = str(row.entityName) || attendeeOf(row, m);
       break;
     case 'Pulse': {
-      const name = str(m.attendeeName) || str(row.entityName);
-      const code = pulseCode(str(m.newCode) || str(row.entityCode));
+      const name = str(m.attendeeName) || str(m.memberName) || str(row.entityName);
+      const code = pulseCode(str(m.newCode) || str(m.label) || str(row.entityCode));
       found = name && code ? `${name} · ${code}` : name || code;
       break;
     }

@@ -12,7 +12,7 @@ import styles from './SessionGate.module.css';
  */
 export default function SessionGate({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   const navigate = useNavigate();
-  const { state, setToken, signOut } = usePulseSession();
+  const { state, setToken, signOut, enterTeamView } = usePulseSession();
 
   if (message !== undefined) {
     return (
@@ -35,7 +35,7 @@ export default function SessionGate({ message, onRetry }: { message?: string; on
         <>
           <p className={styles.text}>{state.message}</p>
           <div className={styles.actions}>
-            <Button block onClick={() => setToken(state.token)}>
+            <Button block onClick={() => (state.token ? setToken(state.token) : void enterTeamView())}>
               Reintentar
             </Button>
             <Button

@@ -13,22 +13,22 @@ export type FeedStatus = 'loading' | 'ready' | 'error';
 
 const REFRESH_MS = 60_000;
 
-export function useNotesFeed(token: string) {
+export function useNotesFeed(token: string, team = false) {
   const [status, setStatus] = useState<FeedStatus>('loading');
   const [items, setItems] = useState<NoteFeedItem[]>([]);
   const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token && !team) return;
     try {
-      const r = await api.notesFeed(token);
+      const r = team ? await api.notesFeedTeam() : await api.notesFeed(token);
       setItems(r.notes);
       setStatus('ready');
     } catch {
       // Un refresco fallido no borra lo que ya se ve; solo marca error si nunca cargó.
       setStatus((s) => (s === 'ready' ? s : 'error'));
     }
-  }, [token]);
+  }, [token, team]);
 
   useEffect(() => {
     void load();

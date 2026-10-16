@@ -1,4 +1,4 @@
-import { Boxes, Church, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { Boxes, Church, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, Settings, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -57,6 +57,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   /* Iglesias (6 oct 2026): CRUD de iglesias; presbiterios y zonas fijos. */
   { to: '/admin/iglesias', label: 'Iglesias', Icon: Church, ready: true },
   { to: '/admin/usuarios', label: 'Usuarios', Icon: UserCog, ready: true },
+  /* Configuración (15 oct 2026): autocanje de pulseras del equipo (interruptores por rol y excepciones del propietario). */
+  { to: '/admin/configuracion', label: 'Configuración', Icon: Settings, ready: true },
   /* Auditoría (Etapa 8, 5 oct 2026): bitácora de solo lectura sobre "AuditLog". */
   { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: true },
   /* Instantáneas OCULTO (6 oct 2026; Etapa 9 sin construir). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:

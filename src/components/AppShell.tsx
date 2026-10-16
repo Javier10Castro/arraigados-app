@@ -1,13 +1,14 @@
 import { lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils } from 'lucide-react';
 import Wordmark from './Wordmark';
 import RingsMark from './RingsMark';
 import Ambient from './Ambient';
 import styles from './AppShell.module.css';
 import UserAvatar from './UserAvatar';
 import { firstName, usePulseSession } from '../context/PulseSession';
+import { useTeamNav } from '../context/useTeamNav';
 
 const primaryNav = [
   { to: '/home', label: 'Inicio', Icon: Home },
@@ -30,6 +31,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { me, signOut } = usePulseSession();
+  const team = useTeamNav();
   const [gafeteOpen, setGafeteOpen] = useState(false);
   const fullName = me?.attendee.fullName ?? '';
   const displayName = firstName(fullName);
@@ -65,10 +67,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <button type="button" className={styles.gafeteBtn} onClick={() => setGafeteOpen(true)}>
-          <IdCard size={19} strokeWidth={2.1} />
-          <span>Mi gafete</span>
-        </button>
+        {team.isTeam ? (
+          <button type="button" className={styles.gafeteBtn} onClick={team.toTeam}>
+            <ArrowLeftRight size={19} strokeWidth={2.1} />
+            <span>Volver a mi equipo</span>
+          </button>
+        ) : (
+          <button type="button" className={styles.gafeteBtn} onClick={() => setGafeteOpen(true)}>
+            <IdCard size={19} strokeWidth={2.1} />
+            <span>Mi gafete</span>
+          </button>
+        )}
 
         <p className={styles.quickLabel}>Accesos rápidos</p>
         <nav className={styles.quick} aria-label="Accesos rápidos">
@@ -96,9 +105,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <strong>Hola, {displayName}</strong>
             <span>{me?.package.name ?? ''}</span>
           </div>
-          <button type="button" className={styles.logout} aria-label="Cerrar sesión" onClick={logout}>
-            <LogOut size={16} strokeWidth={2.2} />
-          </button>
+          {team.isTeam ? (
+            <button type="button" className={styles.logout} aria-label="Volver a mi equipo" title="Volver a mi equipo" onClick={team.toTeam}>
+              <ArrowLeftRight size={16} strokeWidth={2.2} />
+            </button>
+          ) : (
+            <button type="button" className={styles.logout} aria-label="Cerrar sesión" onClick={logout}>
+              <LogOut size={16} strokeWidth={2.2} />
+            </button>
+          )}
         </div>
       </aside>
 

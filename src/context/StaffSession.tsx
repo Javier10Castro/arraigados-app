@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import type { StaffUser } from '../../shared/api';
 import { ApiRequestError, api } from '../lib/api';
+import { TEAM_VIEW_KEY } from './PulseSession';
 
 /**
  * Sesión de STAFF / ADMIN: cuentas de la tabla "User" de Neon (las mismas
@@ -48,6 +49,11 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api.logout().catch(() => {});
+    try {
+      sessionStorage.removeItem(TEAM_VIEW_KEY); // la vista de visitante del equipo no sobrevive al cierre de sesión
+    } catch {
+      /* sin almacenamiento */
+    }
     setState({ phase: 'none' });
   }, []);
 

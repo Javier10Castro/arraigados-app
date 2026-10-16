@@ -190,14 +190,15 @@ function CountdownGrid({ target, now }: { target: Date; now: Date }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { me, state: pulse } = usePulseSession();
+  const { me, state: pulse, isTeam } = usePulseSession();
   const fullName = me?.attendee.fullName ?? '';
   const [open, setOpen] = useState(false);
   // Campana (Fase 1, 5 oct 2026): avisos del equipo reales; ver docs/PLAN_PENDIENTES.md §10.
   const bell = useNotifications(pulse.phase === 'ready' ? pulse.token : '');
   // Nota del asistente (burbuja sobre el avatar). Un fallo aquí nunca rompe /home.
   const notes = useMyNotes(pulse.phase === 'ready' ? pulse.token : '');
-  const feed = useNotesFeed(pulse.phase === 'ready' ? pulse.token : '');
+  // En la vista de visitante del equipo las notas de los asistentes se LEEN con la cookie del equipo (sin token de pulsera).
+  const feed = useNotesFeed(pulse.phase === 'ready' ? pulse.token : '', isTeam && pulse.phase === 'ready');
   const [noteOpen, setNoteOpen] = useState(false);
   const now = useNow();
 
@@ -281,6 +282,8 @@ export default function Home() {
         )}
       </header>
 
+      {/* Asistente: su nota y las de los demás. Vista de visitante del equipo: solo lectura de las notas de los asistentes
+          (no hay nota propia ni me gusta: no son identidad de asistente). */}
       <NoteTray
         me={{ attendeeId: me.attendee.id, name: fullName }}
         ownStatus={notes.status}
@@ -289,6 +292,7 @@ export default function Home() {
         feedStatus={feed.status}
         feed={feed.items}
         onLike={feed.like}
+        readOnly={isTeam}
       />
 
       <section className={`${styles.section} ${styles.current}`}>

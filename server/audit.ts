@@ -35,6 +35,7 @@ const FROM = `
   LEFT JOIN "Batch" tb ON al."entityType" = 'Batch' AND tb.id = al."entityId"
   LEFT JOIN "Redemption" tr ON al."entityType" = 'Redemption' AND tr.id = al."entityId"
   LEFT JOIN "Attendee" tra ON tra.id = tr."attendeeId"
+  LEFT JOIN "User" trb ON trb.id = tr."beneficiaryUserId"
   LEFT JOIN "Pulse" tp ON al."entityType" = 'Pulse' AND tp.id = al."entityId"
   LEFT JOIN "Attendee" tpa ON tpa.id = tp."attendeeId"
   LEFT JOIN "Note" tn ON al."entityType" = 'Note' AND tn.id = al."entityId"
@@ -42,7 +43,7 @@ const FROM = `
   LEFT JOIN "Church" tc ON al."entityType" = 'Church' AND tc.id = al."entityId"
   LEFT JOIN "Pulse" top ON al."action" = 'pulse.reassign' AND top.id = al."metadata"->>'oldPulseId'`;
 
-const ENTITY_NAME = `COALESCE(tu."name", ta."fullName", tb."code", tra."fullName", tpa."fullName", tna."fullName", tc."name")`;
+const ENTITY_NAME = `COALESCE(tu."name", ta."fullName", tb."code", tra."fullName", trb."name", tpa."fullName", tna."fullName", tc."name")`;
 
 type DbRow = Omit<AdminAuditRow, 'createdAt'> & { createdAt: string };
 

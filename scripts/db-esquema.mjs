@@ -1,7 +1,7 @@
 // npm run db:esquema  -- SOLO LECTURA. No escribe nada en la base.
 //
 // Muestra la estructura REAL en Neon de las tablas que usa la Etapa 3
-// (Batch, Pulse, Package, Attendee): columnas, tipos, defaults, CHECKs,
+// (Batch, Pulse, Package, Attendee, User, Redemption, AuditLog): columnas, tipos, defaults, CHECKs,
 // índices y llaves foráneas. Verifica que la migración
 // migrations/001_batch_status.sql esté aplicada y cuenta los datos.
 //
@@ -11,7 +11,7 @@
 // Postgres rechazaría cualquier escritura.
 import { connect } from './_db.mjs';
 
-const TABLES = ['Batch', 'Pulse', 'Package', 'Attendee'];
+const TABLES = ['Batch', 'Pulse', 'Package', 'Attendee', 'User', 'Redemption', 'AuditLog'];
 
 const { client, host, database } = connect();
 await client.connect();
@@ -85,6 +85,44 @@ try {
   console.log(
     `   => ${okStatus && okCheck && index ? 'APLICADA. No volver a correr npm run db:migrar.' : 'NO aplicada o incompleta: avisar antes de hacer nada.'}\n`,
   );
+
+  // Migración 011 (RateLimit): solo lectura. Existencia y estructura; NO cuenta ni lee filas.
+  console.log('── Migración 011_rate_limit.sql ' + '─'.repeat(31));
+  const rlCols = (
+    await client.query(
+      `SELECT column_name, data_type, is_nullable FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'RateLimit' ORDER BY ordinal_position`,
+    )
+  ).rows;
+  if (!rlCols.length) {
+    console.log('   tabla "RateLimit": NO EXISTE -> el limitador NO está activo (todas las reglas dejan pasar).');
+    console.log('   => 011 NO aplicada.\n');
+  } else {
+    const want = { key: ['character varying', 'NO'], count: ['integer', 'NO'], resetAt: ['timestamp with time zone', 'NO'] };
+    const got = Object.fromEntries(rlCols.map((c) => [c.column_name, [c.data_type, c.is_nullable]]));
+    let ok = Object.keys(want).length === rlCols.length;
+    for (const [col, [type, nul]] of Object.entries(want)) {
+      const g = got[col];
+      const same = g && g[0] === type && g[1] === nul;
+      if (!same) ok = false;
+      console.log(`   ${col.padEnd(8)} esperado ${type} ${nul === 'NO' ? 'NOT NULL' : 'NULL'} : ${same ? 'OK' : g ? `DISTINTO (${g[0]} ${g[1] === 'NO' ? 'NOT NULL' : 'NULL'})` : 'FALTA'}`);
+    }
+    const pk = (
+      await client.query(
+        `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = '"RateLimit"'::regclass AND contype = 'p'`,
+      )
+    ).rows[0];
+    const okPk = !!pk && /PRIMARY KEY \("?key"?\)/.test(pk.def);
+    const chk = (
+      await client.query(
+        `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = '"RateLimit"'::regclass AND contype = 'c'`,
+      )
+    ).rows;
+    const okChk = chk.some((c) => /count/.test(c.def) && />= 0/.test(c.def));
+    console.log(`   PRIMARY KEY (key)           : ${okPk ? 'OK' : 'NO / DISTINTA'}`);
+    console.log(`   CHECK (count >= 0)          : ${okChk ? 'OK' : 'NO / DISTINTO'}`);
+    console.log(`   => ${ok && okPk && okChk ? 'tabla presente y con la estructura de 011 (esto NO prueba que el limitador funcione en producción).' : 'tabla presente pero DISTINTA a 011: avisar antes de hacer nada.'}\n`);
+  }
 
   // Conteos
   const n = async (sql) => (await client.query(sql)).rows[0].n;

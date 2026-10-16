@@ -19,6 +19,8 @@
     "db:limpiar-pruebas": "node scripts/db-limpiar-pruebas.mjs",
     "db:fotos-huerfanas": "node scripts/db-fotos-huerfanas.mjs",
     "test:ratelimit": "node scripts/test-ratelimit.mjs",
+    "test:team": "node scripts/test-team.mjs",
+    "test:manual:seed": "node scripts/manual-local-seed.mjs",
     "db:restaurar": "node scripts/db-restaurar.mjs",
     "db:notas-demo": "node scripts/db-notas-demo.mjs",
     "db:likes-demo": "node scripts/db-likes-demo.mjs",

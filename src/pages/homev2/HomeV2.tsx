@@ -23,13 +23,13 @@ const SHOW_INTRO = true;
 type Stage = 'intro' | 'leaving' | 'done';
 
 export default function HomeV2() {
-  const { me, state } = usePulseSession();
+  const { me, state, isTeam } = usePulseSession();
   const [stage, setStage] = useState<Stage>(SHOW_INTRO ? 'intro' : 'done');
   const homeRef = useRef<HTMLDivElement>(null);
 
   const badge = useMemo(
-    () => (me && state.phase === 'ready' ? buildBadge(me, `${window.location.origin}/p/${state.token}`) : null),
-    [me, state],
+    () => (me && state.phase === 'ready' && !isTeam ? buildBadge(me, `${window.location.origin}/p/${state.token}`) : null),
+    [me, state, isTeam],
   );
 
   const finish = () => setStage((s) => (s === 'intro' ? 'leaving' : s));

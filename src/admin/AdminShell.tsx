@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, KeyRound, LogOut, MoreHorizontal, ScanLine } from 'lucide-react';
+import { ArrowLeftRight, ChevronRight, KeyRound, LogOut, MoreHorizontal, QrCode, ScanLine } from 'lucide-react';
 import Ambient from '../components/Ambient';
 import Wordmark from '../components/Wordmark';
 import RingsMark from '../components/RingsMark';
 import UserAvatar from '../components/UserAvatar';
 import { useStaffSession } from '../context/StaffSession';
+import { useTeamNav } from '../context/useTeamNav';
+import { useOwnPulseLink, type OwnPulseLink } from '../context/useOwnPulseLink';
 import { ADMIN_SECTIONS } from './nav';
 import s from './AdminShell.module.css';
 
@@ -21,6 +23,36 @@ import s from './AdminShell.module.css';
  * `wide`: ensancha el contenido (1440 px en vez de 1040) para pantallas de
  * monitoreo; hoy solo lo usa el Dashboard.
  */
+/**
+ * «Vincular pulsera»: el estado sale del servidor (GET /api/staff-me). Pendiente = enlace con aviso; vinculada = fila
+ * inactiva con check (no es un enlace, para no invitar a repetir la configuración).
+ */
+function PulseLinkItem({ link, variant, onVisitor }: { link: OwnPulseLink; variant: 'side' | 'more'; onVisitor: () => void }) {
+  const side = variant === 'side';
+  const cls = side ? s.staffLink : s.moreRow;
+  if (link.phase === 'loading') return null;
+  if (link.phase === 'linked') {
+    // Pulsera ya vinculada: en lugar de una etiqueta muerta, el mismo atajo (flechas ida y vuelta) que usa la vista de visitante
+    // para volver al equipo. Solo navega; el servidor valida la cookie del equipo en cada llamada.
+    return (
+      <button type="button" className={cls} onClick={onVisitor} aria-label="Entrar como visitante" title="Entrar como visitante">
+        {side ? <ArrowLeftRight size={18} strokeWidth={2.1} /> : <span className={s.moreIcon}><ArrowLeftRight size={18} /></span>}
+        <span>{side ? 'Modo visitante' : <strong>Modo visitante</strong>}</span>
+        {!side && <ChevronRight size={18} />}
+      </button>
+    );
+  }
+  const badge = link.phase === 'pending' ? 'Pendiente' : link.phase === 'disabled' ? 'Revisar' : null;
+  return (
+    <NavLink to="/cuenta/pulsera" className={cls}>
+      {side ? <QrCode size={18} strokeWidth={2.1} /> : <span className={s.moreIcon}><QrCode size={18} /></span>}
+      <span>{side ? 'Vincular pulsera' : <strong>Vincular pulsera</strong>}</span>
+      {badge && <em className={s.pulseBadge}>{badge}</em>}
+      {!side && <ChevronRight size={18} />}
+    </NavLink>
+  );
+}
+
 export default function AdminShell({
   title,
   action,
@@ -35,6 +67,8 @@ export default function AdminShell({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user, signOut } = useStaffSession();
+  const teamNav = useTeamNav();
+  const pulseLink = useOwnPulseLink();
   const primary = ADMIN_SECTIONS.filter((x) => x.primary);
   const inMore = pathname === '/admin/mas' || ADMIN_SECTIONS.some((x) => !x.primary && pathname.startsWith(x.to));
 
@@ -74,6 +108,7 @@ export default function AdminShell({
           <span>Abrir Staff</span>
           <ChevronRight size={16} />
         </NavLink>
+        <PulseLinkItem link={pulseLink} variant="side" onVisitor={() => void teamNav.toVisitor()} />
 
         <div className={s.userCard}>
           <UserAvatar className={s.avatar} userId={user?.id} name={user?.name} />
@@ -81,6 +116,17 @@ export default function AdminShell({
             <strong>{user?.name}</strong>
             <span>Admin</span>
           </div>
+          {pulseLink.phase !== 'linked' && (
+            <button
+              type="button"
+              className={s.iconBtn}
+              title="Ver mi experiencia de visitante"
+              aria-label="Ver mi experiencia de visitante"
+              onClick={() => void teamNav.toVisitor()}
+            >
+              <ArrowLeftRight size={15} />
+            </button>
+          )}
           <button
             type="button"
             className={s.iconBtn}
@@ -131,6 +177,8 @@ export default function AdminShell({
 export function AdminMas() {
   const navigate = useNavigate();
   const { signOut } = useStaffSession();
+  const teamNav = useTeamNav();
+  const pulseLink = useOwnPulseLink();
   return (
     <AdminShell>
       <ul className={s.moreList}>
@@ -155,6 +203,20 @@ export function AdminMas() {
             )}
           </li>
         ))}
+        <li>
+          <PulseLinkItem link={pulseLink} variant="more" onVisitor={() => void teamNav.toVisitor()} />
+        </li>
+        {pulseLink.phase !== 'linked' && (
+        <li>
+          <button type="button" className={s.moreRow} onClick={() => void teamNav.toVisitor()}>
+            <span className={s.moreIcon}>
+              <ArrowLeftRight size={18} />
+            </span>
+            <strong>Ver mi experiencia de visitante</strong>
+            <ChevronRight size={18} />
+          </button>
+        </li>
+        )}
         <li>
           <NavLink to="/staff" className={s.moreRow}>
             <span className={s.moreIcon}>

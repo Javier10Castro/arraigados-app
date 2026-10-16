@@ -95,6 +95,7 @@ export default function Lotes() {
                   <span className={s.pillActive}>
                     {b.active} {b.active === 1 ? 'activa' : 'activas'}
                   </span>
+                  {b.team > 0 && <span className={s.pillActive}>{b.team} del equipo</span>}
                 </span>
                 <span className={`${s.state} ${s['st_' + b.status.toLowerCase()]}`}>{BATCH_STATUS_LABEL[b.status]}</span>
                 <ChevronRight className={s.chev} size={18} aria-hidden="true" />

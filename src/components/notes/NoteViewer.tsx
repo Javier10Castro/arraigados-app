@@ -18,9 +18,11 @@ type Props = {
   item: NoteFeedItem;
   onClose: () => void;
   onLike: (id: string, mode: 'like' | 'toggle') => void;
+  /** Vista de visitante del equipo: sin me gusta. */
+  readOnly?: boolean;
 };
 
-export default function NoteViewer({ item, onClose, onLike }: Props) {
+export default function NoteViewer({ item, onClose, onLike, readOnly = false }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [pop, setPop] = useState(0);
 
@@ -43,6 +45,7 @@ export default function NoteViewer({ item, onClose, onLike }: Props) {
   }, []);
 
   const doubleTap = () => {
+    if (readOnly) return;
     setPop((n) => n + 1);
     onLike(item.id, 'like');
   };
@@ -74,20 +77,28 @@ export default function NoteViewer({ item, onClose, onLike }: Props) {
             {pop > 0 && <Heart key={pop} className={styles.pop} size={84} fill="currentColor" strokeWidth={0} aria-hidden="true" />}
           </div>
 
-          <div className={styles.row}>
-            <button
-              type="button"
-              className={`${styles.heart} ${item.likedByMe ? styles.liked : ''}`}
-              aria-pressed={item.likedByMe}
-              aria-label={item.likedByMe ? 'Quitar me gusta' : 'Me gusta'}
-              onClick={() => onLike(item.id, 'toggle')}
-            >
-              {/* Solo el corazón: el contador es únicamente del dueño de la nota. */}
-              <LikeBadge on={item.likedByMe} size={30} label={item.likedByMe ? 'Te gusta' : 'Me gusta'} />
-            </button>
-            <span className={sheet.meta}>Se desvanece en {remaining(item.expiresAt, Date.now())}</span>
-          </div>
-          <p className={styles.hint}>También puedes dar doble toque sobre la nota.</p>
+          {readOnly ? (
+            <div className={styles.row}>
+              <span className={sheet.meta}>Se desvanece en {remaining(item.expiresAt, Date.now())}</span>
+            </div>
+          ) : (
+            <>
+              <div className={styles.row}>
+                <button
+                  type="button"
+                  className={`${styles.heart} ${item.likedByMe ? styles.liked : ''}`}
+                  aria-pressed={item.likedByMe}
+                  aria-label={item.likedByMe ? 'Quitar me gusta' : 'Me gusta'}
+                  onClick={() => onLike(item.id, 'toggle')}
+                >
+                  {/* Solo el corazón: el contador es únicamente del dueño de la nota. */}
+                  <LikeBadge on={item.likedByMe} size={30} label={item.likedByMe ? 'Te gusta' : 'Me gusta'} />
+                </button>
+                <span className={sheet.meta}>Se desvanece en {remaining(item.expiresAt, Date.now())}</span>
+              </div>
+              <p className={styles.hint}>También puedes dar doble toque sobre la nota.</p>
+            </>
+          )}
         </div>
       </div>
     </div>,

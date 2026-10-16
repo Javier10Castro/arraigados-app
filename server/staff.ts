@@ -1,4 +1,7 @@
+import { loadWalletConfig } from './wallet/config';
+import { verifyWalletCode } from './wallet/code';
 import { NOW_UTC, newId, query, withTransaction } from './db';
+import { selfRedeemDecision } from './selfRedeem';
 import {
   QR_TOKEN_RE,
   normalizeStaffCode,
@@ -8,6 +11,7 @@ import {
   type RedemptionStatus,
   type StaffHistoryResponse,
   type StaffPulseResponse,
+  type StaffRole,
   type StaffSearchResult,
 } from '../shared/api';
 
@@ -43,12 +47,22 @@ const PULSE_SELECT = `
     LEFT JOIN "Presbytery" pr ON pr.id = c."presbyteryId"
     LEFT JOIN "Zone" z ON z.id = pr."zoneId"`;
 
+/** Quien ejecuta la operación: SIEMPRE sale de la sesión verificada en el servidor (authorize), nunca del cuerpo de la petición. */
+export type Actor = { id: string; role: StaffRole };
+
 const remaining = (r: { includedDrinks: number; drinksUsed: number }) => Math.max(r.includedDrinks - r.drinksUsed, 0);
 
 /** Pulsera por token del QR o por código de respaldo, con todos sus datos para el modal. */
-export async function lookupPulse(by: { token?: string; code?: string }): Promise<StaffPulseResponse> {
+export async function lookupPulse(by: { token?: string; code?: string; wallet?: string }, viewer?: Actor): Promise<StaffPulseResponse> {
   let row: PulseRow | undefined;
-  if (by.token !== undefined) {
+  if (by.wallet !== undefined) {
+    // Código del QR de la credencial digital (Apple/Google Wallet): firma válida -> id de pulsera; el estado se lee AQUÍ,
+    // en cada lectura (pulsera deshabilitada o borrada = rechazada). No contiene ni revela el token privado de la pulsera.
+    const secret = loadWalletConfig().qrSecret;
+    const pulseId = secret ? verifyWalletCode(secret, by.wallet) : null;
+    if (!pulseId) return { status: 'not_found' };
+    row = (await query<PulseRow>(`${PULSE_SELECT} WHERE p.id = $1`, [pulseId])).rows[0];
+  } else if (by.token !== undefined) {
     if (!QR_TOKEN_RE.test(by.token)) return { status: 'not_found' };
     row = (await query<PulseRow>(`${PULSE_SELECT} WHERE p."qrToken" = $1`, [by.token])).rows[0];
   } else {
@@ -59,6 +73,34 @@ export async function lookupPulse(by: { token?: string; code?: string }): Promis
   }
   if (!row) return { status: 'not_found' };
   if (row.status === 'INVALIDATED') return { status: 'invalidated', manualCode: row.manualCode };
+  // ACTIVE sin asistente = pulsera de una cuenta del EQUIPO (StaffPulse). Solo nombre y rol, nunca datos personales.
+  if (row.status === 'ACTIVE' && !row.attendeeId) {
+    // Sin la migración 012 la tabla no existe (42P01): no puede haber vínculos y la pulsera se trata como antes.
+    const link = (
+      await query<{ userId: string; name: string; role: StaffRole }>(
+        `SELECT sp."userId", u.name, u.role::text AS role FROM "StaffPulse" sp JOIN "User" u ON u.id = sp."userId"
+          WHERE sp."pulseId" = $1 AND sp."unlinkedAt" IS NULL`,
+        [row.id],
+      ).catch((err: { code?: string }) => {
+        if (err?.code === '42P01') return { rows: [] as { userId: string; name: string; role: StaffRole }[] };
+        throw err;
+      })
+    ).rows[0];
+    if (link) {
+      const isSelf = viewer?.id === link.userId;
+      const allowed = isSelf ? (await selfRedeemDecision(query, link.userId, viewer?.role)).allowed : false;
+      return {
+        status: 'team',
+        manualCode: row.manualCode,
+        member: { name: link.name, role: link.role },
+        package: { name: row.packageName, includedDrinks: row.includedDrinks },
+        drinksUsed: row.drinksUsed,
+        drinksRemaining: remaining(row),
+        isSelf,
+        selfRedeemAllowed: allowed,
+      };
+    }
+  }
   if (row.status === 'UNCLAIMED' || !row.fullName) {
     return { status: 'unclaimed', manualCode: row.manualCode, packageName: row.packageName };
   }
@@ -114,6 +156,9 @@ export async function searchActive(q: string, churchId: string): Promise<StaffSe
 
 class InsufficientBalanceRace extends Error {}
 
+/** `remaining` de una consulta fresca, sea de asistente o de equipo. */
+const freshRemaining = (f: StaffPulseResponse) => (f.status === 'active' || f.status === 'team' ? f.drinksRemaining : 0);
+
 /**
  * Canje de 1 agua fresca (redeemDrinks del Next.js, quantity = 1):
  * 1. Misma idempotencyKey ya procesada -> "already_processed", no descuenta.
@@ -125,8 +170,13 @@ class InsufficientBalanceRace extends Error {}
  *    idempotencyKey atrapa la carrera de dos envíos idénticos.
  * location queda vacío por decisión (Fase 2): la zona/presbiterio/iglesia se
  * obtiene del asistente; "location" se reserva para la sede de entrega.
+ *
+ * PULSERA DE EQUIPO (ACTIVE sin asistente, vinculada en "StaffPulse"): el beneficiario lo deduce el servidor de la pulsera,
+ * nunca el cliente. Si el beneficiario es quien canjea (AUTOCANJE) se exige el permiso efectivo (server/selfRedeem.ts);
+ * canjear la pulsera de OTRA persona del equipo se hace por el procedimiento normal. El canje se guarda en la misma
+ * tabla "Redemption" con attendeeId NULL y beneficiaryUserId = la cuenta beneficiaria.
  */
-export async function redeemOne(manualCode: string, idempotencyKey: string, staffId: string): Promise<RedeemResponse> {
+export async function redeemOne(manualCode: string, idempotencyKey: string, actor: Actor): Promise<RedeemResponse> {
   const key = String(idempotencyKey ?? '');
   if (key.length < 8 || key.length > 100) throw new Error('Solicitud de canje inválida.');
   const quantity = 1;
@@ -142,10 +192,12 @@ export async function redeemOne(manualCode: string, idempotencyKey: string, staf
   const code = normalizeStaffCode(manualCode);
   if (!code) return { outcome: 'pulse_not_active' };
   const pulse = (await query<PulseRow>(`${PULSE_SELECT} WHERE p."manualCode" = $1`, [code])).rows[0];
-  if (!pulse || pulse.status !== 'ACTIVE' || !pulse.attendeeId) return { outcome: 'pulse_not_active' };
-  if (remaining(pulse) < quantity) return { outcome: 'insufficient_balance', drinksRemaining: remaining(pulse) };
+  if (!pulse || pulse.status !== 'ACTIVE') return { outcome: 'pulse_not_active' };
+  const team = !pulse.attendeeId;
+  if (!team && remaining(pulse) < quantity) return { outcome: 'insufficient_balance', drinksRemaining: remaining(pulse) };
 
   try {
+    if (team) return await redeemTeamPulse(pulse.id, key, quantity, actor);
     const drinksRemaining = await withTransaction(async (tx) => {
       const update = await tx.query<{ drinksUsed: number; includedDrinks: number }>(
         `UPDATE "Pulse" p
@@ -160,26 +212,75 @@ export async function redeemOne(manualCode: string, idempotencyKey: string, staf
       await tx.query(
         `INSERT INTO "Redemption" (id, "attendeeId", "pulseId", "packageId", quantity, location, "idempotencyKey", "createdById", "createdAt")
          VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, ${NOW_UTC})`,
-        [newId(), pulse.attendeeId, pulse.id, pulse.packageId, quantity, key, staffId],
+        [newId(), pulse.attendeeId, pulse.id, pulse.packageId, quantity, key, actor.id],
       );
       return remaining(update.rows[0]);
     });
     return { outcome: 'ok', drinksRemaining };
   } catch (err) {
+    // Pulsera ACTIVE sin asistente y sin migración 012 (sin tabla "StaffPulse"): no es de nadie -> como antes.
+    if (team && (err as { code?: string })?.code === '42P01') return { outcome: 'pulse_not_active' };
     if (err instanceof InsufficientBalanceRace) {
       const fresh = await lookupPulse({ code });
-      return {
-        outcome: 'insufficient_balance',
-        drinksRemaining: fresh.status === 'active' ? fresh.drinksRemaining : 0,
-      };
+      return { outcome: 'insufficient_balance', drinksRemaining: freshRemaining(fresh) };
     }
     // Dos envíos con la MISMA llave a la vez: la llave única los atrapa.
     if ((err as { code?: string })?.code === '23505') {
       const fresh = await lookupPulse({ code });
-      return { outcome: 'already_processed', drinksRemaining: fresh.status === 'active' ? fresh.drinksRemaining : 0 };
+      return { outcome: 'already_processed', drinksRemaining: freshRemaining(fresh) };
     }
     throw err;
   }
+}
+
+/**
+ * Canje sobre una pulsera de equipo. Se bloquea la fila de la pulsera (serializa canjes, desvinculaciones y reemplazos),
+ * se lee el vínculo VIGENTE ya con el bloqueo puesto, se decide el permiso (solo si es autocanje) y recién entonces se
+ * descuenta. Si se deniega, la transacción termina sin haber escrito nada.
+ */
+async function redeemTeamPulse(pulseId: string, key: string, quantity: number, actor: Actor): Promise<RedeemResponse> {
+  return withTransaction<RedeemResponse>(async (tx) => {
+    const p = (
+      await tx.query<{ status: string; drinksUsed: number; includedDrinks: number; packageId: string }>(
+        `SELECT p.status::text AS status, p."drinksUsed", p."packageId", k."includedDrinks"
+           FROM "Pulse" p JOIN "Package" k ON k.id = p."packageId" WHERE p.id = $1 FOR UPDATE OF p`,
+        [pulseId],
+      )
+    ).rows[0];
+    if (!p || p.status !== 'ACTIVE') return { outcome: 'pulse_not_active' };
+
+    const link = (
+      await tx.query<{ userId: string; active: boolean }>(
+        `SELECT sp."userId", u.active FROM "StaffPulse" sp JOIN "User" u ON u.id = sp."userId"
+          WHERE sp."pulseId" = $1 AND sp."unlinkedAt" IS NULL`,
+        [pulseId],
+      )
+    ).rows[0];
+    if (!link || !link.active) return { outcome: 'pulse_not_active' };
+
+    if (link.userId === actor.id) {
+      const decision = await selfRedeemDecision((t, v) => tx.query(t, v), actor.id, actor.role);
+      if (!decision.allowed) return { outcome: 'self_redeem_not_allowed' };
+    }
+    if (remaining(p) < quantity) return { outcome: 'insufficient_balance', drinksRemaining: remaining(p) };
+
+    const update = await tx.query<{ drinksUsed: number; includedDrinks: number }>(
+      `UPDATE "Pulse" p
+          SET "drinksUsed" = p."drinksUsed" + $2, "updatedAt" = ${NOW_UTC}
+         FROM "Package" k
+        WHERE p.id = $1 AND k.id = p."packageId" AND p.status = 'ACTIVE'
+          AND p."drinksUsed" + $2 <= k."includedDrinks"
+        RETURNING p."drinksUsed", k."includedDrinks"`,
+      [pulseId, quantity],
+    );
+    if (update.rowCount === 0) throw new InsufficientBalanceRace();
+    await tx.query(
+      `INSERT INTO "Redemption" (id, "attendeeId", "beneficiaryUserId", "pulseId", "packageId", quantity, location, "idempotencyKey", "createdById", "createdAt")
+       VALUES ($1, NULL, $2, $3, $4, $5, NULL, $6, $7, ${NOW_UTC})`,
+      [newId(), link.userId, pulseId, p.packageId, quantity, key, actor.id],
+    );
+    return { outcome: 'ok', drinksRemaining: remaining(update.rows[0]) };
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -315,13 +416,17 @@ export async function staffHistory(staffId: string, limit = 20): Promise<StaffHi
     pulseCode: string;
     quantity: number;
     voidedAtRaw: string | null;
+    team: boolean;
   };
+  // Canjes de equipo: el beneficiario es una cuenta ("beneficiaryUserId"), no un asistente -> LEFT JOIN.
   const { rows } = await query<Row>(
     `SELECT r.id, to_char(r."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-            a."fullName" AS "attendeeName", p."manualCode" AS "pulseCode", r.quantity,
+            COALESCE(a."fullName", bu.name) AS "attendeeName", p."manualCode" AS "pulseCode", r.quantity,
+            (r."attendeeId" IS NULL) AS team,
             to_char(v."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "voidedAtRaw"
        FROM "Redemption" r
-       JOIN "Attendee" a ON a.id = r."attendeeId"
+       LEFT JOIN "Attendee" a ON a.id = r."attendeeId"
+       LEFT JOIN "User" bu ON bu.id = r."beneficiaryUserId"
        JOIN "Pulse" p ON p.id = r."pulseId"
        LEFT JOIN LATERAL (
          SELECT al."createdAt"
@@ -345,6 +450,7 @@ export async function staffHistory(staffId: string, limit = 20): Promise<StaffHi
         pulseLabel: pulseCodeLabel(r.pulseCode),
         quantity: r.quantity,
         status,
+        ...(r.team ? { team: true } : {}),
       };
     }),
   };

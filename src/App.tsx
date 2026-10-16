@@ -27,6 +27,7 @@ import LoteDetalle from './admin/LoteDetalle';
 import Asistentes from './admin/Asistentes';
 import AsistenteDetalle from './admin/AsistenteDetalle';
 import Canjes from './admin/Canjes';
+import Configuracion from './admin/Configuracion';
 import Menu from './admin/Menu';
 import Merch from './admin/Merch';
 import Notas from './admin/Notas';
@@ -36,6 +37,7 @@ import Iglesias from './admin/Iglesias';
 import BeneficiosAdmin from './admin/Beneficios';
 import KitsAdmin from './admin/Kits';
 import { AdminMas } from './admin/AdminShell';
+import VincularPulsera from './pages/VincularPulsera';
 import { ADMIN_HOME } from './admin/nav';
 import Mas from './pages/Mas';
 import Home from './pages/home/Home';
@@ -44,6 +46,7 @@ import MenuPreview from './pages/menu-preview/MenuPreview';
 import { usePulseSession } from './context/PulseSession';
 import { useStaffSession } from './context/StaffSession';
 import SessionGate from './components/SessionGate';
+import TeamViewGate from './components/TeamViewGate';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -60,7 +63,19 @@ function ScrollToTop() {
 function RequireAttendee({ children }: { children: ReactNode }) {
   const { state } = usePulseSession();
   if (state.phase === 'none') return <Navigate to="/registro" replace />;
+  // Vista de visitante del equipo sin pulsera asignada/utilizable (el servidor ya decidió; aquí solo se explica).
+  if (state.phase === 'team_blocked') return <TeamViewGate reason={state.reason} />;
   if (state.phase !== 'ready') return <SessionGate />;
+  return <>{children}</>;
+}
+
+/**
+ * Rutas que dependen de ser un ASISTENTE con token de pulsera (perfil, foto…). En la vista de visitante del equipo no
+ * existen: se regresa a "Más". Nada de esto concede ni quita privilegios: son solo pantallas.
+ */
+function AttendeeOnly({ children }: { children: ReactNode }) {
+  const { isTeam } = usePulseSession();
+  if (isTeam) return <Navigate to="/mas" replace />;
   return <>{children}</>;
 }
 
@@ -104,6 +119,7 @@ export default function App() {
         <Route path="/p/:token" element={<Registro />} />
         <Route path="/staff" element={<RequireStaff><Staff /></RequireStaff>} />
         <Route path="/cuenta/contrasena" element={<RequireStaff><CambiarContrasena /></RequireStaff>} />
+        <Route path="/cuenta/pulsera" element={<RequireStaff><VincularPulsera /></RequireStaff>} />
         <Route path="/admin" element={admin(<Navigate to={ADMIN_HOME} replace />)} />
         {/* La ruta de cada sección va ANTES del catch-all "/admin/*" de abajo;
             si se agrega después, React Router la manda a ADMIN_HOME en silencio. */}
@@ -115,6 +131,7 @@ export default function App() {
         <Route path="/admin/asistentes" element={admin(<Asistentes />)} />
         <Route path="/admin/asistentes/:id" element={admin(<AsistenteDetalle />)} />
         <Route path="/admin/canjes" element={admin(<Canjes />)} />
+        <Route path="/admin/configuracion" element={admin(<Configuracion />)} />
         <Route path="/admin/menu" element={admin(<Menu />)} />
         <Route path="/admin/merch" element={admin(<Merch />)} />
         <Route path="/admin/notas" element={admin(<Notas />)} />
@@ -146,7 +163,7 @@ export default function App() {
         <Route path="/comida" element={shell(<Comida />)} />
         <Route path="/instantaneas" element={<Navigate to="/home" replace />} />
         <Route path="/recursos" element={shell(<Recursos />)} />
-        <Route path="/perfil" element={shell(<Perfil />)} />
+        <Route path="/perfil" element={shell(<AttendeeOnly><Perfil /></AttendeeOnly>)} />
         <Route path="/mas" element={shell(<Mas />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

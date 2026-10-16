@@ -8,7 +8,7 @@ import { parsePulseCode } from '../lib/pulseCode';
 import { pulseCodeLabel, type StaffPulseResponse } from '../../shared/api';
 import styles from './RedeemModal.module.css';
 
-export type PulseRef = { token: string } | { code: string };
+export type PulseRef = { token: string } | { code: string } | { wallet: string };
 
 /** Llave única por apertura del modal (no por clic): reintentos y doble toque nunca descuentan dos veces. */
 function newIdempotencyKey() {
@@ -117,6 +117,8 @@ export default function RedeemModal({
         setReplace({ step: 'scan', error: 'Esa pulsera no existe. Escanea otra.' });
       } else if (next.status === 'active') {
         setReplace({ step: 'scan', error: 'Esa pulsera ya es de alguien. Usa una pulsera nueva, sin registrar.' });
+      } else if (next.status === 'team') {
+        setReplace({ step: 'scan', error: 'Esa pulsera está reservada para una cuenta del equipo. Usa otra.' });
       } else if (next.status === 'invalidated') {
         setReplace({ step: 'scan', error: 'Esa pulsera está deshabilitada. Usa otra.' });
       } else if (next.manualCode === info.manualCode) {
@@ -161,7 +163,7 @@ export default function RedeemModal({
   };
 
   const accept = async () => {
-    if (info?.status !== 'active' || sending) return;
+    if ((info?.status !== 'active' && info?.status !== 'team') || sending) return;
     setSending(true);
     setSendError('');
     try {
@@ -173,6 +175,8 @@ export default function RedeemModal({
       } else if (res.outcome === 'insufficient_balance') {
         setInfo({ ...info, drinksUsed: info.package.includedDrinks - res.drinksRemaining, drinksRemaining: res.drinksRemaining });
         setSendError('Ya no le quedan aguas frescas (alguien más acaba de canjear).');
+      } else if (res.outcome === 'self_redeem_not_allowed') {
+        setSendError('El autocanje no está permitido para tu cuenta. Pide a otro miembro del equipo que escanee tu pulsera. No se descontó nada.');
       } else {
         setSendError('Esta pulsera ya no está activa. No se descontó nada.');
       }
@@ -218,6 +222,64 @@ export default function RedeemModal({
             body={`La pulsera ${pulseCodeLabel(info.manualCode)} (${info.packageName}) todavía no tiene asistente. Pídele que la escanee con su celular para registrarse.`}
             onClose={onClose}
           />
+        )}
+
+        {info?.status === 'team' && (
+          <>
+            <div className={styles.top}>
+              <span className={styles.badge}>{info.package.name}</span>
+              <span className={styles.code}>{pulseCodeLabel(info.manualCode)}</span>
+            </div>
+            <h2 id="redeem-title" className={styles.name}>
+              {info.member.name}
+            </h2>
+            <p className={styles.church}>
+              Equipo · {info.member.role === 'ADMIN' ? 'Admin' : 'Staff'}
+              {info.isSelf ? ' (tu pulsera)' : ''}
+            </p>
+            <div className={styles.drinks}>
+              {info.package.includedDrinks > 0 ? (
+                <>
+                  <DrinkCups total={info.package.includedDrinks} used={info.drinksUsed} size={38} />
+                  <p className={styles.count}>
+                    <strong>{info.drinksRemaining}</strong> de {info.package.includedDrinks} aguas frescas disponibles
+                  </p>
+                </>
+              ) : (
+                <p className={styles.warn}>Su kit no incluye aguas frescas.</p>
+              )}
+            </div>
+            {done ? (
+              <p className={styles.success} role="status">
+                <CheckCircle2 size={20} strokeWidth={2.4} />
+                {done.repeated ? 'Ya estaba registrada (no se descontó dos veces).' : 'Agua fresca entregada.'}
+              </p>
+            ) : (
+              <>
+                {info.isSelf && !info.selfRedeemAllowed && !sendError && (
+                  <p className={styles.warn}>El autocanje no está permitido para tu cuenta. Pide a otro miembro del equipo que la escanee.</p>
+                )}
+                {sendError && (
+                  <p className={styles.error} role="alert">
+                    {sendError}
+                  </p>
+                )}
+                {info.package.includedDrinks > 0 && info.drinksRemaining === 0 && !sendError && (
+                  <p className={styles.warn}>Ya canjeó todas sus aguas frescas.</p>
+                )}
+                <div className={styles.actions}>
+                  <Button variant="outline" onClick={onClose} disabled={sending}>
+                    {info.drinksRemaining > 0 ? 'Cancelar' : 'Cerrar'}
+                  </Button>
+                  {info.drinksRemaining > 0 && !(info.isSelf && !info.selfRedeemAllowed) && (
+                    <Button onClick={() => void accept()} disabled={sending}>
+                      {sending ? 'Descontando…' : 'Aceptar'}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {info?.status === 'active' && replace && (

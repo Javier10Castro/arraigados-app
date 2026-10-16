@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, KeyRound, LogOut, QrCode, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ChevronRight, KeyRound, LogOut, QrCode, Search } from 'lucide-react';
 import Wordmark from '../components/Wordmark';
 import RingsMark from '../components/RingsMark';
 import Button from '../components/Button';
@@ -9,9 +9,11 @@ import Ambient from '../components/Ambient';
 import QrScanner from '../components/QrScanner';
 import ChurchCombobox from '../components/ChurchCombobox';
 import RedeemModal, { type PulseRef } from '../components/RedeemModal';
-import { parsePulseCode } from '../lib/pulseCode';
+import { parsePulseCode, parseStaffScan } from '../lib/pulseCode';
 import { api } from '../lib/api';
 import { useStaffSession } from '../context/StaffSession';
+import { useTeamNav } from '../context/useTeamNav';
+import { useOwnPulseLink } from '../context/useOwnPulseLink';
 import type { Church } from '../../shared/churches';
 import { pulseCodeLabel, type StaffHistoryRow, type StaffSearchResult } from '../../shared/api';
 import { shortDate } from '../admin/format';
@@ -35,6 +37,8 @@ const SHOW_MANUAL_CODE = false;
 export default function Staff() {
   const navigate = useNavigate();
   const { user, signOut } = useStaffSession();
+  const teamNav = useTeamNav();
+  const pulseLink = useOwnPulseLink();
   const [cameraOn, setCameraOn] = useState(false);
   const [panel, setPanel] = useState<'none' | 'search' | 'code'>('none');
   const [code, setCode] = useState('');
@@ -61,7 +65,7 @@ export default function Staff() {
 
   const onDecoded = (text: string) => {
     if (open) return;
-    const parsed = parsePulseCode(text);
+    const parsed = parseStaffScan(text);
     if (!parsed) {
       setError('Este QR no es de una pulsera de Arraigados.');
       return;
@@ -70,7 +74,7 @@ export default function Staff() {
     if (parsed.value === lastScan.current.value && now - lastScan.current.at < 3000) return;
     lastScan.current = { value: parsed.value, at: now };
     setError('');
-    setOpen(parsed.kind === 'token' ? { token: parsed.value } : { code: parsed.value });
+    setOpen(parsed.kind === 'token' ? { token: parsed.value } : parsed.kind === 'wallet' ? { wallet: parsed.value } : { code: parsed.value });
   };
 
   const closeModal = useCallback(() => {
@@ -222,6 +226,24 @@ export default function Staff() {
             </ul>
           )}
         </section>
+
+        {pulseLink.phase === 'linked' ? (
+          // Pulsera ya vinculada: el atajo de ida y vuelta (flechas) a la vista de visitante, en lugar de una etiqueta sin acción.
+          <button type="button" className={`${styles.account} ${styles.accountSwitch}`} onClick={() => void teamNav.toVisitor()}>
+            <ArrowLeftRight size={15} strokeWidth={2.2} aria-hidden="true" /> Modo visitante
+          </button>
+        ) : (
+          <>
+            {pulseLink.phase !== 'loading' && (
+              <button type="button" className={styles.account} onClick={() => navigate('/cuenta/pulsera')}>
+                Vincular pulsera{pulseLink.phase === 'pending' ? ' · pendiente' : pulseLink.phase === 'disabled' ? ' · revisar' : ''}
+              </button>
+            )}
+            <button type="button" className={styles.account} onClick={() => void teamNav.toVisitor()}>
+              Ver mi experiencia de visitante
+            </button>
+          </>
+        )}
 
         <button type="button" className={styles.account} onClick={() => navigate('/cuenta/contrasena')}>
           Cambiar mi contraseña

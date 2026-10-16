@@ -8,6 +8,7 @@ import ConfirmTypeModal from './ConfirmTypeModal';
 import { api } from '../lib/api';
 import UserAvatar from '../components/UserAvatar';
 import AvatarSetting from './AvatarSetting';
+import StaffPulseSection from './StaffPulseSection';
 import Pagination from '../components/Pagination';
 import { ListSkeleton } from '../components/Skeleton';
 import { usePagedList } from '../lib/usePagedList';
@@ -415,7 +416,7 @@ function EditUserModal({
       </label>
       <div className={s.f}>
         <span>Rol</span>
-        <RoleSegment value={role} onChange={setRole} disabled={isMe} />
+        <RoleSegment value={role} onChange={setRole} disabled={isMe || user.protected} />
         {isMe && <small className={s.small}>No puedes quitarte el rol de Admin a ti mismo.</small>}
       </div>
 
@@ -438,12 +439,16 @@ function EditUserModal({
         {busy ? 'Guardando…' : 'Guardar cambios'}
       </Button>
 
+      <StaffPulseSection userId={user.id} userActive={active} />
+
       <section className={s.section}>
         <h3 className="label">Contraseña</h3>
         {isMe ? (
           <Button variant="outline" onClick={() => navigate('/cuenta/contrasena')}>
             <KeyRound size={15} /> Cambiar mi contraseña
           </Button>
+        ) : user.protected ? (
+          <p className={s.hint}>Esta es la cuenta propietaria: solo ella puede cambiar su contraseña, su rol o su acceso.</p>
         ) : resetPw === null ? (
           <>
             <p className={s.hint}>Si olvidó su contraseña, genera una temporal nueva. Sus sesiones abiertas se cerrarán.</p>
@@ -478,7 +483,7 @@ function EditUserModal({
         )}
       </section>
 
-      {!isMe && (
+      {!isMe && !user.protected && (
         <section className={s.section}>
           <h3 className="label">Acceso</h3>
           <p className={s.hint}>

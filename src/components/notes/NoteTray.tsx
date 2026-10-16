@@ -26,6 +26,8 @@ type Props = {
   feed: NoteFeedItem[];
   /** 'like' = doble toque (solo da like) · 'toggle' = botón del visor. */
   onLike: (id: string, mode: 'like' | 'toggle') => void;
+  /** Vista de visitante del equipo: solo se leen las notas de los asistentes (sin nota propia ni me gusta). */
+  readOnly?: boolean;
 };
 
 /**
@@ -35,12 +37,16 @@ type Props = {
  */
 const DOUBLE_TAP_MS = 260;
 
-function FeedItem({ n, index, onOpen, onLike }: { n: NoteFeedItem; index: number; onOpen: () => void; onLike: Props['onLike'] }) {
+function FeedItem({ n, index, onOpen, onLike, readOnly }: { n: NoteFeedItem; index: number; onOpen: () => void; onLike: Props['onLike']; readOnly: boolean }) {
   const timer = useRef<number | undefined>(undefined);
   const [pop, setPop] = useState(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const tap = () => {
+    if (readOnly) {
+      onOpen();
+      return;
+    }
     if (timer.current !== undefined) {
       window.clearTimeout(timer.current);
       timer.current = undefined;
@@ -56,7 +62,7 @@ function FeedItem({ n, index, onOpen, onLike }: { n: NoteFeedItem; index: number
 
   return (
     <li className={styles.item} style={{ ['--i' as string]: Math.min(index + 1, 12) }}>
-      <button type="button" className={styles.hit} onClick={tap} aria-label={`Nota de ${n.firstName}: ${n.text}. Toca para verla completa; doble toque para dar me gusta`}>
+      <button type="button" className={styles.hit} onClick={tap} aria-label={readOnly ? `Nota de ${n.firstName}: ${n.text}. Toca para verla completa` : `Nota de ${n.firstName}: ${n.text}. Toca para verla completa; doble toque para dar me gusta`}>
         <span className={styles.bubbleSlot}><NoteBubble variant="filled" text={n.text} liked={n.likedByMe} /></span>
         <span className={styles.avatarBox}>
           <UserAvatar size={AVATAR} attendeeId={n.attendeeId} name={n.firstName} />
@@ -70,7 +76,7 @@ function FeedItem({ n, index, onOpen, onLike }: { n: NoteFeedItem; index: number
 
 const AVATAR = 78;
 
-export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus, feed, onLike }: Props) {
+export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus, feed, onLike, readOnly = false }: Props) {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const viewing = feed.find((n) => n.id === viewingId) ?? null;
   const rail = useRef<HTMLUListElement>(null);
@@ -113,6 +119,7 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
       </button>
 
       <ul className={styles.rail} ref={rail} onScroll={measure} tabIndex={0} aria-label="Notas de la comunidad">
+        {!readOnly && (
         <li className={styles.item} style={{ ['--i' as string]: 0 }}>
           <div className={styles.bubbleSlot} key={ownNote?.id ?? ownStatus}>{ownBubble}</div>
           <button type="button" className={styles.avatarBtn} onClick={onOpenOwn} tabIndex={-1} aria-hidden="true">
@@ -122,6 +129,7 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
             Tu nota
           </span>
         </li>
+        )}
 
         {feedStatus === 'loading' &&
           [1, 2, 3].map((i) => (
@@ -133,18 +141,18 @@ export default function NoteTray({ me, ownStatus, ownNote, onOpenOwn, feedStatus
           ))}
 
         {feed.map((n, i) => (
-          <FeedItem key={n.id} n={n} index={i} onOpen={() => setViewingId(n.id)} onLike={onLike} />
+          <FeedItem key={n.id} n={n} index={i} onOpen={() => setViewingId(n.id)} onLike={onLike} readOnly={readOnly} />
         ))}
 
         {feedStatus === 'error' && <li className={styles.hint}>No pudimos cargar las notas de los demás.</li>}
-        {feedStatus === 'ready' && feed.length === 0 && !ownNote && <li className={styles.hint}>Aún no hay notas de otros. ¡Sé el primero!</li>}
+        {feedStatus === 'ready' && feed.length === 0 && !ownNote && <li className={styles.hint}>{readOnly ? 'Aún no hay notas de asistentes.' : 'Aún no hay notas de otros. ¡Sé el primero!'}</li>}
       </ul>
 
       <button type="button" className={`${styles.nav} ${styles.next}`} aria-label="Ver más notas" tabIndex={edge.next ? 0 : -1} aria-hidden={!edge.next} onClick={() => scrollBy(1)}>
         <ChevronRight size={18} strokeWidth={2.6} />
       </button>
 
-      {viewing && <NoteViewer item={viewing} onClose={() => setViewingId(null)} onLike={onLike} />}
+      {viewing && <NoteViewer item={viewing} onClose={() => setViewingId(null)} onLike={onLike} readOnly={readOnly} />}
     </section>
   );
 }

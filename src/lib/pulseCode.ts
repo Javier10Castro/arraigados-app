@@ -41,3 +41,17 @@ export function parsePulseCode(raw: string): PulseCode | null {
 export function pulsePath(code: PulseCode) {
   return `/p/${encodeURIComponent(code.value)}`;
 }
+
+/**
+ * Código del QR de la credencial digital (Apple/Google Wallet): AR26W1.<id>.<firma>. Solo lo usa el escáner de Staff;
+ * Registro y vinculación NO lo aceptan (parsePulseCode lo rechaza). El servidor valida la firma y el estado de la pulsera.
+ */
+const WALLET_CODE = /^AR26W1\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{22}$/;
+
+export type StaffScan = PulseCode | { kind: 'wallet'; value: string };
+
+export function parseStaffScan(raw: string): StaffScan | null {
+  const text = raw.trim();
+  if (WALLET_CODE.test(text)) return { kind: 'wallet', value: text };
+  return parsePulseCode(text);
+}

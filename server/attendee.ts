@@ -44,6 +44,24 @@ async function findPulse(token: string): Promise<PulseRow | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * ¿La pulsera tiene un vínculo VIGENTE con una cuenta del equipo ("StaffPulse", migración 012)?
+ * Solo se consulta para una pulsera ACTIVE sin asistente (caso raro), así que no cuesta nada en el flujo normal.
+ * Sin la migración 012 la tabla no existe (42P01): entonces no puede haber vínculos y la respuesta es «no».
+ * Cualquier otro error se propaga (no se adivina). Una pulsera ACTIVE sin asistente y SIN vínculo (p. ej. su asistente
+ * se borró) NO se marca como reservada; igualmente nunca se puede reclamar (claimPulse solo actúa sobre UNCLAIMED).
+ */
+async function isLinkedToTeam(p: PulseRow): Promise<boolean> {
+  if (p.status !== 'ACTIVE' || p.attendeeId !== null) return false;
+  try {
+    const { rowCount } = await query(`SELECT 1 FROM "StaffPulse" WHERE "pulseId" = $1 AND "unlinkedAt" IS NULL`, [p.id]);
+    return (rowCount ?? 0) > 0;
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code === '42P01') return false;
+    throw err;
+  }
+}
+
 const pkg = (r: PulseRow): PackageSummary => ({ name: r.packageName, price: r.price, includedDrinks: r.includedDrinks });
 
 /** Estado público de una pulsera. No revela datos del asistente. */
@@ -51,6 +69,8 @@ export async function getPulseStatus(token: string): Promise<PulseStatusResponse
   const pulse = await findPulse(token);
   if (!pulse) return { status: 'not_found' };
   if (pulse.status === 'INVALIDATED') return { status: 'invalidated' };
+  // Reservada para una cuenta del equipo = vínculo vigente en "StaffPulse" (solo lo crea un Admin autorizado). No revela datos.
+  if (await isLinkedToTeam(pulse)) return { status: 'team' };
   if (pulse.status === 'ACTIVE') return { status: 'active' };
   return { status: 'unclaimed', package: pkg(pulse) };
 }
@@ -89,7 +109,7 @@ export async function claimPulse(input: ClaimRequest): Promise<ClaimResponse> {
   const pulse = await findPulse(String(input.token ?? ''));
   if (!pulse) return { outcome: 'not_found' };
   if (pulse.status === 'INVALIDATED') return { outcome: 'invalidated' };
-  if (pulse.status === 'ACTIVE') return { outcome: 'already_active' };
+  if (pulse.status === 'ACTIVE') return { outcome: (await isLinkedToTeam(pulse)) ? 'team' : 'already_active' };
 
   const fullName = String(input.fullName ?? '').trim();
   if (fullName.length < 2 || fullName.length > 120) throw new ValidationError('Escribe tu nombre completo.');
@@ -120,7 +140,7 @@ export async function claimPulse(input: ClaimRequest): Promise<ClaimResponse> {
   } catch (err) {
     if (err instanceof ClaimRaceError) {
       const fresh = await findPulse(input.token);
-      if (fresh?.status === 'ACTIVE') return { outcome: 'already_active' };
+      if (fresh?.status === 'ACTIVE') return { outcome: (await isLinkedToTeam(fresh)) ? 'team' : 'already_active' };
       if (fresh?.status === 'INVALIDATED') return { outcome: 'invalidated' };
       return { outcome: 'not_found' };
     }

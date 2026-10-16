@@ -72,6 +72,9 @@
 .moreRow em { font-style: normal; font-size: 11px; color: var(--text-3); }
 .moreSoon { opacity: 0.6; cursor: not-allowed; }
 .moreIcon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--morado); color: var(--crema); }
+.morePulseDone { cursor: default; opacity: 0.85; }
+.pulseBadge, .pulseBadgeOk { font-style: normal; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #f5a62326; color: #9a5b00; }
+.pulseBadgeOk { background: #1f9d5526; color: #14753f; }
 .danger { background: #d4353c1f; color: #c0262c; }
 
 @media (min-width: 1024px) {
@@ -103,6 +106,13 @@
   .staffLink { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 16px; border-radius: 25px; border: 1px solid #f2f7d750; font-size: 14px; }
   .staffLink span { flex: 1; }
   .staffLink:hover { background: #f2f7d718; }
+  button.staffLink { background: none; color: inherit; font: inherit; font-size: 14px; width: 100%; text-align: left; cursor: pointer; }
+  .staffLink + .staffLink { margin-top: 8px; }
+  .pulseDone { cursor: default; opacity: 0.9; }
+  .pulseDone:hover { background: transparent; }
+  .pulseDoneTitle { font-weight: 600; }
+  .staffLink .pulseBadge { flex: none; background: #f5a62340; color: #ffd9a0; }
+  .staffLink .pulseBadgeOk { flex: none; background: #1f9d5540; color: #b8f0cd; }
   .userCard { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 16px; border-top: 1px solid #f2f7d730; }
   .avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--crema); color: var(--morado); font: 700 16px var(--font-display); }
   .userInfo { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }

@@ -220,6 +220,7 @@ export default function Canjes() {
                       <td className={a.wide}>{shortDate(r.createdAt)}</td>
                       <td>
                         <span className={a.name}>{r.attendeeName}</span>
+                        {r.team && <span className={c.voidMeta}>Equipo{r.selfRedeem ? ' · autocanje' : ''}</span>}
                       </td>
                       <td className={a.wide}>{r.pulseLabel}</td>
                       <td className={d.kitCol}>

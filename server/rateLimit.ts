@@ -58,6 +58,7 @@ export const RULES = {
   redeem_pulse: rule('redeem_pulse', 15, 60, 'closed'), //        canjes sobre una misma pulsera
   staff_reassign: rule('staff_reassign', 20, 600, 'closed'),
   admin_heavy: rule('admin_heavy', 12, 600, 'closed'), //         exportar, PDF de lote, crear lotes
+  wallet: rule('wallet', 12, 600, 'open'), //                    credencial digital (Apple/Google Wallet): por pulsera (asistente) o por cuenta (equipo)
   admin_imgsearch: rule('admin_imgsearch', 30, 600, 'closed'), // buscar imagen en Openverse (servicio externo)
   admin_user_w: rule('admin_user_w', 20, 600, 'closed'), //       crear/editar/borrar cuentas y contraseñas
   admin_danger: rule('admin_danger', 20, 600, 'closed'), //       purgar auditoría, borrar lote, desvincular, anular

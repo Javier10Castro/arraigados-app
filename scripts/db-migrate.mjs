@@ -1,6 +1,12 @@
-// npm run db:migrar
+// npm run db:migrar                       -> aplica TODAS las migraciones de migrations/*.sql
+// npm run db:migrar -- --only 012_x.sql   -> aplica SOLO ese archivo (no toca las demás)
 //
 // Aplica en orden los archivos de `migrations/*.sql` contra Neon.
+//
+// MODO --only <archivo>: ejecuta únicamente la migración indicada (nombre exacto de un
+// archivo que exista en migrations/; sin rutas). Es el modo seguro cuando hay migraciones
+// que NO deben aplicarse todavía (p. ej. 011_rate_limit.sql). Con --only no se corre la
+// verificación de "Batch"."status", que solo aplica a la migración 001.
 //
 // La Etapa 3 tiene UNA migración (001_batch_status.sql, agrega
 // "Batch"."status"). Cada archivo está escrito con IF NOT EXISTS / DROP
@@ -17,9 +23,28 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'migrations');
 
-const files = readdirSync(dir)
+const all = readdirSync(dir)
   .filter((f) => f.endsWith('.sql'))
   .sort();
+
+// --only <archivo>: una sola migración, validada contra la lista real de migrations/.
+const args = process.argv.slice(2);
+const onlyIdx = args.indexOf('--only');
+let only = null;
+if (onlyIdx !== -1) {
+  only = args[onlyIdx + 1];
+  if (!only || only.startsWith('--')) {
+    console.error('\n✖ --only necesita el nombre exacto del archivo, p. ej.: --only 012_staff_pulse.sql\n');
+    process.exit(1);
+  }
+  if (!all.includes(only)) {
+    console.error(`\n✖ "${only}" no es un archivo de migrations/ (solo nombres exactos, sin rutas). Disponibles:`);
+    for (const f of all) console.error(`  - ${f}`);
+    console.error('');
+    process.exit(1);
+  }
+}
+const files = only ? [only] : all;
 
 if (!files.length) {
   console.log('\nNo hay migraciones en migrations/.\n');
@@ -29,7 +54,7 @@ if (!files.length) {
 const { client, host, database } = connect();
 
 console.log(`\nBase: ${database} @ ${host}`);
-console.log(`Migraciones a aplicar (${files.length}):`);
+console.log(only ? `MODO --only: se aplica SOLO 1 migración (las demás NO se tocan):` : `Migraciones a aplicar (${files.length}):`);
 for (const f of files) console.log(`  - ${f}`);
 console.log('');
 
@@ -60,8 +85,8 @@ try {
   await client.end();
 }
 
-// Verificación de solo lectura: el resultado real en la base.
-await (async () => {
+// Verificación de solo lectura: el resultado real en la base (solo aplica a la migración 001, modo completo).
+if (!only) await (async () => {
   const { client: c2 } = connect();
   await c2.connect();
   try {

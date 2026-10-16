@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, Unlink, X, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, ChevronLeft, CircleDashed, Copy, Download, FileText, Search, Unlink, UsersRound, X, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
@@ -45,10 +45,11 @@ import a from './Asistentes.module.css';
 /** Clase de cada columna de la tabla (las mismas para el esqueleto). */
 const PULSE_COL_CLASSES = [d.num, d.kitCol, undefined, undefined, d.codeCol, d.act, d.act];
 
-const STATUS_FILTERS: { value: PulseStatus | ''; label: string }[] = [
+const STATUS_FILTERS: { value: PulseStatus | 'TEAM' | ''; label: string }[] = [
   { value: '', label: 'Todas' },
   { value: 'UNCLAIMED', label: 'Sin reclamar' },
   { value: 'ACTIVE', label: 'Reclamadas' },
+  { value: 'TEAM', label: 'Equipo' },
   { value: 'INVALIDATED', label: 'Deshabilitadas' },
 ];
 
@@ -69,7 +70,7 @@ export default function LoteDetalle() {
   const pageSize = parsePageSize(params.get('porPagina'));
   const q = params.get('q') ?? '';
   const rawStatus = params.get('estado') ?? '';
-  const status = (STATUS_FILTERS.some((f) => f.value === rawStatus) ? rawStatus : '') as PulseStatus | '';
+  const status = (STATUS_FILTERS.some((f) => f.value === rawStatus) ? rawStatus : '') as PulseStatus | 'TEAM' | '';
 
   const [lote, setLote] = useState<AdminBatchDetail | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -226,6 +227,11 @@ export default function LoteDetalle() {
               <span className={s.pillActive}>
                 {lote.active} {lote.active === 1 ? 'reclamada' : 'reclamadas'}
               </span>
+              {lote.team > 0 && (
+                <span className={s.pillActive} title="Asignadas a cuentas Staff/Admin; no cuentan como asistentes">
+                  {lote.team} del equipo
+                </span>
+              )}
               {lote.invalidated > 0 && (
                 <span className={s.pillDead}>
                   {lote.invalidated} {lote.invalidated === 1 ? 'deshabilitada' : 'deshabilitadas'}
@@ -387,7 +393,7 @@ export default function LoteDetalle() {
                             <span className={d.kit}>{p.packageName}</span>
                           </td>
                           <td>
-                            <StatusChip status={p.status} />
+                            <StatusChip status={p.status} team={p.team} />
                           </td>
                           <td>
                             {p.attendeeName && p.status === 'INVALIDATED' ? (
@@ -399,6 +405,8 @@ export default function LoteDetalle() {
                                 <UserAvatar className={d.avatar} attendeeId={p.attendeeId} name={p.attendeeName} />
                                 <span className={d.userName}>{p.attendeeName}</span>
                               </span>
+                            ) : p.team ? (
+                              <span className={d.noUser}>Equipo · {p.teamMemberName ?? 'cuenta del equipo'}</span>
                             ) : (
                               <span className={d.noUser}>Sin asignar</span>
                             )}
@@ -468,7 +476,15 @@ export default function LoteDetalle() {
   );
 }
 
-function StatusChip({ status }: { status: PulseStatus }) {
+function StatusChip({ status, team = false }: { status: PulseStatus; team?: boolean }) {
+  if (team) {
+    return (
+      <span className={`${d.status} ${d.ps_active}`}>
+        <UsersRound size={14} strokeWidth={2.4} aria-hidden="true" />
+        Equipo
+      </span>
+    );
+  }
   const Icon = STATUS_ICON[status];
   return (
     <span className={`${d.status} ${d['ps_' + status.toLowerCase()]}`}>
