@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "db:conteo": "node scripts/db-conteo.mjs",
     "db:esquema": "node scripts/db-esquema.mjs",
+    "db:estado": "node scripts/db-estado-migraciones.mjs",
+    "db:corregir-correo": "node scripts/db-corregir-correo.mjs",
     "db:renombrar-kits": "node scripts/db-renombrar-kits.mjs",
     "db:migrar": "node scripts/db-migrate.mjs",
     "db:respaldo": "node scripts/db-respaldo.mjs",
