@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, QrCode, Utensils } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, Utensils } from 'lucide-react';
 import Wordmark from './Wordmark';
 import RingsMark from './RingsMark';
 import Ambient from './Ambient';
@@ -21,7 +21,8 @@ const quickLinks = [
   { to: '/comida', label: 'Comida', Icon: Utensils },
   // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   // { to: '/instantaneas', label: 'Instantáneas', Icon: Images },
-  { to: '/recursos', label: 'Recursos', Icon: QrCode },
+  // Recursos OCULTO (17 oct 2026). Para volver a mostrarlo: importar `QrCode` de lucide-react y descomentar:
+  // { to: '/recursos', label: 'Recursos', Icon: QrCode },
 ];
 
 // El visor del gafete (física, estilos, imágenes) se carga solo al abrirlo.

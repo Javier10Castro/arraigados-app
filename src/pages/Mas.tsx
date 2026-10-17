@@ -6,7 +6,6 @@ import {
   IdCard,
   LogOut,
   MapPin,
-  QrCode,
   UserRound,
   Utensils,
 } from 'lucide-react';
@@ -24,7 +23,8 @@ const links = [
   { to: '/comida', label: 'Comida', desc: 'Menú de ambas sedes', Icon: Utensils },
   // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   // { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },
-  { to: '/recursos', label: 'Recursos', desc: 'Fondos, stickers y presentaciones', Icon: QrCode },
+  // Recursos OCULTO (17 oct 2026). Para volver a mostrarlo: importar `QrCode` de lucide-react y descomentar:
+  // { to: '/recursos', label: 'Recursos', desc: 'Fondos, stickers y presentaciones', Icon: QrCode },
 ];
 
 export default function Mas() {
