@@ -8,7 +8,7 @@ import { parsePulseCode } from '../lib/pulseCode';
 import { pulseCodeLabel, type StaffPulseResponse } from '../../shared/api';
 import styles from './RedeemModal.module.css';
 
-export type PulseRef = { token: string } | { code: string } | { wallet: string };
+export type PulseRef = { token: string } | { code: string };
 
 /** Llave única por apertura del modal (no por clic): reintentos y doble toque nunca descuentan dos veces. */
 function newIdempotencyKey() {

@@ -183,3 +183,6 @@
 
 /* Esqueleto de carga: mismo espaciado que el tablero real. */
 .skeletonStack { display: flex; flex-direction: column; gap: 14px; }
+
+.tools { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 12px; }
+.toolLink { font-size: 13px; font-weight: 700; color: inherit; text-underline-offset: 3px; }

@@ -58,10 +58,12 @@ function teamMe(r: Extract<StaffMeResponse, { state: 'active' }>): MeResponse {
 type State =
   | { phase: 'none' }
   | { phase: 'loading'; token: string }
-  | { phase: 'ready'; token: string; me: MeResponse; team?: true }
+  | { phase: 'ready'; token: string; me: MeResponse; team?: true; qrToken?: string }
   | { phase: 'error'; token: string; message: string }
   /** Vista de visitante del equipo sin pulsera utilizable (sin asignar o deshabilitada). */
-  | { phase: 'team_blocked'; reason: 'none' | 'invalid' };
+  | { phase: 'team_blocked'; reason: 'none' | 'invalid' }
+  /** La sesión del equipo caducó estando en la vista de visitante: se pide iniciar sesión (no se finge que sigue vigente). */
+  | { phase: 'team_expired' };
 
 type PulseSessionValue = {
   state: State;
@@ -106,11 +108,11 @@ export function PulseSessionProvider({ children }: { children: ReactNode }) {
   });
 
   /** Carga la pulsera propia del equipo. Devuelve el resultado para quien la pidió. */
-  const loadTeam = useCallback(async (silent = false): Promise<'ok' | 'none' | 'invalid' | 'denied' | 'error'> => {
+  const loadTeam = useCallback(async (silent = false, markExpired = true): Promise<'ok' | 'none' | 'invalid' | 'denied' | 'error'> => {
     try {
       const r = await api.staffOwnPulse();
       if (r.state === 'active') {
-        setState({ phase: 'ready', token: '', me: teamMe(r), team: true });
+        setState({ phase: 'ready', token: '', me: teamMe(r), team: true, qrToken: r.qrToken });
         return 'ok';
       }
       setState({ phase: 'team_blocked', reason: r.state });
@@ -118,7 +120,7 @@ export function PulseSessionProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       if (err instanceof ApiRequestError && (err.httpStatus === 401 || err.httpStatus === 403)) {
         writeTeamFlag(false);
-        setState({ phase: 'none' });
+        setState(markExpired ? { phase: 'team_expired' } : { phase: 'none' }); // quien llama con markExpired=false navega a /login
         return 'denied';
       }
       if (!silent) setState({ phase: 'error', token: '', message: err instanceof Error ? err.message : 'No pudimos cargar tus datos.' });
@@ -167,7 +169,7 @@ export function PulseSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const isTeam = (state.phase === 'ready' && state.team === true) || state.phase === 'team_blocked';
-  const currentToken = state.phase === 'none' || state.phase === 'team_blocked' ? null : state.token;
+  const currentToken = state.phase === 'none' || state.phase === 'team_blocked' || state.phase === 'team_expired' ? null : state.token;
   const refresh = useCallback(async () => {
     if (isTeam) await loadTeam(true);
     else if (currentToken) await load(currentToken, true);
@@ -181,7 +183,7 @@ export function PulseSessionProvider({ children }: { children: ReactNode }) {
 
   const enterTeamView = useCallback(async () => {
     writeTeamFlag(true);
-    const r = await loadTeam();
+    const r = await loadTeam(false, false);
     if (r === 'denied' || r === 'error') writeTeamFlag(false);
     return r;
   }, [loadTeam]);

@@ -5,14 +5,18 @@ import { usePulseSession } from '../../context/PulseSession';
 
 /**
  * "Mi gafete": el mismo gafete de la animación de /homev2, pero a demanda (botón del menú lateral).
- * Se puede arrastrar, girar, descargar como imagen (frente + reverso) y agregar a Apple/Google Wallet (si el servidor lo tiene configurado). Se muestra sobre la pantalla actual.
+ * Se puede arrastrar, girar, descargar como imagen (frente + reverso). Se muestra sobre la pantalla actual.
  */
 export default function GafeteViewer({ onClose }: { onClose: () => void }) {
   const { me, state } = usePulseSession();
   const badge = useMemo(
-    () => (me && state.phase === 'ready' ? buildBadge(me, `${window.location.origin}/p/${state.token}`) : null),
+    () => {
+      if (!me || state.phase !== 'ready') return null;
+      const qr = state.team ? state.qrToken : state.token; // el equipo usa el QR de su pulsera asignada
+      return qr ? buildBadge(me, `${window.location.origin}/p/${qr}`) : null;
+    },
     [me, state],
   );
   if (!badge) return null;
-  return <IntroExperience badge={badge} mode="viewer" leaving={false} onFinish={onClose} walletToken={state.phase === 'ready' ? state.token : undefined} />;
+  return <IntroExperience badge={badge} mode="viewer" leaving={false} onFinish={onClose} />;
 }

@@ -47,7 +47,8 @@
 }
 
 /* Pressio (versión TEST, núm. 35): títulos grandes. OJO: no trae acentos ni ñ;
-   esas letras salen en la fuente de respaldo. */
+   esas letras salen en la fuente de respaldo. Los títulos que usan Pressio pasan por pressioText()
+   (src/lib/pressio.ts), que les quita las tildes; el resto del texto conserva sus acentos. */
 @font-face {
   font-family: 'Pressio';
   src: url('/rcs/fonts/PressioTEST-No.35.otf') format('opentype');

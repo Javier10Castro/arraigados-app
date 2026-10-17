@@ -526,6 +526,7 @@ describe('pulseras de equipo y autocanje · PostgreSQL real', { skip }, () => {
       assert.equal(r.state, 'active');
       assert.equal(r.drinksRemaining, 3);
       assert.equal(r.selfRedeemAllowed, false);
+      assert.equal(r.qrToken, p.token); // QR de «Mi gafete»: el de SU pulsera
       assert.equal((await call(staffMeFn, 'GET', '/api/staff-me')).status, 401);
     });
     it('cada cuenta solo ve SU pulsera (no acepta ids del cliente)', async () => {
@@ -533,6 +534,7 @@ describe('pulseras de equipo y autocanje · PostgreSQL real', { skip }, () => {
       await link('admin2', 'u_s1', p.code);
       const r = await J(await call(staffMeFn, 'GET', '/api/staff-me?userId=u_s1', { cookie: cookies.s2 }));
       assert.equal(r.state, 'none');
+      assert.equal(JSON.stringify(r).includes(p.token), false); // el token de la pulsera ajena no se filtra
     });
     it('el lookup del escáner marca isSelf/selfRedeemAllowed solo para el dueño de la pulsera', async () => {
       const p = await newPulse(1);

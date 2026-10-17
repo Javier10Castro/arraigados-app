@@ -158,16 +158,6 @@ Sirven la imagen (Netlify Blobs). Caché agresiva (la `key` cambia al reemplazar
 
 `Note` = `{ id, text, createdAt, expiresAt, visibility, likeCount, likedByMe }`.
 
-### Credencial digital — Apple / Google Wallet (🎫 o 👷)
-Detalle, seguridad y configuración en [`WALLET.md`](WALLET.md). Un solo archivo de funciones (`wallet.mts`). **Ninguna ruta acepta ids de pulsera/asistente/cuenta**: la identidad sale del token `x-pulse-token` (asistente) o de la cookie `arr_staff` (equipo con pulsera vinculada); si llegan ambos, manda el token.
-
-| Endpoint | Descripción |
-|---|---|
-| `GET /api/wallet/status` 🌐 | `{ apple: boolean, google: boolean }`: qué plataformas están configuradas (sin detalles). |
-| `POST /api/wallet/apple-ticket` | → `{ url: "/api/wallet/apple?t=…" }` boleto firmado de 90 s. `401` sin credencial / pulsera inválida o deshabilitada, `404 no_pulse` cuenta del equipo sin pulsera, `409 invalidated` pulsera del equipo deshabilitada, `503 not_configured`, `429`. |
-| `GET /api/wallet/apple?t=<boleto>` | El `.pkpass` (`application/vnd.apple.pkpass`). El boleto es la credencial; `401 ticket_expired` si falta, venció o se alteró; se relee el estado de la pulsera (deshabilitada/borrada → `401`). |
-| `POST /api/wallet/google` | → `{ url: "https://pay.google.com/gp/v/save/<JWT>" }` (JWT RS256 con clase y objeto genéricos). Mismos errores que el boleto. |
-
 ### Notificaciones (🎫)
 
 | Endpoint | Descripción |
@@ -194,8 +184,8 @@ Borra la cookie (no requiere sesión).
 ### `POST /api/auth/password` 👷
 `{ "currentPassword": "…", "newPassword": "…" }`. Cambia la contraseña, **cierra las demás sesiones** de la cuenta y emite una sesión nueva. Es lo único permitido con contraseña temporal. Límite por cuenta (contraseña actual incorrecta consume cupo; éxito y errores de validación lo devuelven); `429` al superarlo.
 
-### `GET /api/staff/pulse?token=<qrToken>` · `?code=AR26-XXXXX` · `?wallet=AR26W1.…` 👷
-Consulta una pulsera por QR, código manual o por el **QR de la credencial digital** (`wallet`: se valida la firma con `WALLET_QR_SECRET` y se lee el estado actual de la pulsera; firma inválida, secreto sin configurar o pulsera inexistente → `not_found`). Ver [`WALLET.md`](WALLET.md).
+### `GET /api/staff/pulse?token=<qrToken>` · `?code=AR26-XXXXX` 👷
+Consulta una pulsera por QR o por código manual.
 `status`: `not_found` · `unclaimed` (+`manualCode`, `packageName`) · `invalidated` · `team` (pulsera de una cuenta del equipo: solo nombre y rol) · `active` (+`attendee`, `package`, `drinksUsed`, `drinksRemaining`).
 
 ### `GET /api/staff/search?q=&churchId=` 👷
@@ -210,7 +200,7 @@ Límites: por Staff y por pulsera; `429` + `Retry-After`. El límite se evalúa 
 `outcome`: `ok` (+`drinksRemaining`) · `already_processed` (misma `idempotencyKey`: **no** vuelve a descontar) · `insufficient_balance` · `pulse_not_active` · `self_redeem_not_allowed` (la pulsera es de la propia cuenta que escanea y su autocanje no está permitido; no se descuenta nada). El canje queda a nombre del Staff de la **sesión**. Una pulsera de **equipo** (Staff/Admin) se canjea igual; el beneficiario es la cuenta dueña (`Redemption.beneficiaryUserId`), y es *autocanje* cuando coincide con quien canjea. Ver [`EQUIPO_PULSERA_AUTOCANJE.md`](EQUIPO_PULSERA_AUTOCANJE.md).
 
 ### `GET /api/staff-me` 👷
-La pulsera **propia** de la cuenta del equipo en sesión (vista de visitante). No acepta ningún id: el servidor usa la sesión. `{ "state": "none" }` · `{ "state": "invalid" }` (pulsera deshabilitada) · `{ "state": "active", member, package, drinksUsed, drinksRemaining, selfRedeemAllowed }`. No es credencial de asistente: `/api/me` y las rutas de asistente siguen exigiendo `x-pulse-token`.
+La pulsera **propia** de la cuenta del equipo en sesión (vista de visitante). No acepta ningún id: el servidor usa la sesión. `{ "state": "none" }` · `{ "state": "invalid" }` (pulsera deshabilitada) · `{ "state": "active", member, package, drinksUsed, drinksRemaining, selfRedeemAllowed, qrToken }` (`qrToken` = el de la pulsera propia, para el gafete). No es credencial de asistente: `/api/me` y las rutas de asistente siguen exigiendo `x-pulse-token`.
 
 ### `POST /api/staff/reassign` 👷
 Reemplaza una pulsera: `{ "manualCode": "<actual>", "newToken": "<qrToken de la nueva>" }`.
@@ -329,6 +319,21 @@ Presbiterios y zonas son **fijos** (no hay endpoints para modificarlos).
 | `GET /api/admin/selfredeem` | `{ settings:{STAFF,ADMIN}, isOwner, users? }`. `users` (con excepción y permiso efectivo) **solo** si la sesión es la cuenta propietaria. |
 | `PATCH /api/admin/selfredeem` `{ scope:'global', role, allowed }` | Interruptor global por rol (cualquier Admin). Auditoría `selfredeem.global_update`. |
 | `PATCH /api/admin/selfredeem` `{ scope:'user', userId, mode:'inherit'\|'allow'\|'deny' }` | Excepción individual. **Solo la cuenta propietaria** (`403` para cualquier otro). `inherit` borra la excepción. Auditoría `selfredeem.override_set`. |
+
+### 4.9c Descuentos del equipo (simulación) — migración 013
+- `GET /api/admin/team-discounts` (Admin) → `{ rules: {STAFF,ADMIN: {type:'percent'|'fixed', amount, active}}, canEdit, configAvailable, teamAvailable, totals, byKit[] }`. Importes en centavos de MXN; `amount` es % o pesos.
+- `PUT /api/admin/team-discounts` `{ role:'STAFF'|'ADMIN', type, amount }` → mismo cuerpo que el GET. **403** salvo para `javiercastro9912@gmail.com` y `perlarivera@redjuveniltijuana.com` (correo de la **sesión**, nunca del cuerpo). `400` si el valor es negativo, no numérico, con más de 2 decimales, >100 % o la migración 013 falta. Sin 012 el equipo cuenta 0 (`teamAvailable:false`).
+
+> **Autorización de Rifas (16 oct 2026):** `/api/admin/raffles*` (listar, crear, ver, editar, sortear) exige Admin **y** que el correo sea uno de `DISCOUNT_EDITORS` (`javiercastro9912@gmail.com`, `perlarivera@redjuveniltijuana.com`); otro Admin recibe **403**. `GET /api/auth/me` devuelve `canManageRaffles` (calculado en el servidor) solo para mostrar u ocultar el enlace «Rifas» del menú. El proyector `/api/raffle/:id` sigue siendo público.
+>
+> Notas con autor de equipo: migración 015 (ver `docs/PLAN_HABILITACION_NEON.md`).
+
+### 4.9d Rifas — migración 014
+- `GET /api/admin/raffles` · `POST /api/admin/raffles` `{ packageId, targetWinners, name? }` (una abierta por kit; la edición sube sola).
+- `GET /api/admin/raffles/:id` (con historial) · `PATCH` `{ targetWinners }` (solo abierta y por encima de los ya sorteados). No existe `DELETE`.
+- `POST /api/admin/raffles/:id/draw` `{ drawKey (8-64 [A-Za-z0-9_-]), extra? }` → un ganador, elegido en el servidor con `crypto.randomInt` dentro de una transacción con la rifa bloqueada. Mismo `drawKey` ⇒ mismo ganador (`replay:true`), nunca otro. `extra:true` solo con la rifa completada. `409` sin elegibles o rifa completada. Todo es solo Admin.
+- `POST /api/admin/raffles/:id/cancel` → cancela una rifa **abierta** (migración 016; estado `CANCELLED`, `cancelledAt`, `cancelledById`, auditoría `raffle.cancel`). No borra ganadores ni historial. Una rifa cancelada no se sortea, edita ni reabre (`409`). `409` si ya estaba cancelada o completada, o si falta la 016. Solo Admin autorizado (403 para otros). Tras cancelar se puede abrir otra edición del mismo kit.
+- `GET /api/raffle/:id` (**público**, solo lectura, con límite por IP) → `{ id, name, kitName, edition, status, targetWinners, winnersCount, remaining, winners:[{position,name,extra}] }`. Sin ids de personas, correos ni lista de participantes.
 
 ### 4.10 Usuarios
 

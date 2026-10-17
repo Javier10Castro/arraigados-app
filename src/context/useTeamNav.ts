@@ -12,6 +12,8 @@ export function useTeamNav() {
   const { user } = useStaffSession();
   return {
     isTeam,
+    /** Texto del botón para regresar según el rol real de la cuenta. */
+    backLabel: user?.role === 'ADMIN' ? 'Volver a Admin' : 'Volver a Staff',
     /** ¿Hay sesión del equipo con la que se pueda alternar? (el servidor la vuelve a validar al entrar). */
     canSwitch: user !== null && !user.mustChangePassword,
     /** Entra a la experiencia de visitante con la pulsera propia. */

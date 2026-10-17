@@ -1,0 +1,37 @@
+/* Admin → Descuentos del equipo. Tarjetas crema, igual que el resto del panel. */
+.back { margin: 0 0 8px; font-size: 13px; }
+.back a { color: inherit; }
+.lead { margin: 0 0 14px; font-size: 14px; line-height: 1.45; }
+.warn { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #fff3cd; color: #5c4400; font-size: 13px; }
+.rules { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 720px) { .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rule { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--r-card); background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); }
+.ruleHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ruleTitle { margin: 0; font: 700 18px/1.1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.on, .off { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.on { background: #d6f5e6; color: #0d6e48; }
+.off { background: rgba(62, 7, 166, 0.1); color: var(--text-2); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.segBtn, .segOn { padding: 9px 8px; border-radius: 12px; border: 1.6px solid rgba(62, 7, 166, 0.2); background: #fff; color: inherit; font: 600 13px var(--font-body, inherit); cursor: pointer; }
+.segOn { border-color: var(--morado); background: var(--morado); color: var(--crema); }
+.segBtn:disabled, .segOn:disabled { cursor: default; opacity: 0.7; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.field input { padding: 10px 12px; border-radius: 12px; border: 1.6px solid rgba(62, 7, 166, 0.25); background: #fff; font: 600 16px inherit; color: inherit; }
+.field input:disabled { background: rgba(255, 255, 255, 0.6); }
+.save { align-self: flex-start; padding: 9px 18px; border: 0; border-radius: 999px; background: var(--morado); color: var(--crema); font: 700 14px inherit; cursor: pointer; }
+.save:disabled { opacity: 0.45; cursor: default; }
+.hint { margin: 6px 0 0; font-size: 12.5px; color: var(--text-2); }
+.ok { margin: 0; font-size: 12.5px; font-weight: 600; color: #0d6e48; }
+.bad { margin: 0; font-size: 12.5px; font-weight: 600; color: #a1262c; }
+.h2 { margin: 22px 0 8px; font: 700 18px/1.1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 0; }
+.kpis > div { padding: 12px 14px; border-radius: 16px; background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); }
+.kpis dt { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.kpis dd { margin: 4px 0 0; font: 700 22px var(--font-display); }
+.kpis dd small { font: 500 12px inherit; color: var(--text-2); }
+.total { outline: 2px solid var(--morado); }
+.tableWrap { overflow-x: auto; border-radius: 16px; background: var(--crema); color: var(--morado-oscuro); box-shadow: var(--shadow-card); }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th, .table td { padding: 9px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid rgba(62, 7, 166, 0.1); }
+.table thead th { font-size: 12px; color: var(--text-2); }
+.table tbody th { text-align: left; }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import Cover from './pages/Cover';
 
@@ -28,6 +28,9 @@ import Asistentes from './admin/Asistentes';
 import AsistenteDetalle from './admin/AsistenteDetalle';
 import Canjes from './admin/Canjes';
 import Configuracion from './admin/Configuracion';
+import Descuentos from './admin/Descuentos';
+import Rifas from './admin/Rifas';
+import Rifa from './pages/Rifa';
 import Menu from './admin/Menu';
 import Merch from './admin/Merch';
 import Notas from './admin/Notas';
@@ -65,8 +68,22 @@ function RequireAttendee({ children }: { children: ReactNode }) {
   if (state.phase === 'none') return <Navigate to="/registro" replace />;
   // Vista de visitante del equipo sin pulsera asignada/utilizable (el servidor ya decidió; aquí solo se explica).
   if (state.phase === 'team_blocked') return <TeamViewGate reason={state.reason} />;
+  // La sesión del equipo caducó en la vista de visitante: nunca se muestra como vigente; se pide iniciar sesión.
+  if (state.phase === 'team_expired') return <TeamSessionExpired />;
   if (state.phase !== 'ready') return <SessionGate />;
   return <>{children}</>;
+}
+
+/** Sale de la vista de visitante caducada (conserva, si existe, la pulsera de asistente de este navegador) y manda a /login. */
+function TeamSessionExpired() {
+  const { leaveTeamView } = usePulseSession();
+  const navigate = useNavigate();
+  useEffect(() => {
+    leaveTeamView();
+    navigate('/login', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <SessionGate message="Tu sesión del equipo caducó. Inicia sesión de nuevo…" />;
 }
 
 /**
@@ -124,6 +141,10 @@ export default function App() {
         {/* La ruta de cada sección va ANTES del catch-all "/admin/*" de abajo;
             si se agrega después, React Router la manda a ADMIN_HOME en silencio. */}
         <Route path="/admin/dashboard" element={admin(<Dashboard />)} />
+        <Route path="/admin/descuentos" element={admin(<Descuentos />)} />
+        <Route path="/admin/rifas" element={admin(<Rifas />)} />
+        {/* Proyector de la rifa: pública (solo lectura; el id de la rifa es el enlace). */}
+        <Route path="/rifa/:id" element={<Rifa />} />
         {/* Ruta vieja (hasta el 2 oct 2026): por si queda algún enlace o marcador guardado. */}
         <Route path="/admin/resumen" element={admin(<Navigate to="/admin/dashboard" replace />)} />
         <Route path="/admin/lotes" element={admin(<Lotes />)} />

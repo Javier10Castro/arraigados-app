@@ -1,4 +1,5 @@
 import { NOW_UTC, newId, query, withTransaction } from './db';
+import { authorize } from './auth';
 import { getExtraBlocked } from './blockedWords';
 import { BLOCKED_LANGUAGE_MESSAGE, hasBlockedLanguage, type ExtraBlocked } from '../shared/moderation';
 import {
@@ -41,6 +42,53 @@ async function resolveActiveAttendeeId(token: string): Promise<string | null> {
     [token],
   );
   return rows[0]?.attendeeId ?? null;
+}
+
+/**
+ * Quién escribe / da like. Asistente: por el token de su pulsera. Equipo (Staff/Admin): por la cookie de la sesión y con
+ * una pulsera ACTIVA vinculada a su cuenta ("StaffPulse"); se guarda en "userId" (migración 015). `col` solo toma estos dos
+ * valores fijos, por eso es seguro ponerlo en el SQL.
+ */
+type Actor = { col: 'attendeeId' | 'userId'; id: string };
+
+let teamNotesCache: { ok: boolean; at: number } | null = null;
+/** ¿Está aplicada la migración 015? Un «sí» se recuerda; un «no» se vuelve a revisar cada 30 s. */
+export async function hasTeamNotes(): Promise<boolean> {
+  if (teamNotesCache && (teamNotesCache.ok || Date.now() - teamNotesCache.at < 30_000)) return teamNotesCache.ok;
+  const { rows } = await query(
+    `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Note' AND column_name = 'userId'`,
+  );
+  teamNotesCache = { ok: rows.length > 0, at: Date.now() };
+  return teamNotesCache.ok;
+}
+export const resetTeamNotesCacheForTests = () => {
+  teamNotesCache = null;
+};
+
+/** Actor de equipo para una cuenta YA autenticada (authorize), o null si no tiene pulsera activa o falta la 015. */
+export async function teamActorFor(userId: string): Promise<Actor | null> {
+  if (!(await hasTeamNotes())) return null;
+  try {
+    const { rows } = await query(
+      `SELECT 1 FROM "StaffPulse" sp JOIN "Pulse" p ON p.id = sp."pulseId" AND p.status = 'ACTIVE'
+        WHERE sp."userId" = $1 AND sp."unlinkedAt" IS NULL`,
+      [userId],
+    );
+    return rows.length ? { col: 'userId', id: userId } : null;
+  } catch (err) {
+    if ((err as { code?: string })?.code === '42P01') return null; // sin migración 012
+    throw err;
+  }
+}
+
+async function resolveActor(token: string, req?: Request): Promise<Actor | null> {
+  if (token) {
+    const id = await resolveActiveAttendeeId(token);
+    return id ? { col: 'attendeeId', id } : null;
+  }
+  if (!req) return null;
+  const auth = await authorize(req); // cookie del equipo; sin sesión válida no hay actor
+  return 'response' in auth ? null : teamActorFor(auth.user.id);
 }
 
 type NoteRow = {
@@ -92,9 +140,15 @@ function cleanNoteText(raw: unknown, extra?: ExtraBlocked): string {
 export async function createNote(
   token: string,
   rawText: unknown,
+  req?: Request,
 ): Promise<{ ok: true; note: Note } | { ok: false; status: 'not_found' }> {
-  const attendeeId = await resolveActiveAttendeeId(token);
-  if (!attendeeId) return { ok: false, status: 'not_found' };
+  const actor = await resolveActor(token, req);
+  if (!actor) {
+    if (!token && req && !(await hasTeamNotes())) {
+      throw new NoteValidationError('Publicar notas con la cuenta del equipo aún no está habilitado.');
+    }
+    return { ok: false, status: 'not_found' };
+  }
 
   const text = cleanNoteText(rawText, await getExtraBlocked());
   const id = newId();
@@ -104,16 +158,16 @@ export async function createNote(
   // nota activa" a la vez y dejar DOS notas vigentes. La CTE corre en una
   // sentencia posterior al candado, así que ya ve lo que la primera confirmó.
   const rows = await withTransaction(async (tx) => {
-    await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`note:${attendeeId}`]);
+    await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`note:${actor.id}`]);
     const res = await tx.query<NoteRow>(
       `WITH retired AS (
          UPDATE "Note" SET "expiresAt" = ${NOW_UTC}
-          WHERE "attendeeId" = $2 AND "expiresAt" > ${NOW_UTC}
+          WHERE "${actor.col}" = $2 AND "expiresAt" > ${NOW_UTC}
        )
-       INSERT INTO "Note" (id, "attendeeId", "text", "visibility", "createdAt", "expiresAt")
+       INSERT INTO "Note" (id, "${actor.col}", "text", "visibility", "createdAt", "expiresAt")
        VALUES ($1, $2, $3, 'PUBLIC', ${NOW_UTC}, ${NOW_UTC} + INTERVAL '24 hours')
        RETURNING id, "text", "visibility", "createdAt", "expiresAt", 0 AS "likeCount", false AS "likedByMe"`,
-      [id, attendeeId, text],
+      [id, actor.id, text],
     );
     return res.rows;
   });
@@ -129,14 +183,15 @@ export async function createNote(
  */
 export async function removeMyActiveNote(
   token: string,
+  req?: Request,
 ): Promise<{ ok: true; removed: number } | { ok: false; status: 'not_found' }> {
-  const attendeeId = await resolveActiveAttendeeId(token);
-  if (!attendeeId) return { ok: false, status: 'not_found' };
+  const actor = await resolveActor(token, req);
+  if (!actor) return { ok: false, status: 'not_found' };
 
   const res = await query(
     `UPDATE "Note" SET "expiresAt" = ${NOW_UTC}
-      WHERE "attendeeId" = $1 AND "expiresAt" > ${NOW_UTC}`,
-    [attendeeId],
+      WHERE "${actor.col}" = $1 AND "expiresAt" > ${NOW_UTC}`,
+    [actor.id],
   );
   return { ok: true, removed: res.rowCount ?? 0 };
 }
@@ -146,20 +201,25 @@ export async function removeMyActiveNote(
  * estado de visibilidad, no de borrado; esta vista es "Mis notas", no el
  * feed público). Más reciente primero.
  */
-export async function listMyNotes(token: string): Promise<{ ok: true; notes: Note[] } | { ok: false; status: 'not_found' }> {
-  const attendeeId = await resolveActiveAttendeeId(token);
-  if (!attendeeId) return { ok: false, status: 'not_found' };
+export async function listMyNotes(token: string, req?: Request): Promise<{ ok: true; notes: Note[] } | { ok: false; status: 'not_found' }> {
+  const actor = await resolveActor(token, req);
+  if (!actor) {
+    // Sesión del EQUIPO válida pero sin actor de notas (falta la 015 o la 012, o no tiene pulsera activa): no tiene notas
+    // propias, no es un error. Sin sesión válida o con token de asistente inválido sigue siendo 401.
+    if (!token && req && !('response' in (await authorize(req)))) return { ok: true, notes: [] };
+    return { ok: false, status: 'not_found' };
+  }
 
   const { rows } = await query<NoteRow>(
     `SELECT n.id, n."text", n."visibility", n."createdAt", n."expiresAt",
             COUNT(l.id) AS "likeCount",
-            BOOL_OR(l."attendeeId" = $1) AS "likedByMe"
+            BOOL_OR(l."${actor.col}" = $1) AS "likedByMe"
        FROM "Note" n
        LEFT JOIN "NoteLike" l ON l."noteId" = n.id
-      WHERE n."attendeeId" = $1
+      WHERE n."${actor.col}" = $1
       GROUP BY n.id
       ORDER BY n."createdAt" DESC`,
-    [attendeeId],
+    [actor.id],
   );
   return { ok: true, notes: rows.map(toNote) };
 }
@@ -174,30 +234,35 @@ const FEED_MAX = 40;
 export async function listNotesFeed(token: string): Promise<{ ok: true; notes: NoteFeedItem[] } | { ok: false; status: 'not_found' }> {
   const attendeeId = await resolveActiveAttendeeId(token);
   if (!attendeeId) return { ok: false, status: 'not_found' };
-  return { ok: true, notes: await feedNotes(attendeeId) };
+  return { ok: true, notes: await feedNotes({ col: 'attendeeId', id: attendeeId }) };
 }
 
 /**
- * Carrusel para la vista de visitante de una cuenta del EQUIPO (solo lectura): las mismas notas públicas y vigentes, sin
- * excluir ninguna (el equipo no tiene nota propia) y con `likedByMe` siempre falso. La autorización (cookie del equipo) la
- * hace quien llama; aquí no hay identidad de asistente.
+ * Carrusel para la vista de visitante de una cuenta del EQUIPO. La autorización (cookie del equipo) la hace quien llama.
+ * Con pulsera activa y migración 015 (`userId`) es igual que para un asistente (su nota propia no entra; `likedByMe`
+ * real); si no, es solo lectura: todas las notas y `likedByMe` falso.
  */
-export async function listNotesFeedForTeam(): Promise<NoteFeedItem[]> {
-  return feedNotes(null);
+export async function listNotesFeedForTeam(userId?: string): Promise<NoteFeedItem[]> {
+  return feedNotes(userId ? await teamActorFor(userId) : null);
 }
 
-async function feedNotes(attendeeId: string | null): Promise<NoteFeedItem[]> {
+async function feedNotes(actor: Actor | null): Promise<NoteFeedItem[]> {
+  const t = await hasTeamNotes(); // sin la 015 las tablas no tienen "userId": se usa la consulta de siempre
+  const author = t
+    ? `LEFT JOIN "Attendee" a ON a.id = n."attendeeId" LEFT JOIN "User" u ON u.id = n."userId"`
+    : `JOIN "Attendee" a ON a.id = n."attendeeId"`;
   const { rows } = await query<{ id: string; text: string; createdAt: string; expiresAt: string; attendeeId: string; fullName: string; likeCount: number; likedByMe: boolean }>(
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
-            a.id AS "attendeeId", a."fullName",
+            ${t ? `COALESCE(n."attendeeId", n."userId")` : `n."attendeeId"`} AS "attendeeId",
+            ${t ? `COALESCE(a."fullName", u.name)` : `a."fullName"`} AS "fullName",
             0 AS "likeCount", -- el contador es SOLO del dueño de la nota: en las notas de otros nunca se envía
-            EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."attendeeId" = $1::text) AS "likedByMe"
+            ${actor ? `EXISTS (SELECT 1 FROM "NoteLike" l WHERE l."noteId" = n.id AND l."${actor.col}" = $1::text)` : 'false'} AS "likedByMe"
        FROM "Note" n
-       JOIN "Attendee" a ON a.id = n."attendeeId"
-      WHERE n."visibility" = 'PUBLIC' AND n."expiresAt" > ${NOW_UTC} AND ($1::text IS NULL OR n."attendeeId" <> $1::text)
+       ${author}
+      WHERE n."visibility" = 'PUBLIC' AND n."expiresAt" > ${NOW_UTC} ${actor ? `AND n."${actor.col}" IS DISTINCT FROM $1::text` : ''}
       ORDER BY n."createdAt" DESC
       LIMIT ${FEED_MAX * 2}`,
-    [attendeeId],
+    actor ? [actor.id] : [],
   );
   const extra = await getExtraBlocked();
   const notes = rows
@@ -225,25 +290,26 @@ async function feedNotes(attendeeId: string | null): Promise<NoteFeedItem[]> {
 export async function toggleNoteLike(
   token: string,
   noteId: string,
+  req?: Request,
 ): Promise<{ ok: true; liked: boolean; likeCount: number } | { ok: false; reason: 'invalid_session' | 'note_not_found' | 'own_note' }> {
-  const attendeeId = await resolveActiveAttendeeId(token);
-  if (!attendeeId) return { ok: false, reason: 'invalid_session' };
+  const actor = await resolveActor(token, req);
+  if (!actor) return { ok: false, reason: 'invalid_session' };
 
-  const note = await query<{ attendeeId: string }>(
-    `SELECT "attendeeId" FROM "Note" WHERE id = $1 AND "visibility" = 'PUBLIC' AND "expiresAt" > ${NOW_UTC}`,
+  const note = await query<{ attendeeId: string | null; userId?: string | null }>(
+    `SELECT "attendeeId"${actor.col === 'userId' ? ', "userId"' : ''} FROM "Note" WHERE id = $1 AND "visibility" = 'PUBLIC' AND "expiresAt" > ${NOW_UTC}`,
     [noteId],
   );
   if (note.rowCount === 0) return { ok: false, reason: 'note_not_found' };
-  if (note.rows[0].attendeeId === attendeeId) return { ok: false, reason: 'own_note' };
+  if (note.rows[0][actor.col] === actor.id) return { ok: false, reason: 'own_note' };
 
-  const removed = await query(`DELETE FROM "NoteLike" WHERE "noteId" = $1 AND "attendeeId" = $2`, [noteId, attendeeId]);
+  const removed = await query(`DELETE FROM "NoteLike" WHERE "noteId" = $1 AND "${actor.col}" = $2`, [noteId, actor.id]);
   let liked = false;
   if (removed.rowCount === 0) {
     await query(
-      `INSERT INTO "NoteLike" (id, "noteId", "attendeeId", "createdAt")
+      `INSERT INTO "NoteLike" (id, "noteId", "${actor.col}", "createdAt")
        VALUES ($1, $2, $3, ${NOW_UTC})
-       ON CONFLICT ("noteId", "attendeeId") DO NOTHING`,
-      [newId(), noteId, attendeeId],
+       ON CONFLICT DO NOTHING`,
+      [newId(), noteId, actor.id],
     );
     liked = true;
   }
@@ -255,18 +321,20 @@ export async function toggleNoteLike(
 /** Quién le dio like a la nota vigente del dueño del token (solo la suya). */
 export async function listMyNoteLikers(
   token: string,
+  req?: Request,
 ): Promise<{ ok: true; likers: { attendeeId: string; firstName: string }[] } | { ok: false }> {
-  const attendeeId = await resolveActiveAttendeeId(token);
-  if (!attendeeId) return { ok: false };
+  const actor = await resolveActor(token, req);
+  if (!actor) return { ok: false };
+  const t = await hasTeamNotes();
   const { rows } = await query<{ attendeeId: string; fullName: string }>(
-    `SELECT a.id AS "attendeeId", a."fullName"
+    `SELECT ${t ? `COALESCE(l."attendeeId", l."userId")` : 'a.id'} AS "attendeeId", ${t ? `COALESCE(a."fullName", u.name)` : 'a."fullName"'} AS "fullName"
        FROM "Note" n
        JOIN "NoteLike" l ON l."noteId" = n.id
-       JOIN "Attendee" a ON a.id = l."attendeeId"
-      WHERE n."attendeeId" = $1 AND n."expiresAt" > ${NOW_UTC}
+       ${t ? `LEFT JOIN "Attendee" a ON a.id = l."attendeeId" LEFT JOIN "User" u ON u.id = l."userId"` : 'JOIN "Attendee" a ON a.id = l."attendeeId"'}
+      WHERE n."${actor.col}" = $1 AND n."expiresAt" > ${NOW_UTC}
       ORDER BY l."createdAt" DESC
       LIMIT 50`,
-    [attendeeId],
+    [actor.id],
   );
   return { ok: true, likers: rows.map((r) => ({ attendeeId: r.attendeeId, firstName: r.fullName.trim().split(/\s+/)[0] ?? '' })) };
 }
@@ -295,6 +363,8 @@ type AdminNoteDbRow = {
 };
 
 export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesResponse> {
+  const t = await hasTeamNotes(); // con la 015 hay notas del equipo (sin asistente): se unen con LEFT JOIN
+  const J = t ? 'LEFT JOIN' : 'JOIN';
   const params: unknown[] = [];
   const where: string[] = [];
   const add = (sql: (n: number) => string, value: unknown) => {
@@ -304,7 +374,7 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
 
   const words = String(f.q ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
   for (const w of words) {
-    add((n) => `(${unaccent('a."fullName"')} LIKE ${unaccent(`$${n}`)} OR ${unaccent('n."text"')} LIKE ${unaccent(`$${n}`)})`, `%${w}%`);
+    add((n) => `(${unaccent(t ? 'COALESCE(a."fullName", u.name)' : 'a."fullName"')} LIKE ${unaccent(`$${n}`)} OR ${unaccent('n."text"')} LIKE ${unaccent(`$${n}`)})`, `%${w}%`);
   }
   if (f.status === 'ACTIVA') where.push(`n."expiresAt" > ${NOW_UTC}`);
   if (f.status === 'VENCIDA') where.push(`n."expiresAt" <= ${NOW_UTC}`);
@@ -318,10 +388,11 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
 
   const from = `
     FROM "Note" n
-    JOIN "Attendee" a ON a.id = n."attendeeId"
-    JOIN "Church" c ON c.id = a."churchId"
-    JOIN "Presbytery" pr ON pr.id = c."presbyteryId"
-    JOIN "Zone" z ON z.id = pr."zoneId"
+    ${J} "Attendee" a ON a.id = n."attendeeId"
+    ${t ? 'LEFT JOIN "User" u ON u.id = n."userId"' : ''}
+    ${J} "Church" c ON c.id = a."churchId"
+    ${J} "Presbytery" pr ON pr.id = c."presbyteryId"
+    ${J} "Zone" z ON z.id = pr."zoneId"
     LEFT JOIN LATERAL (SELECT count(*)::int AS likes FROM "NoteLike" l WHERE l."noteId" = n.id) lk ON true
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`;
 
@@ -336,7 +407,9 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
     `SELECT n.id, n."text", ${iso('n."createdAt"')} AS "createdAt", ${iso('n."expiresAt"')} AS "expiresAt",
             (n."expiresAt" > ${NOW_UTC}) AS active, lk.likes AS "likeCount",
             EXISTS (SELECT 1 FROM "AuditLog" al WHERE al."entityType" = 'Note' AND al."entityId" = n.id AND al.action = 'note.retire') AS retired,
-            a.id AS "attendeeId", a."fullName" AS "attendeeName", c.name AS "churchName", z.name AS "zoneName"
+            ${t ? `COALESCE(n."attendeeId", n."userId")` : 'a.id'} AS "attendeeId",
+            ${t ? `COALESCE(a."fullName", u.name)` : 'a."fullName"'} AS "attendeeName",
+            ${t ? `COALESCE(c.name, 'Equipo')` : 'c.name'} AS "churchName", ${t ? `COALESCE(z.name, 'Equipo')` : 'z.name'} AS "zoneName"
        ${from}
       ORDER BY ${order}
       LIMIT ${pageSize} OFFSET ${page * pageSize}`,
@@ -348,7 +421,7 @@ export async function listNotesAdmin(f: AdminNoteFilters): Promise<AdminNotesRes
       `SELECT count(*)::int AS total,
               (count(*) FILTER (WHERE "expiresAt" > ${NOW_UTC}))::int AS active,
               (count(*) FILTER (WHERE "expiresAt" <= ${NOW_UTC}))::int AS expired,
-              count(DISTINCT "attendeeId")::int AS authors,
+              count(DISTINCT ${t ? 'COALESCE("attendeeId", "userId")' : '"attendeeId"'})::int AS authors,
               (SELECT count(*)::int FROM "NoteLike") AS likes
          FROM "Note"`,
     )
@@ -390,8 +463,9 @@ export async function retireNoteAsAdmin(
   if (reason.length > RETIRE_REASON_MAX) throw new NoteRetireError(`El motivo no puede pasar de ${RETIRE_REASON_MAX} caracteres.`);
 
   return withTransaction(async (tx) => {
-    const found = await tx.query<{ attendeeId: string; text: string; active: boolean }>(
-      `SELECT "attendeeId", "text", ("expiresAt" > ${NOW_UTC}) AS active FROM "Note" WHERE id = $1 FOR UPDATE`,
+    const t = await hasTeamNotes();
+    const found = await tx.query<{ attendeeId: string | null; userId?: string | null; text: string; active: boolean }>(
+      `SELECT "attendeeId"${t ? ', "userId"' : ''}, "text", ("expiresAt" > ${NOW_UTC}) AS active FROM "Note" WHERE id = $1 FOR UPDATE`,
       [noteId],
     );
     const note = found.rows[0];
@@ -399,7 +473,9 @@ export async function retireNoteAsAdmin(
     if (!note.active) return { outcome: 'already_expired' as const };
 
     await tx.query(`UPDATE "Note" SET "expiresAt" = ${NOW_UTC} WHERE id = $1`, [noteId]);
-    const author = (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [note.attendeeId])).rows[0];
+    const author = note.attendeeId
+      ? (await tx.query<{ fullName: string }>(`SELECT "fullName" FROM "Attendee" WHERE id = $1`, [note.attendeeId])).rows[0]
+      : (await tx.query<{ fullName: string }>(`SELECT name AS "fullName" FROM "User" WHERE id = $1`, [note.userId])).rows[0];
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'note.retire', 'Note', $3, $4::jsonb, ${NOW_UTC})`,

@@ -20,7 +20,7 @@ export default handler(async (req: Request, context: Context) =>
     if (tokenHeader === null || tokenHeader === '') {
       const auth = await authorize(req);
       if ('response' in auth) return auth.response;
-      return json({ notes: await listNotesFeedForTeam() });
+      return json({ notes: await listNotesFeedForTeam(auth.user.id) });
     }
     const result = await listNotesFeed(tokenHeader);
     if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });

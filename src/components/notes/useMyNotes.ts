@@ -20,14 +20,14 @@ export type NotesStatus = 'loading' | 'ready' | 'error';
 /** Mayor retardo que acepta setTimeout (~24.8 días). */
 const MAX_TIMEOUT = 2_147_483_647;
 
-export function useMyNotes(token: string) {
+export function useMyNotes(token: string, team = false) {
   const [status, setStatus] = useState<NotesStatus>('loading');
   const [notes, setNotes] = useState<Note[]>([]);
   const [error, setError] = useState('');
   const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token && !team) return;
     setStatus('loading');
     try {
       const r = await api.myNotes(token);
@@ -38,7 +38,7 @@ export function useMyNotes(token: string) {
       setError(e instanceof Error ? e.message : 'No pudimos cargar tus notas.');
       setStatus('error');
     }
-  }, [token]);
+  }, [token, team]);
 
   useEffect(() => {
     void load();
@@ -46,12 +46,12 @@ export function useMyNotes(token: string) {
 
   // Los "me gusta" de tu nota llegan con un refresco silencioso (sin parpadeo) cada minuto.
   useEffect(() => {
-    if (!token) return;
+    if (!token && !team) return;
     const id = window.setInterval(() => {
       api.myNotes(token).then((r) => setNotes(r.notes)).catch(() => {});
     }, 60_000);
     return () => window.clearInterval(id);
-  }, [token]);
+  }, [token, team]);
 
   // La burbuja desaparece sola cuando la nota activa expira (sin recargar).
   const active = useMemo(

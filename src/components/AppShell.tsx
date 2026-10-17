@@ -67,15 +67,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        {team.isTeam ? (
+        <button type="button" className={styles.gafeteBtn} onClick={() => setGafeteOpen(true)}>
+          <IdCard size={19} strokeWidth={2.1} />
+          <span>Mi gafete</span>
+        </button>
+        {team.isTeam && (
           <button type="button" className={styles.gafeteBtn} onClick={team.toTeam}>
             <ArrowLeftRight size={19} strokeWidth={2.1} />
-            <span>Volver a mi equipo</span>
-          </button>
-        ) : (
-          <button type="button" className={styles.gafeteBtn} onClick={() => setGafeteOpen(true)}>
-            <IdCard size={19} strokeWidth={2.1} />
-            <span>Mi gafete</span>
+            <span>{team.backLabel}</span>
           </button>
         )}
 
@@ -106,7 +105,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <span>{me?.package.name ?? ''}</span>
           </div>
           {team.isTeam ? (
-            <button type="button" className={styles.logout} aria-label="Volver a mi equipo" title="Volver a mi equipo" onClick={team.toTeam}>
+            <button type="button" className={styles.logout} aria-label={team.backLabel} title={team.backLabel} onClick={team.toTeam}>
               <ArrowLeftRight size={16} strokeWidth={2.2} />
             </button>
           ) : (

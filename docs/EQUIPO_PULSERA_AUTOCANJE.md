@@ -44,7 +44,7 @@ Orden obligatorio: **migración primero, código después** (el código nuevo co
 Es repetible (si ya se revirtió no falla). Probado en PostgreSQL local desechable con el esquema real de Neon y pulseras solo-QR (ver `tests/team-pulse`, bloque «migración 012»); **no** se ha probado contra Neon.
 
 ## Pruebas
-`npm run test:team` (124 en total: 77 de pulseras de equipo/autocanje y 47 de la credencial digital, ver `WALLET.md`) y `npm run test:ratelimit` (67, ahora con la 012 aplicada en su base). Requieren `TEST_DATABASE_URL` local `arraigados_test*`.
+`npm run test:team` (pulseras de equipo/autocanje, notas, descuentos y rifas) y `npm run test:ratelimit` (67, ahora con la 012 aplicada en su base). Requieren `TEST_DATABASE_URL` local `arraigados_test*`.
 `node scripts/test-team.mjs --sin-011` repite las 124 con la base creada **sin** la migración 011: la 012 y el código no dependen de ella (el limitador queda inactivo y registra «[ratelimit] … no existe», sin fallar).
 
 ### Esquema de las pruebas (v5)
@@ -67,7 +67,10 @@ La pantalla pasa a «Pulsera vinculada» con el paquete y las aguas restantes y 
 - Por dentro: `useTeamNav().toVisitor()` → `GET /api/staff-me` con la cookie del equipo. La vista es solo navegación; el servidor decide los permisos en cada llamada. En esta vista las **notas de los asistentes se ven en solo lectura** (`GET /api/notes/feed` sin `x-pulse-token` y con cookie del equipo; sin nota propia ni «me gusta»).
 
 ### 4. Regresar al panel de gestión
-- Desde la vista visitante («Volver a mi equipo» en la barra de la vista) y desde `/cuenta/pulsera` («Volver a gestión»): Admin → `/admin`, Staff → `/staff` (según el rol real de la sesión, `homeForRole`).
+- Desde la vista visitante, con el **mismo botón de las dos flechas** que ya existía (sin botón duplicado): el texto depende del rol real de la sesión — **«Volver a Admin»** (→ `/admin`) o **«Volver a Staff»** (→ `/staff`) (`useTeamNav().backLabel`, `homeForRole`). También desde `/cuenta/pulsera` («Volver a gestión»). La pantalla de «pulsera sin vincular / deshabilitada» (`TeamViewGate`) conserva su botón «Volver a mi equipo».
+- **Home de visitante = Home del asistente** (mismo `HomeV2` y misma animación de bienvenida). Se agrega «Mi gafete» a la navegación (barra, barra lateral y «Más») también para el equipo; el visor del gafete conserva girar, descargar imagen, QR y. **No** hay «Mi perfil» para el equipo.
+- El QR del gafete del equipo es el de **su propia** pulsera: `GET /api/staff-me` devuelve `qrToken` (solo de la pulsera de la sesión; el servidor no acepta ningún id).
+- **Sesión del equipo vencida** (cookie caducada o cuenta desactivada) mientras se está en la vista de visitante: la app limpia la bandera de visitante y manda a `/login` («Tu sesión del equipo caducó…»). Es solo navegación: no otorga privilegios; cada llamada se autoriza en el servidor.
 
 ### 5. Pulsera ya vinculada, deshabilitada, inválida o ajena
 | Situación | Resultado |
@@ -114,7 +117,7 @@ Nada de esto toca Neon. Usa una base LOCAL desechable; el script se niega a corr
 3. Repite con `AR26-M3M3M` (`/p/MANUALPULSETOK02`) para «Admin manual» (Admin ↔ Admin también cuenta como equipo) si quieres probar a un Admin.
 
 ### 2. Experiencia de visitante
-1. Entra como **manual-staff** → `/staff` → **Ver mi experiencia de visitante**. Esperado: ves la vista de visitante con su pulsera (bebidas restantes del paquete); ves el carrusel de **notas** de los asistentes en solo lectura (sin nota propia ni me gusta); no hay Mi perfil ni gafete con QR.
+1. Entra como **manual-staff** → `/staff` → **Ver mi experiencia de visitante**. Esperado: ves la vista de visitante con su pulsera (bebidas restantes del paquete); ves el carrusel de **notas** de los asistentes en solo lectura (sin nota propia ni me gusta); el Inicio abre con la animación del gafete y «Mi gafete» funciona igual que para un asistente (no hay Mi perfil).
 2. Salir de la vista vuelve a `/staff` sin cerrar sesión.
 3. Con una cuenta sin pulsera asignada (p. ej. quita la vinculación) se explica que no tiene pulsera; un Staff no puede vincular una por cuenta propia. Un Admin la vincula escaneando el QR en `/cuenta/pulsera`; al terminar (y siempre que ya esté vinculada) esa pantalla ofrece «Entrar como visitante» (va a `/home`) y «Volver a gestión» (`/admin` o `/staff` según el rol).
 
@@ -143,6 +146,6 @@ Al terminar, borra el `.env` temporal y, si quieres, `DROP DATABASE arraigados_t
 - Admin → Lotes separa las pulseras del equipo en su propia columna/filtro («Equipo»); no se suman a «Reclamadas» (asistentes). El tablero de asistentes no cambió.
 - Detección de «equipo»: se decide por un vínculo vigente en `StaffPulse` (pulsera ACTIVE, sin asistente **y** con `unlinkedAt IS NULL`), no por «ACTIVE sin asistente». Una pulsera ACTIVE sin asistente ni vínculo (p. ej. su asistente se borró) NO se marca reservada: sigue `active` y `already_active` al reclamar (nunca se registra otra persona sobre ella). Sin la migración 012 la consulta se tolera (error 42P01 → «no es de equipo»).
 - `/p/<token>` de una pulsera de equipo muestra «Esta pulsera está reservada» (`status: 'team'`, sin datos del miembro); `/api/claim` responde `team` y no crea asistente; `/api/me` la rechaza (no sirve como credencial).
-- La vista de visitante del equipo no incluye Mi perfil ni gafete con QR (dependen de la identidad/token de asistente). Las notas de los asistentes se muestran en solo lectura: `GET /api/notes/feed` sin `x-pulse-token` y con la cookie del equipo; no hay nota propia ni me gusta, y una pulsera enviada pero inválida sigue dando 401.
+- La vista de visitante del equipo es réplica del Inicio del asistente (animación del gafete, «Mi gafete» con su QR); solo cambia el botón extra **«Volver a Admin» / «Volver a Staff»** (menú lateral, «Más» y tarjeta de cuenta). No incluye Mi perfil (depende de la identidad de asistente). El QR del gafete usa el `qrToken` de SU pulsera, que `GET /api/staff-me` entrega solo a la cuenta dueña (cookie); un token de otra pulsera no se puede pedir. Las notas de los asistentes se muestran en solo lectura: `GET /api/notes/feed` sin `x-pulse-token` y con la cookie del equipo; no hay nota propia ni me gusta, y una pulsera enviada pero inválida sigue dando 401.
 - El limitador de frecuencia sigue inactivo hasta aplicar la 011; los endpoints nuevos reutilizan `admin_user_w`.
 - Reiniciar el navegador en la vista de visitante recuerda la vista solo en esa pestaña (`sessionStorage`); no concede nada: sin cookie válida `/api/staff-me` responde 401.

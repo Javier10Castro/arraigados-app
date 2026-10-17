@@ -4,7 +4,7 @@ import { lookupPulse } from '../../server/staff';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
 import { RULES, guard, record, scope } from '../../server/rateLimit';
 
-/** GET /api/staff/pulse?token=…  o  ?code=AR26-XXXXX  o  ?wallet=AR26W1.… -- datos para el modal de canje. */
+/** GET /api/staff/pulse?token=…  o  ?code=AR26-XXXXX-- datos para el modal de canje. */
 export default handler(async (req: Request) => {
   if (req.method !== 'GET') return methodNotAllowed('GET');
   const auth = await authorize(req);
@@ -12,15 +12,14 @@ export default handler(async (req: Request) => {
   const url = new URL(req.url);
   const token = url.searchParams.get('token');
   const code = url.searchParams.get('code');
-  const wallet = url.searchParams.get('wallet'); // QR de la credencial digital (AR26W1.…): se valida su firma y el estado real de la pulsera
-  if (token === null && code === null && wallet === null) return apiError('Falta el QR o el código.');
+  if (token === null && code === null) return apiError('Falta el QR o el código.');
   // staff_lookup: escaneos/búsquedas por minuto. staff_miss: solo los códigos que NO existen (adivinar códigos manuales).
   const blocked = await guard([
     { rule: RULES.staff_lookup, id: scope(auth.user.id) },
     { rule: RULES.staff_miss, id: scope(auth.user.id), inc: 0 },
   ]);
   if (blocked) return blocked;
-  const found = await lookupPulse(wallet !== null ? { wallet } : token !== null ? { token } : { code: code ?? '' }, { id: auth.user.id, role: auth.user.role });
+  const found = await lookupPulse(token !== null ? { token } : { code: code ?? '' }, { id: auth.user.id, role: auth.user.role });
   if (found.status === 'not_found') await record([{ rule: RULES.staff_miss, id: scope(auth.user.id) }]);
   return json(found);
 });

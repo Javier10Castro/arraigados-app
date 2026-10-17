@@ -127,6 +127,8 @@ export type StaffUser = {
   mustChangePassword?: boolean;
   /** Solo lo devuelve /api/auth/me: true si es la cuenta dueña (herramientas de pruebas). */
   isOwner?: boolean;
+  /** Solo /api/auth/me: true si puede ver y operar Rifas (calculado en el servidor; el servidor lo vuelve a exigir). */
+  canManageRaffles?: boolean;
 };
 
 /** POST /api/auth/password -- el propio usuario cambia su contraseña. */
@@ -1088,6 +1090,8 @@ export type StaffMeResponse =
       drinksRemaining: number;
       /** Informativo (¿puede escanear su propia pulsera?). El servidor decide al canjear. */
       selfRedeemAllowed: boolean;
+      /** Token QR de SU pulsera: solo se entrega a la cuenta dueña (cookie del equipo); alimenta el QR de «Mi gafete». */
+      qrToken: string;
     };
 
 /** Admin -> Usuarios -> Pulsera del equipo. */
@@ -1117,3 +1121,102 @@ export type StaffPulseLinkResponse =
   | { outcome: 'same_pulse' }
   | { outcome: 'different_kit'; oldKit: string; newKit: string };
 export type StaffPulseUnlinkResponse = { outcome: 'ok'; pulse: 'released' | 'invalidated' } | { outcome: 'no_link' } | { outcome: 'user_not_found' };
+
+// ---------------------------------------------------------------------------------------------------------------
+// Descuentos del equipo e ingresos SIMULADOS (Bloque 3, migración 013). Todo es simulación: nada se cobra.
+// ---------------------------------------------------------------------------------------------------------------
+export type DiscountType = 'percent' | 'fixed';
+export type DiscountRole = 'STAFF' | 'ADMIN';
+
+/** Un descuento tal como lo ve la pantalla: `amount` es % (0-100) si type=percent, o pesos MXN si type=fixed. */
+export type TeamDiscountRule = { type: DiscountType; amount: number; active: boolean };
+
+export type TeamDiscountKitRow = {
+  packageId: string;
+  name: string;
+  /** Precio normal del kit, en centavos de MXN. */
+  priceCents: number;
+  attendees: number;
+  staff: number;
+  admin: number;
+  attendeeRevenueCents: number;
+  teamNormalCents: number;
+  teamSimulatedCents: number;
+  discountCents: number;
+  combinedCents: number;
+};
+
+export type TeamDiscountSummary = {
+  rules: Record<DiscountRole, TeamDiscountRule>;
+  /** true solo para las cuentas autorizadas a modificar (se decide en el servidor con la sesión). */
+  canEdit: boolean;
+  /** false = la migración 013 aún no está aplicada: se muestran valores en 0 y no se puede guardar. */
+  configAvailable: boolean;
+  /** false = la migración 012 aún no está aplicada: no hay equipo con pulsera, se cuenta 0. */
+  teamAvailable: boolean;
+  totals: {
+    attendees: number;
+    staff: number;
+    admin: number;
+    team: number;
+    attendeeRevenueCents: number;
+    teamNormalCents: number;
+    teamSimulatedCents: number;
+    discountCents: number;
+    combinedCents: number;
+  };
+  byKit: TeamDiscountKitRow[];
+};
+
+export type UpdateTeamDiscountRequest = { role: DiscountRole; type: DiscountType; amount: number };
+
+// ---------------------------------------------------------------------------------------------------------------
+// Rifas por kit (Bloque 4, migración 014). El sorteo ocurre SIEMPRE en el servidor.
+// ---------------------------------------------------------------------------------------------------------------
+export type RaffleStatus = 'OPEN' | 'COMPLETED' | 'CANCELLED';
+
+export type RaffleSummary = {
+  id: string;
+  packageId: string;
+  kitName: string;
+  edition: number;
+  name: string;
+  targetWinners: number;
+  status: RaffleStatus;
+  winnersCount: number;
+  /** Participantes que HOY siguen siendo elegibles (se recalcula al sortear). */
+  eligibleCount: number;
+  createdAt: string;
+};
+
+export type RaffleWinnerRow = {
+  position: number;
+  attendeeId: string | null;
+  /** Nombre tal como era al sortear (no cambia si luego editan el perfil). */
+  winnerName: string;
+  extra: boolean;
+  drawnAt: string;
+  drawnById: string | null;
+  drawnByName: string | null;
+};
+
+export type AdminRaffleDetail = RaffleSummary & { winners: RaffleWinnerRow[] };
+export type AdminRafflesResponse = { available: boolean; raffles: RaffleSummary[]; kits: { id: string; name: string }[] };
+
+export type CreateRaffleRequest = { packageId: string; targetWinners: number; name?: string };
+export type UpdateRaffleRequest = { targetWinners: number };
+export type DrawRaffleRequest = { drawKey: string; extra?: boolean };
+export type DrawRaffleResponse = { replay: boolean; winner: RaffleWinnerRow; raffle: AdminRaffleDetail };
+
+/** Lo único que ve el proyector público: sin ids de asistentes, sin lista de participantes, sin datos de contacto. */
+export type PublicRaffle = {
+  id: string;
+  name: string;
+  kitName: string;
+  edition: number;
+  status: RaffleStatus;
+  targetWinners: number;
+  winnersCount: number;
+  remaining: number;
+  winners: { position: number; name: string; extra: boolean }[];
+};

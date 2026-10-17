@@ -36,6 +36,10 @@ let pool: pg.Pool | null = null;
 export function getPool() {
   if (!pool) {
     const cs = connectionString();
+    const dbUrl = new URL(cs);
+      console.log(
+        `[db diagnóstico] host=${dbUrl.hostname} base=${dbUrl.pathname.slice(1)}`
+      );
     const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(cs);
     pool = new pg.Pool({
       connectionString: cs,

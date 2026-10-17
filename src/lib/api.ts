@@ -42,6 +42,14 @@ import {
   type DashboardFilters,
   type AppSettings,
   type UpdateSettingsRequest,
+  type TeamDiscountSummary,
+  type AdminRaffleDetail,
+  type AdminRafflesResponse,
+  type CreateRaffleRequest,
+  type DrawRaffleRequest,
+  type DrawRaffleResponse,
+  type PublicRaffle,
+  type UpdateTeamDiscountRequest,
   type DashboardResponse,
   type AdminRedemptionFilters,
   type AdminRedemptionsCatalog,
@@ -157,13 +165,11 @@ export const api = {
   logout: () => postJson<{ ok: true }>('/api/auth/logout', {}),
   staffMe: () => request<StaffUser>('/api/auth/me'),
   changePassword: (body: ChangePasswordRequest) => postJson<StaffUser>('/api/auth/password', body),
-  staffPulse: (by: { token: string } | { code: string } | { wallet: string }) =>
+  staffPulse: (by: { token: string } | { code: string }) =>
     request<StaffPulseResponse>(
       'token' in by
         ? `/api/staff/pulse?token=${encodeURIComponent(by.token)}`
-        : 'wallet' in by
-          ? `/api/staff/pulse?wallet=${encodeURIComponent(by.wallet)}`
-          : `/api/staff/pulse?code=${encodeURIComponent(by.code)}`,
+        : `/api/staff/pulse?code=${encodeURIComponent(by.code)}`,
     ),
   staffSearch: (q: string, churchId: string) =>
     request<StaffSearchResult[]>(`/api/staff/search?q=${encodeURIComponent(q)}&churchId=${encodeURIComponent(churchId)}`),
@@ -172,13 +178,6 @@ export const api = {
   redeem: (body: RedeemRequest) => postJson<RedeemResponse>('/api/staff/redeem', body),
   reassign: (body: ReassignRequest) => postJson<ReassignResponse>('/api/staff/reassign', body),
   staffHistory: () => request<StaffHistoryResponse>('/api/staff/history'),
-
-  // Credencial digital (Apple / Google Wallet). Asistente: token de su pulsera; equipo: sin token (cookie). Nunca se envía un id.
-  walletStatus: () => request<{ apple: boolean; google: boolean }>('/api/wallet/status'),
-  walletAppleTicket: (token?: string) =>
-    request<{ url: string }>('/api/wallet/apple-ticket', { method: 'POST', headers: token ? { [PULSE_TOKEN_HEADER]: token } : {} }),
-  walletGoogle: (token?: string) =>
-    request<{ url: string }>('/api/wallet/google', { method: 'POST', headers: token ? { [PULSE_TOKEN_HEADER]: token } : {} }),
 
   // Admin -> Canjes (Etapa 6, parte Admin)
   adminRedemptions: (f: AdminRedemptionFilters) => {
@@ -370,6 +369,36 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  // Admin -> Descuentos del equipo (simulación, Bloque 3)
+  teamDiscounts: () => request<TeamDiscountSummary>('/api/admin/team-discounts'),
+  updateTeamDiscount: (body: UpdateTeamDiscountRequest) =>
+    request<TeamDiscountSummary>('/api/admin/team-discounts', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+
+  // Rifas (Bloque 4). El sorteo ocurre en el servidor; el proyector solo lee.
+  adminRaffles: () => request<AdminRafflesResponse>('/api/admin/raffles'),
+  adminRaffle: (id: string) => request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}`),
+  createRaffle: (body: CreateRaffleRequest) =>
+    request<AdminRaffleDetail>('/api/admin/raffles', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+  updateRaffleTarget: (id: string, targetWinners: number) =>
+    request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ targetWinners }),
+    }),
+  drawRaffle: (id: string, body: DrawRaffleRequest) =>
+    request<DrawRaffleResponse>(`/api/admin/raffles/${encodeURIComponent(id)}/draw`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  cancelRaffle: (id: string) =>
+    request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+  publicRaffle: (id: string) => request<PublicRaffle>(`/api/raffle/${encodeURIComponent(id)}`),
 
   // Admin -> Dashboard (Etapa 7)
   dashboard: (f: DashboardFilters) => {

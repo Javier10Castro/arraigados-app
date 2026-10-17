@@ -272,8 +272,8 @@ export async function getStaffPulseInfo(userId: string): Promise<AdminStaffPulse
  * ningún identificador del cliente), así que nadie puede consultar la pulsera de otra cuenta.
  */
 export async function getStaffMe(user: { id: string; name: string; role: StaffRole }): Promise<StaffMeResponse> {
-  const { rows } = await query<{ status: string; drinksUsed: number; packageId: string; packageName: string; price: number; includedDrinks: number }>(
-    `SELECT p.status::text AS status, p."drinksUsed", k.id AS "packageId", k.name AS "packageName", k.price, k."includedDrinks"
+  const { rows } = await query<{ status: string; qrToken: string; drinksUsed: number; packageId: string; packageName: string; price: number; includedDrinks: number }>(
+    `SELECT p.status::text AS status, p."qrToken", p."drinksUsed", k.id AS "packageId", k.name AS "packageName", k.price, k."includedDrinks"
        FROM "StaffPulse" sp JOIN "Pulse" p ON p.id = sp."pulseId" JOIN "Package" k ON k.id = p."packageId"
       WHERE sp."userId" = $1 AND sp."unlinkedAt" IS NULL`,
     [user.id],
@@ -290,5 +290,6 @@ export async function getStaffMe(user: { id: string; name: string; role: StaffRo
     drinksUsed: r.drinksUsed,
     drinksRemaining: Math.max(r.includedDrinks - r.drinksUsed, 0),
     selfRedeemAllowed: decision.allowed,
+    qrToken: r.qrToken,
   };
 }

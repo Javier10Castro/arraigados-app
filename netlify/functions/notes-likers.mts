@@ -8,7 +8,7 @@ import { PULSE_TOKEN_HEADER } from '../../shared/api';
 export default handler(async (req: Request, context: Context) =>
   withAttendeeLimit(req, context, RULES.att_likers, async () => {
     if (req.method !== 'GET') return methodNotAllowed('GET');
-    const r = await listMyNoteLikers(req.headers.get(PULSE_TOKEN_HEADER) ?? '');
+    const r = await listMyNoteLikers(req.headers.get(PULSE_TOKEN_HEADER) ?? '', req);
     if (!r.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: 'not_found' });
     return json({ likers: r.likers });
   }),

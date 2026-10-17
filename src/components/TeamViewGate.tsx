@@ -18,6 +18,7 @@ export default function TeamViewGate({ reason }: { reason: 'none' | 'invalid' })
     leaveTeamView();
     navigate(user?.role === 'ADMIN' ? '/admin' : '/staff', { replace: true });
   };
+  const label = user?.role === 'ADMIN' ? 'Volver a Admin' : 'Volver a Staff';
   return (
     <div className={styles.screen}>
       <Ambient variant="dark" />
@@ -30,7 +31,7 @@ export default function TeamViewGate({ reason }: { reason: 'none' | 'invalid' })
         </p>
         <div className={styles.actions}>
           <Button block onClick={back}>
-            Volver a mi equipo
+            {label}
           </Button>
         </div>
       </main>

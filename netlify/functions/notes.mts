@@ -20,7 +20,7 @@ export default handler(async (req: Request, context: Context) =>
     const token = req.headers.get(PULSE_TOKEN_HEADER) ?? '';
 
     if (req.method === 'GET') {
-      const result = await listMyNotes(token);
+      const result = await listMyNotes(token, req);
       if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
       return json({ notes: result.notes });
     }
@@ -33,7 +33,7 @@ export default handler(async (req: Request, context: Context) =>
         return apiError('Solicitud inválida.');
       }
       try {
-        const result = await createNote(token, body.text);
+        const result = await createNote(token, body.text, req);
         if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
         return json({ note: result.note });
       } catch (err) {
@@ -43,7 +43,7 @@ export default handler(async (req: Request, context: Context) =>
     }
 
     if (req.method === 'DELETE') {
-      const result = await removeMyActiveNote(token);
+      const result = await removeMyActiveNote(token, req);
       if (!result.ok) return apiError('Esta pulsera no tiene una sesión activa.', 401, { status: result.status });
       return json({ removed: result.removed });
     }

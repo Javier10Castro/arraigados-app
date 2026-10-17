@@ -40,13 +40,11 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 - **Notas**: publica una frase de hasta 60 caracteres que dura 24 horas; da *like* a las de otros.
 - **Campana de notificaciones**: avisos del equipo y likes recibidos.
 - **Comida** (`/comida`), **Recursos**, **Más**.
-- **Credencial digital** (Más → Mi gafete → «Agregar a Apple/Google Wallet»): guarda su credencial en Apple Wallet o Google Wallet. **Solo aparece cuando el servidor tiene configuradas las cuentas de Apple/Google** (hoy NO están; ver [`docs/WALLET.md`](docs/WALLET.md)).
 - **Mi perfil** (`/perfil`, Más → Mi perfil): elige cómo aparece en notas, campana, gafete y listas: **foto** propia, **avatar** (*Default*, *Sorpréndeme* o *Custom*) o **iniciales** (qué palabras del nombre y color de fondo). Las tres opciones se conservan; solo una está activa (ver §7.4).
 
 ### Para el Staff (cuenta con correo y contraseña)
 - **Escanear** la pulsera con la cámara y ver los datos y el saldo de aguas del asistente (el campo para escribir el código de respaldo `AR26-XXXXX` existe pero está oculto: `SHOW_MANUAL_CODE = false` en `src/pages/Staff.tsx`).
 - **Canjear** 1 agua fresca (protegido contra doble toque: nunca descuenta dos veces).
-- **Escanear también el QR de la credencial digital** de Wallet (se valida firma y estado de la pulsera en cada lectura).
 - **Buscar** asistentes por nombre/iglesia, **reemplazar una pulsera** (perdida/dañada) y ver **"Mis canjes recientes"**.
 - **Pulsera propia (Staff y Admin):** una cuenta del equipo puede tener **una** pulsera propia que le asigna un Admin (Usuarios → Editar cuenta). Un **Admin** también puede vincularla escaneando el QR en `/cuenta/pulsera`. Con ella entra a la **vista de visitante** («Modo visitante») y regresa a su panel («Volver a mi equipo») sin cerrar sesión; el autocanje está apagado por defecto. Guía completa, estados, permisos y recuperación: [`docs/EQUIPO_PULSERA_AUTOCANJE.md`](docs/EQUIPO_PULSERA_AUTOCANJE.md). *Aplica solo con la migración 012, que **no** está aplicada en Neon.*
 
@@ -171,7 +169,6 @@ Todas son **solo de servidor** (el frontend no usa ninguna). Se documentan en [`
 | `DATABASE_URL` | **Sí** | Conexión a Neon. Usa el endpoint **pooler** (`-pooler` en el host). |
 | `SESSION_SECRET` | **Sí** | Firma las sesiones de Staff/Admin (HMAC-SHA256). Mínimo 32 caracteres aleatorios. Cambiarla cierra todas las sesiones. |
 | `PUBLIC_BASE_URL` | Solo en producción | Dominio con el que se arma el QR de cada pulsera: `{PUBLIC_BASE_URL}/p/{token}`. Sin `/` al final. **Queda grabado en cada QR impreso**: fíjalo al dominio oficial definitivo **antes** de imprimir pulseras reales. En desarrollo déjala vacía. |
-| `WALLET_QR_SECRET` y variables `APPLE_*` / `GOOGLE_WALLET_*` | No (Wallet) | **Credencial digital** en Apple/Google Wallet. Sin ellas el botón «Agregar a Wallet» no aparece. Detalle en [`docs/WALLET.md`](docs/WALLET.md) y `.env.example`. |
 | `OWNER_EMAIL` | No | Cuenta principal protegida (por defecto `javiercastro9912@gmail.com`): no se puede eliminar. |
 | `PROGRAM_REMINDERS` | No | Poner `off` para apagar los recordatorios automáticos del programa en la campana (por defecto están activos). |
 | `NETLIFY_SITE_ID`, `NETLIFY_AUTH_TOKEN` | No | Solo para los **scripts**: que `db:respaldo-total` respalde/restaure las fotos de platillos y mercancía (Netlify Blobs) y para `db:fotos-huerfanas` (§7.4). La app no las necesita (Netlify las configura sola). |
@@ -421,7 +418,7 @@ curl -H 'x-pulse-token: AbCdEfGh12345678' https://redjuveniltijuana.com/api/me
 | `npm run db:renombrar-kits` | Utilidad histórica para renombrar kits. |
 | `npm run moderacion:probar` | Prueba el filtro de lenguaje. |
 | `npm run test:ratelimit` | Pruebas del límite de frecuencia (unitarias + integración). Las de integración necesitan `TEST_DATABASE_URL` hacia un PostgreSQL **local** llamado `arraigados_test*` (nunca Neon/producción; el guion se niega). Ver `docs/RATE_LIMITING.md`. |
-| `npm run test:team` | Pruebas de pulseras de equipo y autocanje y de la credencial digital (124 casos: 77 de vinculación y «Vincular pulsera», vista de visitante, permisos, concurrencia, anulaciones, tablero, dueño, migración 012 + 47 de Apple/Google Wallet). Mismas reglas de seguridad que `test:ratelimit` (`TEST_DATABASE_URL` local `arraigados_test*`). Ver `docs/EQUIPO_PULSERA_AUTOCANJE.md` y `docs/WALLET.md`. |
+| `npm run test:team` | Pruebas de pulseras de equipo y autocanje (vinculación, vista de visitante, permisos, concurrencia, anulaciones, tablero, dueño, migraciones 012–015, notas del equipo, descuentos y rifas). Mismas reglas de seguridad que `test:ratelimit` (`TEST_DATABASE_URL` local `arraigados_test*`). Ver `docs/EQUIPO_PULSERA_AUTOCANJE.md`. |
 | `npm run plantilla:base64` | Regenera la plantilla de la tarjeta QR. |
 
 ---
@@ -515,8 +512,8 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 | [`docs/MANUAL_ADMIN.pdf`](docs/MANUAL_ADMIN.pdf) | **Manual de uso para administradores** (PDF con capturas reales, 32 páginas). |
 | [`docs/API.md`](docs/API.md) | **Referencia completa de la API** (cuerpos, respuestas, errores, ejemplos). |
 | [`docs/CLAUDE_HANDOFF.md`](docs/CLAUDE_HANDOFF.md) | Bitácora técnica detallada, sección por sección (§1–§66), con cada decisión. **Empieza aquí para entender el porqué.** |
-| [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md) | **Manual de procedimientos actualizado** (Wallet, escanear, pulsera propia y vista de visitante) para asistentes, Staff y Admin. Complementa al PDF. |
-| [`docs/WALLET.md`](docs/WALLET.md) | **Credencial digital en Apple Wallet / Google Wallet**: contenido del pase, seguridad del QR, arquitectura, requisitos y configuración (dev y producción), pruebas hechas y pendientes. |
+| [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md) | **Manual de procedimientos actualizado** (escanear, pulsera propia y vista de visitante) para asistentes, Staff y Admin. Complementa al PDF. |
+| [`docs/archive/wallet/README.md`](docs/archive/wallet/README.md) | **Archivo de la integración con Apple/Google Wallet** (cancelada el 17 oct 2026 por alcance y tiempo): qué se hizo, qué faltó y cómo retomarla. |
 | [`docs/EQUIPO_PULSERA_AUTOCANJE.md`](docs/EQUIPO_PULSERA_AUTOCANJE.md) | **Pulsera de Staff/Admin, vincular por QR, vista de visitante** (cómo vincular, entrar/volver, estados, permisos, sesión caducada, escáner, limitaciones) y autocanje. |
 | [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md) | **Límite de frecuencia**: riesgos, arquitectura, límites por endpoint, fallo abierto/cerrado, pruebas, operación y pasos antes de desplegar. |
 | [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md) | Qué falta por hacer y su estado. |

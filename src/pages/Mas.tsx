@@ -57,7 +57,6 @@ export default function Mas() {
       <section className={styles.section}>
         <h2 className="label">Secciones</h2>
         <ul className={styles.list}>
-          {!team.isTeam && (
           <li>
             <button type="button" className={`${styles.row} ${styles.rowButton}`} onClick={() => setGafeteOpen(true)}>
               <span className={styles.rowIcon} aria-hidden="true">
@@ -70,7 +69,6 @@ export default function Mas() {
               <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />
             </button>
           </li>
-          )}
           {links.filter((l) => !(team.isTeam && l.to === '/perfil')).map(({ to, label, desc, Icon }) => (
             <li key={to}>
               <NavLink to={to} className={styles.row}>
@@ -98,7 +96,7 @@ export default function Mas() {
                   <ArrowLeftRight size={18} strokeWidth={2} />
                 </span>
                 <span className={styles.rowBody}>
-                  <strong>Volver a mi equipo</strong>
+                  <strong>{team.backLabel}</strong>
                   <span>Regresa a tu panel sin cerrar sesión</span>
                 </span>
                 <ChevronRight className={styles.chevron} size={18} strokeWidth={2.2} />

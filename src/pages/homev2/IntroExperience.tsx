@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, RotateCw, X } from 'lucide-react';
-import AddToWallet from '../../components/wallet/AddToWallet';
 import HangingBadge, { type PhysicsParams } from './hanging/HangingBadge';
 import CredentialCard from './credential/CredentialCard';
 import CredentialSheet, { SHEET_H, SHEET_W } from './credential/CredentialSheet';
@@ -38,8 +37,6 @@ type Props = {
   leaving: boolean;
   /** Terminó la secuencia o la persona pulsó "Omitir". */
   onFinish: () => void;
-  /** Solo `viewer` de asistentes: token de su pulsera para «Agregar a Wallet» (sin él no se muestra la acción). */
-  walletToken?: string;
 };
 
 /**
@@ -47,7 +44,7 @@ type Props = {
  * frente, gira y enseña el reverso; al terminar llama `onFinish`. No hay pantalla de bienvenida intermedia:
  * lo que sigue es el Home. "Omitir" la corta en cualquier momento.
  */
-export default function IntroExperience({ badge, mode = 'intro', leaving, onFinish, walletToken }: Props) {
+export default function IntroExperience({ badge, mode = 'intro', leaving, onFinish }: Props) {
   const isViewer = mode === 'viewer';
   const reducedMotion = useReducedMotion();
   const [flipped, setFlipped] = useState(false);
@@ -181,7 +178,6 @@ export default function IntroExperience({ badge, mode = 'intro', leaving, onFini
             <button type="button" className="hc-btn is-primary" onClick={() => void download()} disabled={downloading}>
               <Download size={16} strokeWidth={2.4} aria-hidden="true" /> {downloading ? 'Creando…' : 'Descargar imagen'}
             </button>
-            {walletToken && <AddToWallet variant="inline" token={walletToken} />}
           </div>
           {/* Copia plana, fuera de pantalla, solo para exportar. */}
           <div ref={sheetRef} aria-hidden="true" style={{ position: 'fixed', left: -99999, top: 0, pointerEvents: 'none' }}>

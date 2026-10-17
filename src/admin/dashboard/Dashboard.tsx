@@ -20,6 +20,7 @@ import { CardSkeleton, ChartSkeleton, ListSkeleton, Skeleton, SkeletonRegion } f
 import { usePagedList } from '../../lib/usePagedList';
 import { dayLabel, fmtInt, fmtMoney, fmtPct, hourLabel, localDayOf, timeLabel } from './format';
 import { useDashboard } from './useDashboard';
+import { pressioText } from '../../lib/pressio';
 import s from './Dashboard.module.css';
 
 /**
@@ -136,6 +137,10 @@ export default function Dashboard() {
       }
     >
       <p className={s.kicker}>Arraigados 2K26 · Monitoreo del congreso</p>
+      <p className={s.tools}>
+        <Link to="/admin/descuentos" className={s.toolLink}>Descuentos del equipo e ingresos simulados →</Link>
+        <Link to="/admin/rifas" className={s.toolLink}>Rifas →</Link>
+      </p>
 
       {/* ---------------- Filtros globales ---------------- */}
       <section className={s.filters} aria-label="Filtros del Dashboard">
@@ -211,7 +216,7 @@ function Body({
   if (nothingYet) {
     return (
       <section className={s.emptyState}>
-        <h2>Todavia no hay datos</h2>
+        <h2>{pressioText('Todavía no hay datos')}</h2>
         <p>
           Cuando se creen lotes de pulseras y los asistentes empiecen a registrarse, aquí aparecerán los registros, los kits,
           las aguas y la actividad en vivo.

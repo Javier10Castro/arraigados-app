@@ -29,6 +29,16 @@ const all = readdirSync(dir)
 
 // --only <archivo>: una sola migración, validada contra la lista real de migrations/.
 const args = process.argv.slice(2);
+// Cualquier argumento desconocido (p. ej. «--only=016_x.sql», que antes se ignoraba y aplicaba TODO) aborta ANTES de conectar.
+// Los únicos permitidos son «--only <archivo exacto>» y «--yes».
+{
+  const bad = args.filter((a, i) => !(a === '--only' || a === '--yes' || (i > 0 && args[i - 1] === '--only')));
+  if (bad.length) {
+    console.error(`\n✖ Argumento no reconocido: ${bad.join(' ')}`);
+    console.error('  Uso: npm run db:migrar -- --only <archivo.sql> [--yes]   (el «--» antes de --only es obligatorio con npm)\n');
+    process.exit(1);
+  }
+}
 const onlyIdx = args.indexOf('--only');
 let only = null;
 if (onlyIdx !== -1) {

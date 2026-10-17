@@ -15,6 +15,7 @@ import {
   type NotificationsResponse,
 } from '../shared/notifications';
 import { QR_TOKEN_RE } from '../shared/api';
+import { hasTeamNotes } from './notes';
 import { programReminders } from '../shared/programSchedule';
 
 /**
@@ -72,15 +73,19 @@ export async function listNotifications(
       [who.attendeeId, who.zone],
     );
     // Likes a TUS notas: una fila por nota (agrupada), con quien dio el like más reciente.
+    // Con la migración 015 el like puede venir de una cuenta del equipo (attendeeId NULL, userId con valor).
+    const t = await hasTeamNotes();
     const likes = await query<{ noteId: string; cnt: number; likerId: string; likerName: string; at: string; unread: boolean }>(
-      `SELECT n.id AS "noteId", c.cnt, latest."attendeeId" AS "likerId", latest."fullName" AS "likerName",
+      `SELECT n.id AS "noteId", c.cnt, latest."likerId", latest."fullName" AS "likerName",
               ${iso('latest."createdAt"')} AS at,
               (s."seenAt" IS NULL OR latest."createdAt" > s."seenAt") AS unread
          FROM "Note" n
          JOIN LATERAL (
-           SELECT l."attendeeId", a."fullName", l."createdAt"
-             FROM "NoteLike" l JOIN "Attendee" a ON a.id = l."attendeeId"
-            WHERE l."noteId" = n.id AND l."attendeeId" <> n."attendeeId"
+           SELECT ${t ? 'COALESCE(l."attendeeId", l."userId")' : 'l."attendeeId"'} AS "likerId",
+                  ${t ? 'COALESCE(a."fullName", u.name)' : 'a."fullName"'} AS "fullName", l."createdAt"
+             FROM "NoteLike" l
+             ${t ? 'LEFT JOIN "Attendee" a ON a.id = l."attendeeId" LEFT JOIN "User" u ON u.id = l."userId"' : 'JOIN "Attendee" a ON a.id = l."attendeeId"'}
+            WHERE l."noteId" = n.id AND l."attendeeId" IS DISTINCT FROM n."attendeeId"
             ORDER BY l."createdAt" DESC LIMIT 1
          ) latest ON true
          JOIN LATERAL (SELECT count(*)::int AS cnt FROM "NoteLike" l2 WHERE l2."noteId" = n.id) c ON true

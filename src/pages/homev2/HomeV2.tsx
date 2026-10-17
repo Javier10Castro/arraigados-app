@@ -23,13 +23,17 @@ const SHOW_INTRO = true;
 type Stage = 'intro' | 'leaving' | 'done';
 
 export default function HomeV2() {
-  const { me, state, isTeam } = usePulseSession();
+  const { me, state } = usePulseSession();
   const [stage, setStage] = useState<Stage>(SHOW_INTRO ? 'intro' : 'done');
   const homeRef = useRef<HTMLDivElement>(null);
 
   const badge = useMemo(
-    () => (me && state.phase === 'ready' && !isTeam ? buildBadge(me, `${window.location.origin}/p/${state.token}`) : null),
-    [me, state, isTeam],
+    () => {
+      if (!me || state.phase !== 'ready') return null;
+      const qr = state.team ? state.qrToken : state.token; // el equipo usa el QR de su pulsera asignada
+      return qr ? buildBadge(me, `${window.location.origin}/p/${qr}`) : null;
+    },
+    [me, state],
   );
 
   const finish = () => setStage((s) => (s === 'intro' ? 'leaving' : s));

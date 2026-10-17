@@ -9,7 +9,7 @@ import Ambient from '../components/Ambient';
 import QrScanner from '../components/QrScanner';
 import ChurchCombobox from '../components/ChurchCombobox';
 import RedeemModal, { type PulseRef } from '../components/RedeemModal';
-import { parsePulseCode, parseStaffScan } from '../lib/pulseCode';
+import { parsePulseCode } from '../lib/pulseCode';
 import { api } from '../lib/api';
 import { useStaffSession } from '../context/StaffSession';
 import { useTeamNav } from '../context/useTeamNav';
@@ -65,7 +65,7 @@ export default function Staff() {
 
   const onDecoded = (text: string) => {
     if (open) return;
-    const parsed = parseStaffScan(text);
+    const parsed = parsePulseCode(text);
     if (!parsed) {
       setError('Este QR no es de una pulsera de Arraigados.');
       return;
@@ -74,7 +74,7 @@ export default function Staff() {
     if (parsed.value === lastScan.current.value && now - lastScan.current.at < 3000) return;
     lastScan.current = { value: parsed.value, at: now };
     setError('');
-    setOpen(parsed.kind === 'token' ? { token: parsed.value } : parsed.kind === 'wallet' ? { wallet: parsed.value } : { code: parsed.value });
+    setOpen(parsed.kind === 'token' ? { token: parsed.value } : { code: parsed.value });
   };
 
   const closeModal = useCallback(() => {

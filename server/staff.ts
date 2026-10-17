@@ -1,5 +1,3 @@
-import { loadWalletConfig } from './wallet/config';
-import { verifyWalletCode } from './wallet/code';
 import { NOW_UTC, newId, query, withTransaction } from './db';
 import { selfRedeemDecision } from './selfRedeem';
 import {
@@ -53,16 +51,9 @@ export type Actor = { id: string; role: StaffRole };
 const remaining = (r: { includedDrinks: number; drinksUsed: number }) => Math.max(r.includedDrinks - r.drinksUsed, 0);
 
 /** Pulsera por token del QR o por código de respaldo, con todos sus datos para el modal. */
-export async function lookupPulse(by: { token?: string; code?: string; wallet?: string }, viewer?: Actor): Promise<StaffPulseResponse> {
+export async function lookupPulse(by: { token?: string; code?: string }, viewer?: Actor): Promise<StaffPulseResponse> {
   let row: PulseRow | undefined;
-  if (by.wallet !== undefined) {
-    // Código del QR de la credencial digital (Apple/Google Wallet): firma válida -> id de pulsera; el estado se lee AQUÍ,
-    // en cada lectura (pulsera deshabilitada o borrada = rechazada). No contiene ni revela el token privado de la pulsera.
-    const secret = loadWalletConfig().qrSecret;
-    const pulseId = secret ? verifyWalletCode(secret, by.wallet) : null;
-    if (!pulseId) return { status: 'not_found' };
-    row = (await query<PulseRow>(`${PULSE_SELECT} WHERE p.id = $1`, [pulseId])).rows[0];
-  } else if (by.token !== undefined) {
+  if (by.token !== undefined) {
     if (!QR_TOKEN_RE.test(by.token)) return { status: 'not_found' };
     row = (await query<PulseRow>(`${PULSE_SELECT} WHERE p."qrToken" = $1`, [by.token])).rows[0];
   } else {

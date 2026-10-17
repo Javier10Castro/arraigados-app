@@ -16,7 +16,7 @@ export default handler(async (req: Request, context: Context) =>
     if (!id) return apiError('Esa nota no existe.', 404);
 
     const token = req.headers.get(PULSE_TOKEN_HEADER) ?? '';
-    const result = await toggleNoteLike(token, id);
+    const result = await toggleNoteLike(token, id, req);
     if (!result.ok) {
       if (result.reason === 'own_note') return apiError('No puedes darle like a tu propia nota.', 403);
       return result.reason === 'note_not_found'

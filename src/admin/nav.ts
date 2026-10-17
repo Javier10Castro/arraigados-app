@@ -1,4 +1,4 @@
-import { Boxes, Church, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, Settings, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { BadgePercent, Boxes, Church, Ticket, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, Settings, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -35,6 +35,8 @@ export type AdminSection = {
   stage?: string;
   /** true = aparece en la barra inferior del celular; si no, va en "Más". */
   primary?: boolean;
+  /** Solo se muestra si el servidor dice que la cuenta puede operar Rifas (/api/auth/me). */
+  raffles?: boolean;
 };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
@@ -45,6 +47,10 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   /* Beneficios (6 oct 2026): lo que incluye cada kit (lista "Incluye" del asistente), administrable. Las aguas frescas siguen siendo del kit. */
   { to: '/admin/beneficios', label: 'Beneficios', Icon: Gift, ready: true },
   { to: '/admin/canjes', label: 'Canjes', Icon: CupSoda, ready: true },
+  /* Rifas (16 oct 2026): sorteo por kit hecho en el servidor + proyector público (/rifa/:id). */
+  { to: '/admin/rifas', label: 'Rifas', Icon: Ticket, ready: true, raffles: true },
+  /* Descuentos (16 oct 2026): descuento por rol del equipo + ingresos simulados (solo lectura para Admin; editan las cuentas autorizadas). */
+  { to: '/admin/descuentos', label: 'Descuentos', Icon: BadgePercent, ready: true },
   { to: '/admin/menu', label: 'Menú', Icon: UtensilsCrossed, ready: true },
   /* Mercancía (3 oct 2026, conectada a datos reales el mismo día): CRUD
      completo de la vitrina de /home, mismo patrón que "Menú" -- Neon +
@@ -67,3 +73,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
 
 /** Primera sección construida: a donde llega Admin al iniciar sesión. */
 export const ADMIN_HOME = ADMIN_SECTIONS.find((s) => s.ready)!.to;
+
+/** Secciones visibles para la cuenta: Rifas solo si el servidor la autorizó. (Solo presentación; el servidor decide.) */
+export const visibleSections = (canRaffles: boolean | undefined) => ADMIN_SECTIONS.filter((x) => !x.raffles || canRaffles === true);

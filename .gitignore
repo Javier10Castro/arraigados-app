@@ -35,3 +35,12 @@ Thumbs.db
 # Lo genera Netlify CLI (`netlify dev`) para el runtime de edge functions; el
 # proyecto no usa Deno ni edge functions, así que no se versiona.
 deno.lock
+
+# Volcados / paquetes / certificados que nunca deben versionarse (traen datos personales o llaves)
+*.dump
+*.backup
+*.tgz
+*.p12
+*.pfx
+*.cer
+*.crt

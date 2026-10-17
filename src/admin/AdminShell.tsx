@@ -8,7 +8,8 @@ import UserAvatar from '../components/UserAvatar';
 import { useStaffSession } from '../context/StaffSession';
 import { useTeamNav } from '../context/useTeamNav';
 import { useOwnPulseLink, type OwnPulseLink } from '../context/useOwnPulseLink';
-import { ADMIN_SECTIONS } from './nav';
+import { visibleSections } from './nav';
+import { pressioText } from '../lib/pressio';
 import s from './AdminShell.module.css';
 
 /**
@@ -69,8 +70,9 @@ export default function AdminShell({
   const { user, signOut } = useStaffSession();
   const teamNav = useTeamNav();
   const pulseLink = useOwnPulseLink();
-  const primary = ADMIN_SECTIONS.filter((x) => x.primary);
-  const inMore = pathname === '/admin/mas' || ADMIN_SECTIONS.some((x) => !x.primary && pathname.startsWith(x.to));
+  const sections = visibleSections(user?.canManageRaffles);
+  const primary = sections.filter((x) => x.primary);
+  const inMore = pathname === '/admin/mas' || sections.some((x) => !x.primary && pathname.startsWith(x.to));
 
   const logout = () => void signOut().then(() => navigate('/login', { replace: true }));
 
@@ -86,7 +88,7 @@ export default function AdminShell({
         </div>
 
         <nav className={s.nav} aria-label="Secciones de Admin">
-          {ADMIN_SECTIONS.map(({ to, label, Icon, ready, stage }) =>
+          {sections.map(({ to, label, Icon, ready, stage }) =>
             ready ? (
               <NavLink key={to} to={to} className={({ isActive }) => `${s.navItem} ${isActive ? s.navActive : ''}`}>
                 <Icon size={18} strokeWidth={2.1} />
@@ -144,7 +146,7 @@ export default function AdminShell({
 
       <main className={s.main}>
         <header className={`${s.topbar} ${wide ? s.wide : ''}`}>
-          {title && <h1 className={s.title}>{title}</h1>}
+          {title && <h1 className={s.title}>{pressioText(title)}</h1>}
           {action}
         </header>
         <div className={`${s.content} ${wide ? s.wide : ''}`}>{children}</div>
@@ -176,13 +178,13 @@ export default function AdminShell({
 /** "Más" del celular: secciones que no caben en la barra + cuenta. */
 export function AdminMas() {
   const navigate = useNavigate();
-  const { signOut } = useStaffSession();
+  const { user, signOut } = useStaffSession();
   const teamNav = useTeamNav();
   const pulseLink = useOwnPulseLink();
   return (
     <AdminShell>
       <ul className={s.moreList}>
-        {ADMIN_SECTIONS.filter((x) => !x.primary).map(({ to, label, Icon, ready, stage }) => (
+        {visibleSections(user?.canManageRaffles).filter((x) => !x.primary).map(({ to, label, Icon, ready, stage }) => (
           <li key={to}>
             {ready ? (
               <NavLink to={to} className={s.moreRow}>
