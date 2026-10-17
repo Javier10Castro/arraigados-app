@@ -5,6 +5,7 @@ import Badge from '../components/Badge';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
 import { api } from '../lib/api';
+import { compressImage } from '../lib/compressImage';
 import { ListSkeleton } from '../components/Skeleton';
 import { formatPrice } from '../data/app';
 import { MERCH_AVAILABILITY_LABEL, type AdminMerchItem, type MerchAvailability } from '../../shared/api';
@@ -296,14 +297,20 @@ function MerchItemModal({
   const priceValid = pesos.trim() === '' || (Number.isInteger(Number(pesos)) && Number(pesos) >= 0);
   const canSubmit = name.trim().length > 0 && description.trim().length > 0 && priceValid;
 
-  function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const room = MAX_IMAGES - gallery.length;
     if (room <= 0) {
       setError(`Un artículo no puede tener más de ${MAX_IMAGES} fotos.`);
       return;
     }
-    const picked = Array.from(files).slice(0, room);
+    let picked: File[];
+    try {
+      picked = await Promise.all(Array.from(files).slice(0, room).map((f) => compressImage(f)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos preparar la foto.');
+      return;
+    }
     setGallery((prev) => [
       ...prev,
       ...picked.map((file) => ({ key: `new-${Date.now()}-${Math.random()}`, kind: 'new' as const, file, url: URL.createObjectURL(file) })),
@@ -511,7 +518,7 @@ function MerchItemModal({
             }}
           />
           <p className={u.hint}>
-            JPG, PNG o WebP, máximo 4 MB c/u -- hasta {MAX_IMAGES} fotos. Arrastra una fila para reordenarla (la primera es la
+            JPG, PNG o WebP, las fotos de más de 3 MB se comprimen solas -- hasta {MAX_IMAGES} fotos. Arrastra una fila para reordenarla (la primera es la
             portada) -- el mismo orden es el que usa la galería que ve el asistente, incluyendo las fotos nuevas intercaladas
             entre las que ya había.
           </p>
