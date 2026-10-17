@@ -27,6 +27,7 @@ export default handler(async (req: Request) => {
       presbyteryId: s.get('presbyteryId') ?? '',
       churchId: s.get('churchId') ?? '',
       packageId: s.get('packageId') ?? '',
+      kind: s.get('kind') === 'attendees' || s.get('kind') === 'team' ? (s.get('kind') as 'attendees' | 'team') : '',
       drinks: drinks === 'available' || drinks === 'exhausted' || drinks === 'none' ? (drinks as DrinksFilter) : '',
       page: Number(s.get('page') ?? 0),
       pageSize: parsePageSize(s.get('pageSize')),

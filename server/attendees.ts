@@ -36,6 +36,18 @@ const unaccent = (expr: string) => `translate(lower(${expr}), 'áéíóúüñ', 
 /* ------------------------------------------------------------------ */
 
 export async function listAttendees(f: AdminAttendeeFilters): Promise<AdminAttendeesResponse> {
+  const kind = f.kind === 'attendees' || f.kind === 'team' ? f.kind : '';
+  try {
+    return await listRows(f, kind);
+  } catch (err) {
+    // 42P01 = no existe "StaffPulse" (migración 012 sin aplicar): la lista de asistentes sigue funcionando.
+    if ((err as { code?: string }).code !== '42P01' || kind === 'attendees') throw err;
+    if (kind === 'team') return { total: 0, page: 0, pageSize: parsePageSize(f.pageSize), rows: [], teamAvailable: false };
+    return { ...(await listRows(f, 'attendees')), teamAvailable: false };
+  }
+}
+
+async function listRows(f: AdminAttendeeFilters, kind: '' | 'attendees' | 'team'): Promise<AdminAttendeesResponse> {
   const params: unknown[] = [];
   const where: string[] = [];
   const add = (sql: (n: number) => string, value: unknown) => {
@@ -46,24 +58,43 @@ export async function listAttendees(f: AdminAttendeeFilters): Promise<AdminAtten
   // Cada palabra debe aparecer en el nombre, en cualquier orden y sin importar
   // acentos ni mayúsculas: "maria lopez" encuentra "María Fernanda López".
   const words = String(f.q ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
-  for (const w of words) add((n) => `${unaccent('a."fullName"')} LIKE ${unaccent(`$${n}`)}`, `%${w}%`);
-  if (f.zoneId) add((n) => `z.id = $${n}`, f.zoneId);
-  if (f.presbyteryId) add((n) => `pr.id = $${n}`, f.presbyteryId);
-  if (f.churchId) add((n) => `c.id = $${n}`, f.churchId);
-  if (f.packageId) add((n) => `p."packageId" = $${n}`, f.packageId);
-  if (f.drinks === 'available') where.push(`k."includedDrinks" > 0 AND p."drinksUsed" < k."includedDrinks"`);
-  if (f.drinks === 'exhausted') where.push(`k."includedDrinks" > 0 AND p."drinksUsed" >= k."includedDrinks"`);
-  if (f.drinks === 'none') where.push(`k."includedDrinks" = 0`);
+  // Los filtros se aplican sobre la unión (columnas de `r`). Las filas del equipo no tienen iglesia/presbiterio/zona (NULL),
+  // así que esos tres filtros las excluyen solos; kit, estado de aguas y búsqueda por nombre sí aplican a ambos tipos.
+  for (const w of words) add((n) => `${unaccent('r.name')} LIKE ${unaccent(`$${n}`)}`, `%${w}%`);
+  if (f.zoneId) add((n) => `r."zoneId" = $${n}`, f.zoneId);
+  if (f.presbyteryId) add((n) => `r."presbyteryId" = $${n}`, f.presbyteryId);
+  if (f.churchId) add((n) => `r."churchId" = $${n}`, f.churchId);
+  if (f.packageId) add((n) => `r."packageId" = $${n}`, f.packageId);
+  if (f.drinks === 'available') where.push(`r."includedDrinks" > 0 AND r."drinksUsed" < r."includedDrinks"`);
+  if (f.drinks === 'exhausted') where.push(`r."includedDrinks" > 0 AND r."drinksUsed" >= r."includedDrinks"`);
+  if (f.drinks === 'none') where.push(`r."includedDrinks" = 0`);
 
-  // Solo asistentes con pulsera activa (todos los registrados la tienen).
-  const from = `
-    FROM "Attendee" a
-    JOIN "Pulse" p ON p."attendeeId" = a.id AND p.status = 'ACTIVE'
-    JOIN "Package" k ON k.id = p."packageId"
-    JOIN "Church" c ON c.id = a."churchId"
-    JOIN "Presbytery" pr ON pr.id = c."presbyteryId"
-    JOIN "Zone" z ON z.id = pr."zoneId"
-    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`;
+  // Asistentes: "Attendee" con su pulsera activa (todos los registrados la tienen).
+  const attendeeSql = `
+    SELECT a.id, 'ATTENDEE'::text AS kind, NULL::text AS role, a."fullName" AS name, a."ageRange", a.age,
+           c.id AS "churchId", c.name AS "churchName", pr.id AS "presbyteryId", pr.name AS "presbyteryName",
+           z.id AS "zoneId", z.name AS "zoneName", p."packageId", k.name AS "packageName", k."includedDrinks",
+           p."drinksUsed", a."createdAt"
+      FROM "Attendee" a
+      JOIN "Pulse" p ON p."attendeeId" = a.id AND p.status = 'ACTIVE'
+      JOIN "Package" k ON k.id = p."packageId"
+      JOIN "Church" c ON c.id = a."churchId"
+      JOIN "Presbytery" pr ON pr.id = c."presbyteryId"
+      JOIN "Zone" z ON z.id = pr."zoneId"`;
+  // Equipo: cuentas "User" Staff/Admin con vínculo VIGENTE en "StaffPulse" (no se deduce de "tiene pulsera"). La pulsera no
+  // pertenece a ningún asistente (p."attendeeId" IS NULL). `id` es el del User; "Attendee" y "User" siguen siendo identidades distintas.
+  const teamSql = `
+    SELECT u.id, 'TEAM'::text AS kind, u.role::text AS role, u.name AS name, NULL::text AS "ageRange", NULL::int AS age,
+           NULL::text AS "churchId", NULL::text AS "churchName", NULL::text AS "presbyteryId", NULL::text AS "presbyteryName",
+           NULL::text AS "zoneId", NULL::text AS "zoneName", p."packageId", k.name AS "packageName", k."includedDrinks",
+           p."drinksUsed", sp."createdAt"
+      FROM "StaffPulse" sp
+      JOIN "User" u ON u.id = sp."userId" AND u.role::text IN ('STAFF', 'ADMIN')
+      JOIN "Pulse" p ON p.id = sp."pulseId" AND p.status = 'ACTIVE' AND p."attendeeId" IS NULL
+      JOIN "Package" k ON k.id = p."packageId"
+     WHERE sp."unlinkedAt" IS NULL`;
+  const source = kind === 'attendees' ? attendeeSql : kind === 'team' ? teamSql : `${attendeeSql} UNION ALL ${teamSql}`;
+  const from = `FROM (${source}) r ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`;
 
   // Filtros → conteo total filtrado → orden → página (todo en el servidor).
   const total = (await query<{ n: number }>(`SELECT count(*)::int AS n ${from}`, params)).rows[0].n;
@@ -73,16 +104,17 @@ export async function listAttendees(f: AdminAttendeeFilters): Promise<AdminAtten
   const page = Math.min(lastPage, Math.max(0, Math.floor(Number(f.page) || 0)));
 
   const { rows } = await query<AdminAttendeeRow>(
-    `SELECT a.id, a."fullName", a."ageRange", a.age,
-            c.name AS "churchName", pr.name AS "presbyteryName", z.name AS "zoneName",
-            k.name AS "packageName", k."includedDrinks", p."drinksUsed",
-            to_char(a."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
+    `SELECT r.id, r.kind, r.role, r.name AS "fullName", r."ageRange", r.age,
+            COALESCE(r."churchName", '') AS "churchName", COALESCE(r."presbyteryName", '') AS "presbyteryName",
+            COALESCE(r."zoneName", '') AS "zoneName",
+            r."packageName", r."includedDrinks", r."drinksUsed",
+            to_char(r."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
        ${from}
-      ORDER BY a."createdAt" DESC, a.id DESC
+      ORDER BY r."createdAt" DESC, r.id DESC
       LIMIT ${pageSize} OFFSET ${page * pageSize}`,
     params,
   );
-  return { total, page, pageSize, rows };
+  return { total, page, pageSize, rows, teamAvailable: true };
 }
 
 /** Catálogo para los filtros (zona → presbiterio → iglesia, kits). */

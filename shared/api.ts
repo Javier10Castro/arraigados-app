@@ -275,6 +275,9 @@ export function parsePageSize(raw: unknown): PageSize {
 /** Estado de las aguas del asistente (filtro "Estado" de la lista). */
 export type DrinksFilter = 'available' | 'exhausted' | 'none';
 
+/** Tipo de registro de la lista: todos, solo asistentes o solo equipo (Staff y Admin con pulsera vinculada en "StaffPulse"). */
+export type AttendeeKindFilter = 'attendees' | 'team';
+
 /** GET /api/admin/attendees?q=&zoneId=&presbyteryId=&churchId=&packageId=&drinks=&page= */
 export type AdminAttendeeFilters = {
   q?: string;
@@ -283,13 +286,20 @@ export type AdminAttendeeFilters = {
   churchId?: string;
   packageId?: string;
   drinks?: DrinksFilter | '';
+  /** '' = todos. */
+  kind?: AttendeeKindFilter | '';
   /** 0-based. */
   page?: number;
   pageSize?: PageSize;
 };
 
 export type AdminAttendeeRow = {
+  /** Asistente: id de "Attendee". Equipo: id de "User" (identidades separadas). */
   id: string;
+  /** ATTENDEE o TEAM. Las filas del equipo no tienen iglesia/zona (vienen vacías). */
+  kind: 'ATTENDEE' | 'TEAM';
+  /** Solo equipo: rol de la cuenta. */
+  role: 'STAFF' | 'ADMIN' | null;
   fullName: string;
   /** Rango de edad (columna "ageRange"). */
   ageRange: string | null;
@@ -304,7 +314,14 @@ export type AdminAttendeeRow = {
   createdAt: string;
 };
 
-export type AdminAttendeesResponse = { total: number; page: number; pageSize: number; rows: AdminAttendeeRow[] };
+export type AdminAttendeesResponse = {
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: AdminAttendeeRow[];
+  /** false si falta la migración 012 ("StaffPulse"): no se puede listar al equipo y la lista muestra solo asistentes. */
+  teamAvailable: boolean;
+};
 
 /** GET /api/admin/attendees/catalog -- opciones de los filtros. */
 export type AdminAttendeesCatalog = {

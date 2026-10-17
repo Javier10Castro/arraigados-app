@@ -4,7 +4,13 @@ import { ChevronRight, CupSoda, Search, X } from 'lucide-react';
 import Button from '../components/Button';
 import AdminShell from './AdminShell';
 import { api } from '../lib/api';
-import { parsePageSize, type AdminAttendeesCatalog, type AdminAttendeesResponse, type DrinksFilter } from '../../shared/api';
+import {
+  parsePageSize,
+  type AdminAttendeesCatalog,
+  type AdminAttendeesResponse,
+  type AttendeeKindFilter,
+  type DrinksFilter,
+} from '../../shared/api';
 import Pagination from '../components/Pagination';
 import { Skeleton, SkeletonRows } from '../components/Skeleton';
 import { shortDate } from './format';
@@ -29,6 +35,13 @@ import a from './Asistentes.module.css';
 /** Clase de cada columna (las mismas para las filas esqueleto). */
 const COL_CLASSES = [d.num, undefined, a.wide, a.wide, d.kitCol, undefined, a.wide, d.act];
 
+/** Tipo de registro: asistentes ("Attendee") o equipo (Staff/Admin con pulsera vinculada en "StaffPulse"). */
+const KIND_FILTERS: { value: AttendeeKindFilter | ''; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'attendees', label: 'Solo asistentes' },
+  { value: 'team', label: 'Solo equipo (Staff y Admin)' },
+];
+
 const DRINK_FILTERS: { value: DrinksFilter | ''; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'available', label: 'Con aguas' },
@@ -45,6 +58,8 @@ export default function Asistentes() {
   const churchId = params.get('iglesia') ?? '';
   const packageId = params.get('kit') ?? '';
   const drinks = (params.get('aguas') ?? '') as DrinksFilter | '';
+  const rawKind = params.get('tipo');
+  const kind: AttendeeKindFilter | '' = rawKind === 'asistentes' ? 'attendees' : rawKind === 'equipo' ? 'team' : '';
   const page = Math.max(0, Number(params.get('pagina') ?? 1) - 1);
   const pageSize = parsePageSize(params.get('porPagina'));
 
@@ -84,7 +99,7 @@ export default function Asistentes() {
     setError('');
     setLoading(true);
     api
-      .adminAttendees({ q, zoneId, presbyteryId, churchId, packageId, drinks, page, pageSize })
+      .adminAttendees({ q, zoneId, presbyteryId, churchId, packageId, drinks, kind, page, pageSize })
       .then((r) => {
         if (req !== seq.current) return;
         setData(r);
@@ -94,7 +109,7 @@ export default function Asistentes() {
       .catch((err: Error) => req === seq.current && setError(err.message))
       .finally(() => req === seq.current && setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, zoneId, presbyteryId, churchId, packageId, drinks, page, pageSize, reload]);
+  }, [q, zoneId, presbyteryId, churchId, packageId, drinks, kind, page, pageSize, reload]);
 
   // Cascada: presbiterios de la zona elegida; iglesias del presbiterio (o de la zona).
   const presbyteries = useMemo(
@@ -106,7 +121,8 @@ export default function Asistentes() {
     return (catalog?.churches ?? []).filter((c) => (presbyteryId ? c.presbyteryId === presbyteryId : allowed.has(c.presbyteryId)));
   }, [catalog, presbyteries, presbyteryId]);
 
-  const hasFilters = Boolean(q || zoneId || presbyteryId || churchId || packageId || drinks);
+  const hasFilters = Boolean(q || zoneId || presbyteryId || churchId || packageId || drinks || kind);
+  const places = Boolean(zoneId || presbyteryId || churchId); // iglesia/presbiterio/zona solo existen para asistentes
   const from = `?${params.toString()}`;
 
   return (
@@ -151,6 +167,24 @@ export default function Asistentes() {
           />
         </div>
 
+        <div className={a.chips} role="radiogroup" aria-label="Tipo de registro">
+          {KIND_FILTERS.map((f) => {
+            const on = kind === f.value;
+            return (
+              <button
+                key={f.value || 'all'}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`${a.chip} ${on ? a.chipOn : ''}`}
+                onClick={() => update({ tipo: f.value === 'attendees' ? 'asistentes' : f.value === 'team' ? 'equipo' : '' })}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className={a.chips} role="radiogroup" aria-label="Aguas frescas">
           {DRINK_FILTERS.map((f) => (
             <button
@@ -193,9 +227,26 @@ export default function Asistentes() {
           {loading ? (
             <Skeleton w={150} h={18} />
           ) : (
-            `${data?.total ?? 0} ${data?.total === 1 ? 'asistente' : 'asistentes'}`
+            `${data?.total ?? 0} ${
+              kind === 'team'
+                ? data?.total === 1 ? 'persona del equipo' : 'personas del equipo'
+                : kind === 'attendees'
+                  ? data?.total === 1 ? 'asistente' : 'asistentes'
+                  : data?.total === 1 ? 'registro' : 'registros'
+            }`
           )}
         </h2>
+
+        {data && !data.teamAvailable && kind !== 'attendees' && (
+          <p className={s.hint} role="status">
+            El listado del equipo aún no está habilitado en esta base (falta aplicar la migración 012); por ahora se muestran solo asistentes.
+          </p>
+        )}
+        {places && kind !== 'attendees' && (
+          <p className={s.hint} role="status">
+            Zona, presbiterio e iglesia solo aplican a asistentes: el equipo no aparece mientras estén activos.
+          </p>
+        )}
 
         {!loading && !error && data && data.total === 0 && (
           <p className={s.hint}>
@@ -228,26 +279,39 @@ export default function Asistentes() {
                     rows={data && data.total > 0 ? Math.min(pageSize, Math.max(data.total - page * pageSize, 1)) : pageSize}
                   />
                 ) : (
-                  data.rows.map((r, i) => (
+                  data.rows.map((r, i) => {
+                  const team = r.kind === 'TEAM';
+                  // Equipo: no hay ficha de asistente; se abre Usuarios (la cuenta y su pulsera se gestionan ahí).
+                  const open = () => (team ? navigate('/admin/usuarios') : navigate(`/admin/asistentes/${r.id}`, { state: { from } }));
+                  return (
                   <tr
-                    key={r.id}
+                    key={`${r.kind}-${r.id}`}
                     className={a.rowLink}
                     tabIndex={0}
-                    onClick={() => navigate(`/admin/asistentes/${r.id}`, { state: { from } })}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/admin/asistentes/${r.id}`, { state: { from } })}
+                    onClick={open}
+                    onKeyDown={(e) => e.key === 'Enter' && open()}
                   >
                     <td className={d.num}>{data.page * data.pageSize + i + 1}</td>
                     <td>
-                      <span className={a.name}>{r.fullName}</span>
-                      <span className={a.nameSub}>{r.churchName}</span>
+                      <span className={a.name}>
+                        {r.fullName}
+                        {team && <em className={a.teamTag}>{r.role === 'ADMIN' ? 'Admin' : 'Staff'}</em>}
+                      </span>
+                      <span className={a.nameSub}>{team ? 'Equipo' : r.churchName}</span>
                     </td>
                     <td className={a.wide}>
-                      <span className={a.church}>{r.churchName}</span>
-                      <span className={a.churchSub}>
-                        {r.presbyteryName} · {r.zoneName}
-                      </span>
+                      {team ? (
+                        <span className={a.churchSub}>Equipo</span>
+                      ) : (
+                        <>
+                          <span className={a.church}>{r.churchName}</span>
+                          <span className={a.churchSub}>
+                            {r.presbyteryName} · {r.zoneName}
+                          </span>
+                        </>
+                      )}
                     </td>
-                    <td className={a.wide}>{r.ageRange ?? (r.age != null ? `${r.age} años` : '—')}</td>
+                    <td className={a.wide}>{team ? '—' : (r.ageRange ?? (r.age != null ? `${r.age} años` : '—'))}</td>
                     <td className={d.kitCol}>
                       <span className={d.kit}>{r.packageName}</span>
                     </td>
@@ -259,7 +323,8 @@ export default function Asistentes() {
                       <ChevronRight size={18} className={a.chev} aria-hidden="true" />
                     </td>
                   </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
@@ -268,7 +333,7 @@ export default function Asistentes() {
 
         {data && (
           <Pagination
-            label="asistentes"
+            label={kind === 'team' ? 'personas del equipo' : kind === 'attendees' ? 'asistentes' : 'registros'}
             page={page + 1}
             pageSize={pageSize}
             total={data.total}
