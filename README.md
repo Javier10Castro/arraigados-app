@@ -171,7 +171,7 @@ Todas son **solo de servidor** (el frontend no usa ninguna). Se documentan en [`
 
 | Variable | ¿Obligatoria? | Para qué sirve |
 |---|---|---|
-| `DATABASE_URL` | **Sí** | Conexión a Neon. Usa el endpoint **pooler** (`-pooler` en el host). |
+| `DATABASE_URL` | **Sí** | Conexión a Neon. Usa el endpoint **pooler** (`-pooler` en el host). Desde el 18 oct 2026 la producción usa la base **Wild Butterfly** (proyecto Neon «Red Juvenil Tijuana», la cuenta del congreso); la anterior (**Divine Block**, proyecto «Arraigados 2K26») quedó solo como respaldo. |
 | `SESSION_SECRET` | **Sí** | Firma las sesiones de Staff/Admin (HMAC-SHA256). Mínimo 32 caracteres aleatorios. Cambiarla cierra todas las sesiones. |
 | `PUBLIC_BASE_URL` | Solo en producción | Dominio con el que se arma el QR de cada pulsera: `{PUBLIC_BASE_URL}/p/{token}`. Sin `/` al final. **Queda grabado en cada QR impreso**: fíjalo al dominio oficial definitivo **antes** de imprimir pulseras reales. En desarrollo déjala vacía. |
 | `OWNER_EMAIL` | No | Cuenta principal protegida (por defecto `javiercastro9912@gmail.com`): no se puede eliminar. |
@@ -216,7 +216,7 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `015_team_notes.sql` | Notas y «me gusta» de cuentas del equipo con pulsera, en la vista de visitante. |
 | `016_raffle_cancel.sql` | Permite **cancelar** una rifa abierta (nuevo estado `CANCELLED`). |
 
-> **Estado en Neon (verificado el 18 oct 2026):** en la base *Wild Butterfly* están aplicadas la 012–016 y **no** la 011. Para aplicar una sola: `npm run db:migrar -- --only <archivo>.sql` (un `db:migrar` a secas aplicaría también la 011). Cada migración documenta su estado en su cabecera.
+> **Estado en Neon (verificado el 18 oct 2026):** en la base *Wild Butterfly* están aplicadas la 012–016 y **no** la 011 (antes de que ese día se le copiaran los datos de la base anterior; después no se volvió a verificar con `npm run db:estado`). Para aplicar una sola: `npm run db:migrar -- --only <archivo>.sql` (un `db:migrar` a secas aplicaría también la 011). Cada migración documenta su estado en su cabecera.
 
 Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se puede correr las veces que haga falta. Las semillas solo corren **al crear la tabla**, así que volver a migrar **no resucita** datos que borraste.
 
@@ -505,6 +505,9 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 - **Agregar/editar el menú o la mercancía:** Admin → Menú / Mercancía (foto, precio en pesos, sede, disponibilidad, orden).
 - **Cambiar el programa:** editar `src/data/program.ts` (única fuente) y desplegar.
 - **Inscripción del domingo con pulseras sobrantes:** (1) `npm run db:respaldo-total`; (2) `npm run db:lote-domingo` y revisa el total y el desglose; (3) `npm run db:lote-domingo -- --aplicar` y escribe `SI` enseguida (Neon corta conexiones inactivas); (4) prueba con una pulsera real: debe mostrar $30, sin aguas ni beneficios, y el dashboard sumar 1 en «Inscripción Domingo». Para revertir: `npm run db:lote-domingo -- --deshacer DOMINGO-N`.
+- **Cambiar la base de producción (como se hizo el 18 oct):** (1) en una terminal con la `DATABASE_URL` de la base actual: `npm run db:respaldo-total`; (2) en otra terminal **sin** `DATABASE_URL` (usa `.env`) o con la de la base nueva: `npm run db:restaurar-total -- respaldos\total-AAAAMMDD-HHMMSS --reemplazar`, revisando que la línea `Base:` sea la nueva **antes** de escribir `REEMPLAZAR TODO`; (3) comprobar conteos; (4) en Netlify cambiar `DATABASE_URL` **solo en Production** (endpoint pooler) y lanzar *Deploys → Trigger deploy → Clear cache and deploy site* (Netlify no lee la variable nueva hasta el siguiente despliegue); (5) comprobar con una acción registrada en el admin que `SELECT count(*) FROM "AuditLog"` sube en la base nueva y no en la vieja. Las fotos viven en Netlify Blobs, no en la base. *Deploy Previews* y *Branch deploys* conservan su propio valor.
+- **Ojo con el `.env` local:** hoy apunta a la base de producción (Wild Butterfly). Revisa siempre la línea `Base:` antes de escribir `SI` o `REEMPLAZAR TODO`.
+- **Avisos del dashboard ocultos:** en `src/admin/dashboard/Dashboard.tsx` el bloque `Alerts` lleva `false &&`; quítalo para volver a mostrarlos.
 - **Poner el link de la playlist, foto o textos del café:** editar `src/data/homeCards.ts` (`PLAYLIST.url`; `CAFE_STANDS`: título, texto, sede y foto; fotos en `src/assets/brand/`) y desplegar. Sin link, la playlist no se muestra en producción.
 - **Mostrar el menú solo con comida disponible:** Admin → Menú → deja *disponibles* solo los platillos que sí hay en cada sede; sin ninguno en la sede del asistente, la sección no sale.
 - **Descargar las listas de asistentes por kit:** entra como dueño → Admin → Secreto → botón del kit.
