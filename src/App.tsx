@@ -30,6 +30,7 @@ import Canjes from './admin/Canjes';
 import Configuracion from './admin/Configuracion';
 import Descuentos from './admin/Descuentos';
 import Rifas from './admin/Rifas';
+import Secreto from './admin/Secreto';
 import Rifa from './pages/Rifa';
 import Menu from './admin/Menu';
 import Merch from './admin/Merch';
@@ -143,6 +144,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={admin(<Dashboard />)} />
         <Route path="/admin/descuentos" element={admin(<Descuentos />)} />
         <Route path="/admin/rifas" element={admin(<Rifas />)} />
+        <Route path="/admin/secreto" element={admin(<Secreto />)} />
         {/* Proyector de la rifa: pública (solo lectura; el id de la rifa es el enlace). */}
         <Route path="/rifa/:id" element={<Rifa />} />
         {/* Ruta vieja (hasta el 2 oct 2026): por si queda algún enlace o marcador guardado. */}

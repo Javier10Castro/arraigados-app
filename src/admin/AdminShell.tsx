@@ -70,7 +70,7 @@ export default function AdminShell({
   const { user, signOut } = useStaffSession();
   const teamNav = useTeamNav();
   const pulseLink = useOwnPulseLink();
-  const sections = visibleSections(user?.canManageRaffles);
+  const sections = visibleSections(user?.canManageRaffles, user?.isOwner);
   const primary = sections.filter((x) => x.primary);
   const inMore = pathname === '/admin/mas' || sections.some((x) => !x.primary && pathname.startsWith(x.to));
 
@@ -184,7 +184,7 @@ export function AdminMas() {
   return (
     <AdminShell>
       <ul className={s.moreList}>
-        {visibleSections(user?.canManageRaffles).filter((x) => !x.primary).map(({ to, label, Icon, ready, stage }) => (
+        {visibleSections(user?.canManageRaffles, user?.isOwner).filter((x) => !x.primary).map(({ to, label, Icon, ready, stage }) => (
           <li key={to}>
             {ready ? (
               <NavLink to={to} className={s.moreRow}>

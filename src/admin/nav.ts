@@ -1,4 +1,4 @@
-import { BadgePercent, Boxes, Church, Ticket, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, Settings, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
+import { BadgePercent, Boxes, Church, KeyRound, Ticket, Gift, ClipboardList, CupSoda, LayoutDashboard, Megaphone, Package, Settings, ShoppingBag, StickyNote, UserCog, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -37,6 +37,8 @@ export type AdminSection = {
   primary?: boolean;
   /** Solo se muestra si el servidor dice que la cuenta puede operar Rifas (/api/auth/me). */
   raffles?: boolean;
+  /** Solo se muestra a la cuenta propietaria (/api/auth/me -> isOwner). */
+  owner?: boolean;
 };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
@@ -67,6 +69,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { to: '/admin/configuracion', label: 'Configuración', Icon: Settings, ready: true },
   /* Auditoría (Etapa 8, 5 oct 2026): bitácora de solo lectura sobre "AuditLog". */
   { to: '/admin/auditoria', label: 'Auditoría', Icon: ClipboardList, ready: true },
+  /* Secreto (17 oct 2026): listas "Nombre - Iglesia" por kit en .txt. Solo cuenta propietaria. */
+  { to: '/admin/secreto', label: 'Secreto', Icon: KeyRound, ready: true, owner: true },
   /* Instantáneas OCULTO (6 oct 2026; Etapa 9 sin construir). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   { to: '/admin/instantaneas', label: 'Instantáneas', Icon: Images, ready: false, stage: 'Etapa 9' }, */
 ];
@@ -75,4 +79,5 @@ export const ADMIN_SECTIONS: AdminSection[] = [
 export const ADMIN_HOME = ADMIN_SECTIONS.find((s) => s.ready)!.to;
 
 /** Secciones visibles para la cuenta: Rifas solo si el servidor la autorizó. (Solo presentación; el servidor decide.) */
-export const visibleSections = (canRaffles: boolean | undefined) => ADMIN_SECTIONS.filter((x) => !x.raffles || canRaffles === true);
+export const visibleSections = (canRaffles: boolean | undefined, isOwner?: boolean) =>
+  ADMIN_SECTIONS.filter((x) => (!x.raffles || canRaffles === true) && (!x.owner || isOwner === true));

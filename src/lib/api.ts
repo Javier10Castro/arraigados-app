@@ -448,7 +448,7 @@ export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsh
 
 export async function downloadFile(
   path: string,
-  expectedType: 'application/pdf' | 'image/png' | typeof XLSX_MIME,
+  expectedType: 'application/pdf' | 'image/png' | 'text/plain' | typeof XLSX_MIME,
   fallbackName: string,
 ) {
   let res: Response;
