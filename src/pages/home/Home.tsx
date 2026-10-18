@@ -18,6 +18,8 @@ import { useMyNotes } from '../../components/notes/useMyNotes';
 import { useNotesFeed } from '../../components/notes/useNotesFeed';
 import MenuCarousel from './MenuCarousel';
 import MerchCarousel from './MerchCarousel';
+import CafeStandCard from './CafeStandCard';
+import PlaylistCard from './PlaylistCard';
 import styles from './Home.module.css';
 
 /**
@@ -473,6 +475,9 @@ export default function Home() {
        * platillos todavía). Va después de "Mi kit", antes de "Próximos
        * eventos" -- tal como se acordó, sin agregarse al nav.
        */}
+      {/* Anuncio del stand de Salmos Café (17 oct 2026): para todos; textos/ubicación/logo en data/homeCards.ts. */}
+      <CafeStandCard />
+
       <MenuCarousel />
 
       {/*
@@ -482,6 +487,9 @@ export default function Home() {
        * razón: sección nueva e independiente, sin tocar el resto de Home.
        */}
       <MerchCarousel />
+
+      {/* Playlist (17 oct 2026): para todos; el enlace va en data/homeCards.ts (sin enlace no se muestra en producción). */}
+      <PlaylistCard />
 
       {SHOW_UPCOMING_EVENTS && (
         <section className={`${styles.section} ${styles.agenda}`}>
