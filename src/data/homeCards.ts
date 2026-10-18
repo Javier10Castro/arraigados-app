@@ -15,15 +15,11 @@ export const PLAYLIST = {
 } as const;
 
 export const CAFE_STAND = {
-  /** Nombre que se muestra como marca. */
-  brand: 'Salmos Café',
-  title: 'Tenemos stand de café',
-  body: 'Pasa por tu café durante el congreso y canjea tus aguas frescas con tu pulsera.',
+  /** Texto pequeño sobre el título. */
+  kicker: 'Tenemos stand de café',
+  /** Título grande (la marca). */
+  title: 'Salmos Café',
+  body: 'Pasa por tu café durante el congreso',
   /** Dónde está (opcional; vacío = no se muestra la fila). Ej.: 'Junto a la recepción'. */
   location: '',
-  /**
-   * Ruta del logo (opcional). Copia el archivo a `public/rcs/` y pon p. ej. '/rcs/salmos-cafe.svg'.
-   * Vacío = se muestra la marca en texto con un ícono de taza.
-   */
-  logo: '',
 } as const;

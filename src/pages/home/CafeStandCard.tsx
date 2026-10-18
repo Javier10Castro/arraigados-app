@@ -1,14 +1,15 @@
-import { Coffee, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { CAFE_STAND } from '../../data/homeCards';
+import standPhoto from '../../assets/brand/salmos-stand.webp';
 import homeStyles from './Home.module.css';
 import styles from './CafeStandCard.module.css';
 
 /**
- * Anuncio "Tenemos stand de café" de /home (todos los usuarios). Solo informa; no vende ni pide nada.
- * Textos, ubicación y logo se editan en data/homeCards.ts.
+ * Anuncio del stand de Salmos Café en /home (todos los usuarios). Solo informa; no vende ni pide nada.
+ * Textos y ubicación se editan en data/homeCards.ts; la foto es src/assets/brand/salmos-stand.webp.
  */
 export default function CafeStandCard() {
-  const { brand, title, body, location, logo } = CAFE_STAND;
+  const { kicker, title, body, location } = CAFE_STAND;
   return (
     <section className={`${homeStyles.section} ${homeStyles.current}`} aria-labelledby="cafe-title">
       <h2 className="label" id="cafe-title">
@@ -16,7 +17,7 @@ export default function CafeStandCard() {
       </h2>
       <div className={styles.card}>
         <div className={styles.text}>
-          <span className={styles.kicker}>{brand.toUpperCase()}</span>
+          <span className={styles.kicker}>{kicker.toUpperCase()}</span>
           <strong className={styles.title}>{title}</strong>
           <p className={styles.body}>{body}</p>
           {location && (
@@ -26,20 +27,7 @@ export default function CafeStandCard() {
             </span>
           )}
         </div>
-        <div className={styles.mark} aria-hidden={logo ? undefined : true}>
-          {logo ? (
-            <img src={logo} alt={`Logo de ${brand}`} draggable={false} />
-          ) : (
-            <>
-              <span className={styles.steam}>
-                <i />
-                <i />
-                <i />
-              </span>
-              <Coffee size={44} strokeWidth={1.7} />
-            </>
-          )}
-        </div>
+        <img className={styles.photo} src={standPhoto} alt="Vaso de café helado con el sticker de Arraigados" width="560" height="701" loading="lazy" draggable={false} />
       </div>
     </section>
   );
