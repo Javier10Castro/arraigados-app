@@ -228,7 +228,8 @@ function Body({
 
   return (
     <>
-      {d.alerts.length > 0 && <Alerts alerts={d.alerts} />}
+      {/* Avisos ocultos a propósito (18 oct). Para volver a mostrarlos, quita "false &&". */}
+      {false && d.alerts.length > 0 && <Alerts alerts={d.alerts} />}
 
       {/* ============ 1. ¿Cómo vamos? ============ */}
       <Level n={1} title="¿Cómo vamos?">
