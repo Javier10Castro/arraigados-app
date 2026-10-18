@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import { PLAYLIST } from '../../data/homeCards';
+import cover from '../../assets/brand/playlist-cover.webp';
 import homeStyles from './Home.module.css';
 import styles from './PlaylistCard.module.css';
 
@@ -45,11 +46,7 @@ export default function PlaylistCard() {
         aria-disabled={url ? undefined : true}
         aria-label={`${PLAYLIST.title}${platform ? `, abrir en ${platform}` : ''}`}
       >
-        <span className={styles.eq} aria-hidden="true">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <i key={i} style={{ animationDelay: `${i * 0.17}s` }} />
-          ))}
-        </span>
+        <img className={styles.cover} src={cover} alt="" width={84} height={84} />
         <span className={styles.body}>
           <span className={styles.kicker}>ARRAIGADOS 2K26</span>
           <strong className={styles.title}>{PLAYLIST.title}</strong>

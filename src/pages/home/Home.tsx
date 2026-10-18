@@ -249,6 +249,8 @@ export default function Home() {
 
   // Lo que incluye el kit: viene de la base (administrable en /admin/beneficios); sin migración 008, la lista fija de siempre.
   const kitItems = me.package.benefits ?? packageContent[me.package.name] ?? [];
+  // Kit sin beneficios ni aguas (p. ej. Inscripción Domingo): no hay nada que mostrar, se oculta la tarjeta.
+  const noKitCard = kitItems.length === 0 && me.package.includedDrinks === 0;
 
   return (
     <div className={`page-enter ${styles.page}`}>
@@ -413,6 +415,7 @@ export default function Home() {
        * disponibles, punteados los ya canjeadas -- y ese conteo baja solo
        * (aguas frescas restantes) conforme el staff las va canjeando.
        */}
+      {!noKitCard && (
       <section className={`${styles.section} ${styles.current}`}>
         <h2 className="label">Mi kit</h2>
         {/* .kitPanel (3 oct 2026) solo re-colorea el fondo a vidrio esmerilado
@@ -447,18 +450,17 @@ export default function Home() {
             <h2 className="label">Aguas frescas</h2>
             {me.package.includedDrinks > 0 ? (
               <div className={`${beneficiosStyles.drinks} ${styles.drinksWrap}`}>
-                <DrinkCups
-                  total={me.package.includedDrinks}
-                  used={me.drinksUsed}
-                  size={46}
-                  className={styles.drinksCupsRow}
-                />
-                <p className={beneficiosStyles.drinksCount}>
-                  <strong>{me.drinksRemaining}</strong> de {me.package.includedDrinks} disponibles
-                </p>
+                {/* Inactivo: las aguas frescas solo eran del sábado (18 oct 2026). */}
+                <div style={{ opacity: 0.45, filter: 'grayscale(1)' }} aria-hidden="true">
+                  <DrinkCups
+                    total={me.package.includedDrinks}
+                    used={me.package.includedDrinks}
+                    size={46}
+                    className={styles.drinksCupsRow}
+                  />
+                </div>
                 <p className={beneficiosStyles.muted}>
-                  <CupSoda size={14} strokeWidth={2.2} aria-hidden="true" /> Para canjear, muestra tu pulsera al staff.
-                  Cada vez que te entreguen una, aquí se marca como usada.
+                  <CupSoda size={14} strokeWidth={2.2} aria-hidden="true" /> Beneficio del día sábado. ¡Gracias por acompañarnos!
                 </p>
               </div>
             ) : (
@@ -467,6 +469,7 @@ export default function Home() {
           </section>
         </div>
       </section>
+      )}
 
       {/*
        * Carrusel "Menú" (3 oct 2026) -- platillos reales de /admin/menu

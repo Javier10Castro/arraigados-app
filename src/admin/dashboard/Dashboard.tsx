@@ -209,6 +209,7 @@ function Body({
   // Los colores de kit se fijan por el orden de precio de TODOS los kits mostrados.
   const kitSegments = d.kits.map((k) => ({ key: k.packageId, label: k.name, value: k.count, color: kitColor(kitIndex.get(k.packageId) ?? 9) }));
   const kitTotal = d.kits.reduce((n, k) => n + k.count, 0);
+  const domingoKit = d.kits.find((k) => /domingo/i.test(k.name));
   const drinksPct = d.drinks.included ? fmtPct(d.drinks.used, d.drinks.included) : '—';
   const focusLabel = d.focusDay === d.today ? 'hoy' : dayLabel(d.focusDay);
   const scopeNote = periodFiltered || geoFiltered ? 'con los filtros aplicados' : null;
@@ -286,6 +287,14 @@ function Body({
             <p className={s.kpiSub}>Precio de lista de los kits de los registrados.</p>
             <p className={s.disclaimer}>No representa pagos confirmados.</p>
           </Kpi>
+
+          {domingoKit && (
+            <Kpi label="Inscripción Domingo" value={fmtMoney(domingoKit.valueCents)}>
+              <p className={s.kpiSub}>
+                {fmtInt(domingoKit.count)} {domingoKit.count === 1 ? 'registro' : 'registros'} · ya incluido en el valor estimado.
+              </p>
+            </Kpi>
+          )}
 
           <Kpi label="Pulseras reclamadas" value={fmtInt(d.pulses.active)} unit={`/ ${fmtInt(d.pulses.total)}`}>
             <Meter value={d.pulses.active} max={d.pulses.total} label="Pulseras reclamadas de las impresas" />

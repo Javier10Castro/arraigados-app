@@ -38,6 +38,8 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   'user.password_change': { label: 'Cambió su contraseña', category: 'usuarios' },
   'batch.create': { label: 'Creó un lote', category: 'lotes' },
   'batch.delete': { label: 'Borró un lote', category: 'lotes' },
+  'batch.reuse': { label: 'Reutilizó pulseras sin registrar en un lote nuevo', category: 'lotes' },
+  'batch.reuse_undo': { label: 'Devolvió pulseras de un lote reutilizado', category: 'lotes' },
   'attendee.update': { label: 'Corrigió datos de un asistente', category: 'asistentes' },
   'attendee.photo_remove': { label: 'Quitó la foto de perfil de un asistente', category: 'asistentes' },
   'pulse.reassign': { label: 'Reemplazó una pulsera', category: 'pulseras' },
@@ -218,6 +220,10 @@ function build(row: Row): Built {
     /* ---- Lotes ---- */
     case 'batch.create':
       return { title: `Creó el lote ${str(m.code) || str(row.entityCode) || str(row.entityName) || ''}`.trim(), parts: [[null, count(m.quantity, 'pulsera', 'pulseras'), 'Pulseras']] };
+    case 'batch.reuse':
+      return { title: `Pasó pulseras sin registrar al lote ${str(m.code) || ''}`.trim(), parts: [[null, count(m.quantity, 'pulsera', 'pulseras'), 'Pulseras']] };
+    case 'batch.reuse_undo':
+      return { title: `Devolvió pulseras del lote ${str(m.code) || ''}`.trim(), parts: [[null, count(m.returned, 'pulsera', 'pulseras'), 'Pulseras']] };
     case 'batch.delete': {
       const bits = [count(m.pulses, 'pulsera', 'pulseras')];
       if (Number(m.attendees) > 0) bits.push(count(m.attendees, 'asistente', 'asistentes'));

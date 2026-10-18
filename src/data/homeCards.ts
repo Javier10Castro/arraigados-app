@@ -9,7 +9,7 @@ export const PLAYLIST = {
    * Enlace PÚBLICO de la playlist (Spotify, Apple Music, YouTube Music...). Pégalo aquí.
    * Mientras esté vacío la tarjeta NO se muestra en producción (en `npm run dev` sí, como vista previa).
    */
-  url: '',
+  url: 'https://open.spotify.com/playlist/7nTyAnGSuuY6zQohiQUc5I',
   title: 'Playlist oficial',
   subtitle: 'La música de Arraigados 2K26: escúchala antes, durante y después del congreso.',
 } as const;

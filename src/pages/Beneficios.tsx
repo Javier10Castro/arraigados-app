@@ -21,14 +21,19 @@ export default function Beneficios() {
   }, []);
   if (!me) return null; // RequireAttendee garantiza la sesión; esto solo satisface a TS.
 
-  const { package: pkg, drinksUsed, drinksRemaining } = me;
+  const { package: pkg } = me;
   // Lista de la base (administrable en /admin/beneficios); si aún no existe, la fija de siempre.
   const items = pkg.benefits ?? packageContent[pkg.name] ?? [];
+  // Kit sin beneficios ni aguas (p. ej. Inscripción Domingo): no hay nada que mostrar.
+  const noKitCard = items.length === 0 && pkg.includedDrinks === 0;
 
   return (
     <div className={`page-enter ${styles.page}`}>
       <ScreenHeader title="Mi kit" back="/home" />
 
+      {noKitCard ? (
+        <p className={styles.muted}>Tu inscripción no incluye beneficios.</p>
+      ) : (
       <div className={styles.packagePanel}>
         <section className={styles.priceCard}>
           <span className={styles.code}>{pkg.name}</span>
@@ -57,13 +62,12 @@ export default function Beneficios() {
           <h2 className="label">Aguas frescas</h2>
           {pkg.includedDrinks > 0 ? (
             <div className={styles.drinks}>
-              <DrinkCups total={pkg.includedDrinks} used={drinksUsed} />
-              <p className={styles.drinksCount}>
-                <strong>{drinksRemaining}</strong> de {pkg.includedDrinks} disponibles
-              </p>
+              {/* Inactivo: las aguas frescas solo eran del sábado (18 oct 2026). */}
+              <div style={{ opacity: 0.45, filter: 'grayscale(1)' }} aria-hidden="true">
+                <DrinkCups total={pkg.includedDrinks} used={pkg.includedDrinks} />
+              </div>
               <p className={styles.muted}>
-                <CupSoda size={14} strokeWidth={2.2} aria-hidden="true" /> Para canjear, muestra tu pulsera al staff.
-                Cada vez que te entreguen una, aquí se marca como usada.
+                <CupSoda size={14} strokeWidth={2.2} aria-hidden="true" /> Beneficio del día sábado. ¡Gracias por acompañarnos!
               </p>
             </div>
           ) : (
@@ -71,6 +75,7 @@ export default function Beneficios() {
           )}
         </section>
       </div>
+      )}
     </div>
   );
 }
