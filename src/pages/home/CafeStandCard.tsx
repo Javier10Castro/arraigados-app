@@ -1,33 +1,54 @@
-import { MapPin } from 'lucide-react';
-import { CAFE_STAND } from '../../data/homeCards';
-import standPhoto from '../../assets/brand/salmos-stand.webp';
+import { Coffee, MapPin } from 'lucide-react';
+import { CAFE_STANDS, type CafeStand } from '../../data/homeCards';
 import homeStyles from './Home.module.css';
 import styles from './CafeStandCard.module.css';
 
 /**
- * Anuncio del stand de Salmos Café en /home (todos los usuarios). Solo informa; no vende ni pide nada.
- * Textos y ubicación se editan en data/homeCards.ts; la foto es src/assets/brand/salmos-stand.webp.
+ * Anuncio de los stands de café en /home (todos los usuarios). Solo informa; no vende ni pide nada.
+ * Foto protagonista a todo el ancho de la tarjeta y panel de vidrio abajo con el texto.
+ * Textos, sede y fotos se editan en data/homeCards.ts.
  */
-export default function CafeStandCard() {
-  const { kicker, title, body, location } = CAFE_STAND;
+function StandArticle({ s }: { s: CafeStand }) {
+  return (
+    <article className={styles.card}>
+      {s.photo ? (
+        <img className={styles.photo} src={s.photo} alt={s.photoAlt} width="900" height="900" loading="lazy" draggable={false} />
+      ) : (
+        <div className={styles.noPhoto} aria-hidden="true">
+          <Coffee size={72} strokeWidth={1.4} />
+        </div>
+      )}
+      <div className={styles.panel}>
+        {s.location && (
+          <span className={styles.where}>
+            <MapPin size={12} strokeWidth={2.4} aria-hidden="true" />
+            {s.location}
+          </span>
+        )}
+        <span className={styles.kicker}>{s.kicker.toUpperCase()}</span>
+        <strong className={styles.title}>{s.title}</strong>
+        <p className={styles.body}>{s.body}</p>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * `venue`: sede del asistente hoy (p. ej. '12va IAFCJ'). Solo se muestran los stands de esa sede; si no hay
+ * ninguno, la sección no aparece. Con una sola tarjeta, queda centrada.
+ */
+export default function CafeStandCard({ venue }: { venue: string }) {
+  const stands = CAFE_STANDS.filter((s) => s.location === venue);
+  if (stands.length === 0) return null;
   return (
     <section className={`${homeStyles.section} ${homeStyles.current}`} aria-labelledby="cafe-title">
       <h2 className="label" id="cafe-title">
         Café
       </h2>
-      <div className={styles.card}>
-        <div className={styles.text}>
-          <span className={styles.kicker}>{kicker.toUpperCase()}</span>
-          <strong className={styles.title}>{title}</strong>
-          <p className={styles.body}>{body}</p>
-          {location && (
-            <span className={styles.where}>
-              <MapPin size={14} strokeWidth={2.3} aria-hidden="true" />
-              {location}
-            </span>
-          )}
-        </div>
-        <img className={styles.photo} src={standPhoto} alt="Vaso de café helado con el sticker de Arraigados" width="560" height="701" loading="lazy" draggable={false} />
+      <div className={`${styles.grid} ${stands.length === 1 ? styles.single : ''}`}>
+        {stands.map((s) => (
+          <StandArticle key={s.id} s={s} />
+        ))}
       </div>
     </section>
   );

@@ -1,52 +1,76 @@
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* Una sola tarjeta: centrada y con ancho acotado en pantallas anchas. */
+.single { width: 100%; max-width: 440px; margin-inline: auto; }
+
 .card {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
-  border-radius: 21px;
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.45);
-  /* Tonos cálidos (café con leche) sobre el vidrio crema de "Mi kit", para distinguirlo del morado del congreso. */
-  background:
-    radial-gradient(110% 130% at 100% 0%, rgba(214, 160, 100, 0.5) 0%, transparent 62%),
-    rgba(242, 247, 215, 0.6);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  backdrop-filter: blur(20px) saturate(150%);
-  box-shadow: 0 8px 32px rgba(20, 0, 70, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  color: var(--morado-oscuro);
-}
-.text { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.kicker { font: 600 11px var(--font-display); letter-spacing: 0.16em; color: #7a4a22; }
-.title { font: 700 30px/0.98 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
-.body { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-2); max-width: 34ch; }
-.where {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  align-self: flex-start;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--morado);
+  background: #3b2314;
+  box-shadow: 0 8px 32px rgba(20, 0, 70, 0.35);
   color: var(--crema);
-  font: 600 12px var(--font-body);
 }
 
 .photo {
-  flex: none;
-  width: 104px;
-  height: 130px;
-  border-radius: 16px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  object-position: 50% 42%;
-  box-shadow: 0 6px 18px rgba(59, 35, 20, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.55);
+  object-position: 50% 45%;
+}
+/* Sin foto todavía: fondo cálido con ícono, para que la tarjeta no se vea vacía. */
+.noPhoto {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-bottom: 90px;
+  color: rgba(242, 247, 215, 0.55);
+  background:
+    radial-gradient(90% 80% at 50% 30%, rgba(214, 160, 100, 0.55) 0%, transparent 70%),
+    linear-gradient(160deg, #6b4226, #2a160b);
 }
 
-@media (min-width: 640px) {
-  .card { padding: 24px 30px; }
-  .title { font-size: 38px; }
-  .photo { width: 132px; height: 165px; border-radius: 18px; }
+/* Panel de vidrio compacto pegado abajo, sobre la foto. */
+.panel {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px 11px;
+  /* Para que .where (absolute) se ubique respecto al panel. */
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(24, 10, 4, 0.5);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  backdrop-filter: blur(14px) saturate(130%);
+}
+.kicker { font: 600 10px var(--font-display); letter-spacing: 0.16em; color: #f0cfa6; }
+.title { font: 700 24px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
+.body { margin: 1px 0 0; font-size: 12px; line-height: 1.35; opacity: 0.92; }
+/* Sede: etiqueta delgada en la esquina superior derecha del panel de vidrio. */
+.where {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(242, 247, 215, 0.92);
+  color: var(--morado-oscuro);
+  font: 600 11px/1.2 var(--font-body);
 }
 
+@media (min-width: 720px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .single { grid-template-columns: minmax(0, 1fr); }
+  .title { font-size: 28px; }
+}

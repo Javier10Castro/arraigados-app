@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, UtensilsCrossed, X } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -42,8 +42,10 @@ import styles from './MenuCarousel.module.css';
 const AUTO_ADVANCE_MS = 3200;
 const RESUME_AFTER_IDLE_MS = 4500;
 
-export default function MenuCarousel() {
-  const [dishes, setDishes] = useState<PublicDish[] | null>(null);
+export default function MenuCarousel({ venue }: { venue: string }) {
+  const [allDishes, setAllDishes] = useState<PublicDish[] | null>(null);
+  // Solo los platillos disponibles de la sede del asistente; si no hay ninguno, la sección no se muestra.
+  const dishes = useMemo(() => allDishes && allDishes.filter((d) => d.venueName === venue), [allDishes, venue]);
   const [selected, setSelected] = useState<PublicDish | null>(null);
   const trackRef = useRef<HTMLUListElement>(null);
   const pausedRef = useRef(false);
@@ -54,10 +56,10 @@ export default function MenuCarousel() {
     api
       .menu()
       .then((r) => {
-        if (alive) setDishes(r.dishes);
+        if (alive) setAllDishes(r.dishes);
       })
       .catch(() => {
-        if (alive) setDishes([]); // sin conexión / error -- la sección simplemente no aparece
+        if (alive) setAllDishes([]); // sin conexión / error -- la sección simplemente no aparece
       });
     return () => {
       alive = false;

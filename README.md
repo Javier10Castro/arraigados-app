@@ -34,12 +34,12 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 
 ### Para el asistente (sin cuenta, solo con su pulsera)
 - **Registro**: escanea el QR de su pulsera (`/p/<token>`), escribe su nombre, rango de edad e iglesia y queda registrado.
-- **Home** (`/home`): animación de bienvenida con su gafete, tarjeta **"Ahora"** en vivo según el programa, carrusel de **notas** de la comunidad, menú de alimentos, mercancía oficial y su kit.
-- **Mi kit / Beneficios** (`/beneficios`): qué incluye su kit y cuántas **aguas frescas** le quedan.
+- **Home** (`/home`): animación de bienvenida con su gafete, tarjeta **"Ahora"** en vivo según el programa, carrusel de **notas** de la comunidad, tarjetas de **playlist** y de **stand de café**, menú de alimentos, mercancía oficial y su kit. El **café y el menú** se muestran solo para la **sede del asistente** (ver §11).
+- **Mi kit / Beneficios** (`/beneficios`): qué incluye su kit. Las **aguas frescas** eran solo del sábado: se muestran **inactivas** (vasos en gris, «Beneficio del día sábado»). Un kit **sin beneficios ni aguas** (p. ej. *Inscripción Domingo*) **no muestra** la tarjeta «Mi kit» en `/home`, y `/beneficios` dice «Tu inscripción no incluye beneficios.».
 - **Programa** (`/programa`): horario oficial del sábado y domingo (la sede del domingo depende de su zona).
 - **Notas**: publica una frase de hasta 60 caracteres que dura 24 horas; da *like* a las de otros.
 - **Campana de notificaciones**: avisos del equipo y likes recibidos.
-- **Comida** (`/comida`), **Recursos**, **Más**.
+- **Comida** (`/comida`) y **Más**. **Recursos** está **oculto** desde el 17 oct (`/recursos` redirige a `/home`; los enlaces están comentados en `AppShell.tsx` y `Mas.tsx`).
 - **Mi perfil** (`/perfil`, Más → Mi perfil): elige cómo aparece en notas, campana, gafete y listas: **foto** propia, **avatar** (*Default*, *Sorpréndeme* o *Custom*) o **iniciales** (qué palabras del nombre y color de fondo). Las tres opciones se conservan; solo una está activa (ver §7.4).
 
 ### Para el Staff (cuenta con correo y contraseña)
@@ -51,19 +51,23 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 ### Para el Admin (panel `/admin`)
 | Sección | Qué permite |
 |---|---|
-| **Dashboard** | Métricas operativas en vivo (registros, canjes, alertas) con filtros por día/zona/presbiterio/iglesia/kit y **exportación a PDF y Excel**. |
+| **Dashboard** | Métricas operativas en vivo (registros, canjes, alertas) con filtros por día/zona/presbiterio/iglesia/kit y **exportación a PDF y Excel**. Incluye la tarjeta **«Inscripción Domingo»** (dinero y registros de ese kit; ya está sumado en «Valor estimado», que es precio de lista, no dinero cobrado). |
 | **Lotes** | Crear lotes de 1 a 500 pulseras de un kit, descargar el **PDF de impresión** (A4/Carta/11×17) o el QR suelto, y **borrar** un lote. |
 | **Asistentes** | Buscar/filtrar, ver el detalle (pulseras, canjes) y **corregir** nombre, edad o iglesia. |
 | **Kits** | Consulta de solo lectura: precio, aguas incluidas, pulseras impresas/reclamadas, uso de aguas e ingreso esperado. |
 | **Beneficios** | Administrar lo que **incluye** cada kit (agregar, renombrar, quitar, reordenar). |
 | **Canjes** | Historial de canjes con filtros; **anular** un canje (nunca se borra). |
+| **Rifas** | Solo cuentas autorizadas por el servidor (`canManageRaffles`). Sorteo **por kit** hecho en el **servidor**, historial, cancelar una rifa abierta y **proyector público** (`/rifa/:id`). Ver [`docs/MANUAL_RIFAS.md`](docs/MANUAL_RIFAS.md). |
+| **Descuentos** | Descuento por rol del equipo e **ingresos simulados** (solo lectura para Admin; editan las cuentas autorizadas). |
 | **Menú** | CRUD de platillos con foto, precio, sede y disponibilidad. |
-| **Mercancía** | CRUD de artículos con galería de fotos y orden de la vitrina. |
+| **Mercancía** | CRUD de artículos con galería de fotos y orden de la vitrina. Las fotos de **más de 3 MB se comprimen solas** en el navegador (WebP) antes de subirse (`src/lib/compressImage.ts`). |
 | **Notas** | Moderación: ver, filtrar y **retirar** notas; administrar **palabras bloqueadas**. |
 | **Avisos** | Publicar avisos (ahora o programados, con etiqueta "EN VIVO") para todos o por zona. |
 | **Iglesias** | Agregar, renombrar, mover de presbiterio o eliminar iglesias (presbiterios y zonas son fijos). |
 | **Usuarios** | Crear cuentas (Admin/Staff) con contraseña temporal, editar, desactivar, restablecer contraseña y **eliminar** cuentas. |
+| **Configuración** | Interruptores del **autocanje** de pulseras del equipo, por rol y con excepciones del propietario. Ver [`docs/EQUIPO_PULSERA_AUTOCANJE.md`](docs/EQUIPO_PULSERA_AUTOCANJE.md). |
 | **Auditoría** | Bitácora de todo lo que hace el equipo, con filtros. |
+| **Secreto** | **Solo el dueño** (`OWNER_EMAIL`): 3 botones (Kit A, Kit B, Kit Especial) que descargan un `.txt` con una línea por asistente registrado: `Nombre completo - Iglesia`, listo para copiar. Solo cuenta pulseras `ACTIVE`; si el kit no tiene registrados avisa. |
 
 ---
 
@@ -71,7 +75,7 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 
 | Término | Significado |
 |---|---|
-| **Kit** (antes "paquete") | Lo que compra el asistente: **Kit - A** ($100, sin aguas), **Kit - B** ($150, 3 aguas), **Especial** ($200, 3 aguas). Son fijos. En la base se llama `Package`; los precios se guardan en **centavos**. |
+| **Kit** (antes "paquete") | Lo que compra el asistente: **Kit - A** ($100, sin aguas), **Kit - B** ($150, 3 aguas), **Especial** ($200, 3 aguas) e **Inscripción Domingo** ($30, sin aguas ni beneficios; creado el 18 oct con `npm run db:lote-domingo`). Son fijos. En la base se llama `Package`; los precios se guardan en **centavos**. |
 | **Beneficios** | Texto de lo que incluye cada kit ("Bote personalizado", "Tote bag"…). Se administran en Admin → Beneficios (tabla `PackageBenefit`). |
 | **Pulsera** (`Pulse`) | Pulsera física con QR. Estados: `UNCLAIMED` (sin reclamar), `ACTIVE` (reclamada por un asistente), `INVALIDATED` (deshabilitada/reemplazada). |
 | **Lote** (`Batch`) | Grupo de pulseras del mismo kit generado de una vez (código `LOTE-AAAA-NNN`). |
@@ -119,17 +123,18 @@ arraigados-app/
 ├── src/                      Frontend (React)
 │   ├── App.tsx               ÚNICA fuente de rutas
 │   ├── pages/                Pantallas del asistente (Home, Programa, Beneficios, Comida…)
-│   │   ├── home/             Home clásico (/homev2) y sus carruseles
-│   │   └── homev2/           Home principal (/home) con animación de gafete
+│   │   ├── home/             Contenido del Home (/homev2 lo muestra solo): Notas, Menú, Mercancía y las tarjetas de Playlist y Café
+│   │   └── homev2/           Home principal (/home): animación y gafete, y debajo el Home de arriba
 │   ├── admin/                Panel de Admin (Dashboard, Lotes, Kits, Usuarios, Auditoría…)
 │   ├── components/           Componentes compartidos (Button, Pagination, Skeleton…)
-│   ├── data/                 Datos estáticos (program.ts = programa oficial, app.ts)
-│   └── lib/api.ts            Cliente HTTP: una función por endpoint
+│   ├── data/                 Datos estáticos (program.ts = programa oficial, app.ts, homeCards.ts = playlist y stands de café)
+│   ├── assets/brand/         Imágenes de marca (carátula de la playlist, foto del stand de café…)
+│   └── lib/                  api.ts = cliente HTTP (una función por endpoint); compressImage.ts = compresor de fotos
 ├── netlify/functions/        Backend: un archivo .mts por endpoint /api/*
 ├── server/                   Lógica del backend (db, auth, batches, users, audit, benefits…)
 ├── shared/                   Tipos y constantes compartidos cliente/servidor
-├── migrations/               Migraciones SQL propias (001–011), idempotentes
-├── scripts/                  Utilidades de base de datos (migrar, respaldo, limpieza…)
+├── migrations/               Migraciones SQL propias (001–016), idempotentes
+├── scripts/                  Utilidades de base de datos (migrar, respaldo, limpieza, lote del domingo…)
 ├── docs/                     Documentación detallada y planes
 ├── public/                   Archivos estáticos
 ├── netlify.toml              Build, funciones, redirect SPA, cabeceras de seguridad
@@ -205,6 +210,13 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `009_attendee_profile.sql` | `AttendeeProfile` (foto / avatar / iniciales de cada asistente). Solo **agrega** una tabla; no toca `Attendee`. |
 | `010_attendee_profile_keep_all.sql` | Agrega `initialsId` y relaja la regla para conservar **las 3 selecciones a la vez** (`kind` = la activa). No borra datos. |
 | `011_rate_limit.sql` | Crea la tabla `RateLimit` (contadores del límite de frecuencia: clave con huella HMAC, conteo y fin de ventana). No toca tablas existentes ni guarda datos personales. **Pendiente de aplicar** (primero en rama de Neon). Ver [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md). |
+| `012_staff_selfredeem.sql` | Pulseras de cuentas del equipo y control del **autocanje**. |
+| `013_team_discount.sql` | Configuración de **descuentos del equipo** (simulación de ingresos del Dashboard). |
+| `014_raffles.sql` | **Rifas** por kit con sorteo en el servidor (`Raffle`, `RaffleWinner`). |
+| `015_team_notes.sql` | Notas y «me gusta» de cuentas del equipo con pulsera, en la vista de visitante. |
+| `016_raffle_cancel.sql` | Permite **cancelar** una rifa abierta (nuevo estado `CANCELLED`). |
+
+> **Estado en Neon (verificado el 18 oct 2026):** en la base *Wild Butterfly* están aplicadas la 012–016 y **no** la 011. Para aplicar una sola: `npm run db:migrar -- --only <archivo>.sql` (un `db:migrar` a secas aplicaría también la 011). Cada migración documenta su estado en su cabecera.
 
 Todas son **idempotentes** (`IF NOT EXISTS`/guardas): `npm run db:migrar` se puede correr las veces que haga falta. Las semillas solo corren **al crear la tabla**, así que volver a migrar **no resucita** datos que borraste.
 
@@ -277,10 +289,10 @@ Detalles de seguridad:
 | `/conocer` | Público | Información del congreso. |
 | `/login` | Staff/Admin | Inicio de sesión del equipo. |
 | `/registro`, `/p/:token` | Asistente | Registro al escanear el QR. |
-| `/home` | Asistente | **Home principal** (con animación de bienvenida). |
-| `/homev2` | Asistente | Home clásico, sin animación (respaldo). |
+| `/home` | Asistente | **Home principal**: animación de bienvenida con el gafete y debajo el contenido del Home. |
+| `/homev2` | Asistente | El mismo contenido del Home **sin** la animación (respaldo). |
 | `/home/mercancia` | Asistente | Galería de mercancía. |
-| `/programa`, `/beneficios`, `/comida`, `/recursos`, `/mas` | Asistente | Secciones de la app. |
+| `/programa`, `/beneficios`, `/comida`, `/mas` | Asistente | Secciones de la app. |
 | `/perfil` | Asistente | **Mi perfil**: elegir foto, avatar o iniciales (Más → Mi perfil). |
 | `/staff` | Staff/Admin | Escáner y canje de aguas. |
 | `/cuenta/pulsera` | Staff/Admin | **Vincular pulsera** (Admin escanea el QR; Staff ve el estado) y entrar a la vista de visitante. |
@@ -290,7 +302,10 @@ Detalles de seguridad:
 | `/admin/asistentes`, `/admin/asistentes/:id` | Admin | Asistentes. |
 | `/admin/kits` | Admin | Kits (solo lectura). `/admin/paquetes` redirige aquí. |
 | `/admin/beneficios`, `/admin/canjes`, `/admin/menu`, `/admin/merch`, `/admin/notas`, `/admin/avisos`, `/admin/iglesias`, `/admin/usuarios`, `/admin/auditoria` | Admin | Resto del panel. |
-| `/instantaneas`, `/inicio` | — | Redirigen a `/home` (Instantáneas está oculto). |
+| `/admin/rifas`, `/admin/descuentos`, `/admin/configuracion` | Admin | Rifas (solo cuentas autorizadas), descuentos del equipo y autocanje. |
+| `/rifa/:id` | Público | Proyector de una rifa (se abre en la pantalla grande). |
+| `/admin/secreto` | Dueño | Listas `.txt` por kit (solo `OWNER_EMAIL`; a otro Admin no le aparece ni puede entrar). |
+| `/instantaneas`, `/inicio`, `/recursos` | — | Redirigen a `/home` (Instantáneas y Recursos están ocultos). |
 
 La **sede y el horario del domingo** salen de la zona del asistente; el programa oficial vive en un solo archivo: `src/data/program.ts`.
 
@@ -364,7 +379,12 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 | **Iglesias** | `GET/POST /api/admin/churches` · `PATCH/DELETE /api/admin/churches/:id` |
 | **Usuarios** | `GET/POST /api/admin/users` · `PATCH/DELETE /api/admin/users/:id` · `POST /api/admin/users/:id/password` |
 | **Auditoría** | `GET /api/admin/audit` |
+| **Secreto** (solo dueño) | `GET /api/admin/secreto?kit=a\|b\|especial` → `.txt` (`lista-<kit>-<fecha>.txt`); `403` si no es el dueño, `400` kit inválido, `404` si no hay registrados |
 | **Ajustes** | `GET/PATCH /api/admin/settings` |
+| **Autocanje del equipo** | `GET/PATCH /api/admin/selfredeem` |
+| **Pulsera del equipo** | `GET/POST/DELETE /api/admin/staff-pulse` · `POST /api/admin/pulses/:id/release` |
+| **Descuentos del equipo** | `GET/PUT /api/admin/team-discounts` |
+| **Rifas** | `GET/POST /api/admin/raffles` · `GET/PATCH /api/admin/raffles/:id` · `POST /api/admin/raffles/:id/draw` · `POST /api/admin/raffles/:id/cancel` |
 
 **Ejemplo (curl)** — iniciar sesión y consultar lotes:
 
@@ -392,6 +412,8 @@ curl -H 'x-pulse-token: AbCdEfGh12345678' https://redjuveniltijuana.com/api/me
 - **QR:** `{PUBLIC_BASE_URL}/p/{token}`; sin `PUBLIC_BASE_URL` en producción **no se generan QR**. Cambiar el dominio invalida las pulseras ya impresas.
 - **Notas:** 60 caracteres, 24 h, **una activa por persona** (publicar otra reemplaza la anterior), moderadas por filtro + lista del Admin; los likes son únicos por persona y no se pueden dar a la propia nota.
 - **Programa y sede:** Zona 1 → 21ra IAFCJ, Zona 2 → 12va IAFCJ (domingo). Un dato de zona faltante cuenta como Zona 1.
+- **Sede de «hoy» (café y menú del `/home`):** el **sábado** todos están en la **12va IAFCJ**; desde el domingo, la de su zona (`SUNDAY_VENUE_BY_ZONE`). El **stand de café** (`CAFE_STANDS` en `src/data/homeCards.ts`: Salmos Café → 12va, Alfa y Omega → 21ra) y los **platillos disponibles** (`/api/menu`, filtrados por `venueName`) solo se muestran si coinciden con esa sede; **sin platillos disponibles en su sede, la sección «Menú» no aparece**. La playlist y su link viven en `PLAYLIST` (mismo archivo).
+- **Inscripción Domingo (18 oct 2026):** las pulseras **sin reclamar** (excepto lotes de prueba, cuyo código contiene «test») se reutilizaron como kit *Inscripción Domingo* ($30, 0 aguas, sin beneficios) en el lote `DOMINGO-2`. Es reversible mientras sigan sin registrar (ver §15). Las **aguas del sábado** se muestran inactivas, pero el servidor **todavía no impide** canjearlas.
 - **Avisos:** audiencia `ALL`, `Zona 1` o `Zona 2`; se pueden programar (`publishAt`) y marcar "EN VIVO". Máx. 60 caracteres de título y 280 de cuerpo.
 - **Iglesias:** nombre único por presbiterio; una iglesia solo tiene **un** presbiterio; solo se elimina si **no tiene asistentes**.
 - **Usuarios:** mínimo un Admin activo siempre; no puedes quitarte el rol ni desactivarte; eliminar una cuenta con historial no se permite (se **desactiva**).
@@ -416,6 +438,8 @@ curl -H 'x-pulse-token: AbCdEfGh12345678' https://redjuveniltijuana.com/api/me
 | `npm run db:respaldo` / `db:restaurar` / `db:borrar-respaldo` | Scripts antiguos (reemplazados por los "total"). |
 | `npm run db:notas-demo` / `db:likes-demo` | Datos de demostración de Notas (`-- --limpiar` los borra). |
 | `npm run db:renombrar-kits` | Utilidad histórica para renombrar kits. |
+| `npm run db:lote-domingo [-- --aplicar \| --deshacer CODIGO]` | **Inscripción del domingo.** Sin argumentos es **vista previa** (no escribe): lista las pulseras sin reclamar por lote. Con `--aplicar` (pide `SI`) las mueve a un lote `DOMINGO-N` del kit *Inscripción Domingo*, en una transacción y con bitácora (`batch.reuse`). Con `--deshacer DOMINGO-N` (pide `SI`) devuelve las que sigan sin registrar. Escribe en **la base real**: haz un respaldo antes. |
+| `node scripts/db-diagnostico-lotes.mjs` | **Solo lectura**: tabla de pulseras por lote, estado del lote, kit y estado de la pulsera. |
 | `npm run moderacion:probar` | Prueba el filtro de lenguaje. |
 | `npm run test:ratelimit` | Pruebas del límite de frecuencia (unitarias + integración). Las de integración necesitan `TEST_DATABASE_URL` hacia un PostgreSQL **local** llamado `arraigados_test*` (nunca Neon/producción; el guion se niega). Ver `docs/RATE_LIMITING.md`. |
 | `npm run test:team` | Pruebas de pulseras de equipo y autocanje (vinculación, vista de visitante, permisos, concurrencia, anulaciones, tablero, dueño, migraciones 012–015, notas del equipo, descuentos y rifas). Mismas reglas de seguridad que `test:ratelimit` (`TEST_DATABASE_URL` local `arraigados_test*`). Ver `docs/EQUIPO_PULSERA_AUTOCANJE.md`. |
@@ -480,6 +504,10 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 - **Reemplazar una pulsera perdida:** Staff → buscar al asistente → *Reemplazar pulsera* → escanear la nueva.
 - **Agregar/editar el menú o la mercancía:** Admin → Menú / Mercancía (foto, precio en pesos, sede, disponibilidad, orden).
 - **Cambiar el programa:** editar `src/data/program.ts` (única fuente) y desplegar.
+- **Inscripción del domingo con pulseras sobrantes:** (1) `npm run db:respaldo-total`; (2) `npm run db:lote-domingo` y revisa el total y el desglose; (3) `npm run db:lote-domingo -- --aplicar` y escribe `SI` enseguida (Neon corta conexiones inactivas); (4) prueba con una pulsera real: debe mostrar $30, sin aguas ni beneficios, y el dashboard sumar 1 en «Inscripción Domingo». Para revertir: `npm run db:lote-domingo -- --deshacer DOMINGO-N`.
+- **Poner el link de la playlist, foto o textos del café:** editar `src/data/homeCards.ts` (`PLAYLIST.url`; `CAFE_STANDS`: título, texto, sede y foto; fotos en `src/assets/brand/`) y desplegar. Sin link, la playlist no se muestra en producción.
+- **Mostrar el menú solo con comida disponible:** Admin → Menú → deja *disponibles* solo los platillos que sí hay en cada sede; sin ninguno en la sede del asistente, la sección no sale.
+- **Descargar las listas de asistentes por kit:** entra como dueño → Admin → Secreto → botón del kit.
 
 ---
 
@@ -502,6 +530,9 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 | No puedo eliminar una cuenta | Es la cuenta protegida, la tuya, el último Admin, o tiene historial (lotes/canjes): **desactívala**. |
 | Al borrar un lote dice que no se puede | Hay datos que dependen de él; usa `npm run db:limpiar-pruebas`. |
 | "Sesión inválida" tras cambiar `SESSION_SECRET` | Esperado: todos deben iniciar sesión de nuevo. |
+| `terminating connection due to administrator command` (`57P01`) al correr un script que pide `SI` | Neon cortó la conexión por estar inactiva mientras esperaba tu respuesta. No se escribió nada: vuelve a correrlo y responde de inmediato. |
+| El gafete del `/home` muestra el frente al revés al voltearlo (Safari/iOS) | Corregido con un respaldo de visibilidad en `src/pages/homev2/homev2.css` (`.cred-face-front/back`). Si reaparece, revisar ahí. |
+| No veo la sección Secreto | Solo la ve el dueño (`OWNER_EMAIL`). |
 
 ---
 
@@ -516,6 +547,7 @@ Más en [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/PLAN_DOMINIO.
 | [`docs/archive/wallet/README.md`](docs/archive/wallet/README.md) | **Archivo de la integración con Apple/Google Wallet** (cancelada el 17 oct 2026 por alcance y tiempo): qué se hizo, qué faltó y cómo retomarla. |
 | [`docs/EQUIPO_PULSERA_AUTOCANJE.md`](docs/EQUIPO_PULSERA_AUTOCANJE.md) | **Pulsera de Staff/Admin, vincular por QR, vista de visitante** (cómo vincular, entrar/volver, estados, permisos, sesión caducada, escáner, limitaciones) y autocanje. |
 | [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md) | **Límite de frecuencia**: riesgos, arquitectura, límites por endpoint, fallo abierto/cerrado, pruebas, operación y pasos antes de desplegar. |
+| [`docs/CAMBIOS_18_OCT.md`](docs/CAMBIOS_18_OCT.md) | **Cambios del 17–18 oct 2026:** Inscripción Domingo, dashboard, aguas inactivas, tarjetas del inicio por sede, Secreto, compresor de fotos y pendientes. |
 | [`docs/PLAN_PENDIENTES.md`](docs/PLAN_PENDIENTES.md) | Qué falta por hacer y su estado. |
 | [`docs/PLAN_RESPALDO.md`](docs/PLAN_RESPALDO.md) | Plan y comandos de respaldo, restauración y limpieza. |
 | [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md), [`docs/CONEXION_NEON.md`](docs/CONEXION_NEON.md), [`docs/PLAN_DOMINIO.md`](docs/PLAN_DOMINIO.md), [`docs/MIGRATION_TO_RED.md`](docs/MIGRATION_TO_RED.md) | Infraestructura, conexión a Neon, dominio y migración. |

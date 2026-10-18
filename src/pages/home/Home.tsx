@@ -206,6 +206,8 @@ export default function Home() {
 
   const zone = resolveZoneForDisplay(me?.attendee.zoneName);
   const sundayVenue = SUNDAY_VENUE_BY_ZONE[zone];
+  // Sede donde está el asistente HOY: sábado todos en la 12va; domingo según su zona. Filtra café y menú.
+  const todayVenue = now <= endOfDay(SATURDAY_DATE) ? SATURDAY_VENUE : sundayVenue;
 
   const saturdayBlocks = useMemo(() => buildDayBlocks(SATURDAY_DATE, SATURDAY_PROGRAM), []);
   const sundayBlocks = useMemo(() => buildDayBlocks(SUNDAY_DATE, SUNDAY_PROGRAM), []);
@@ -479,9 +481,9 @@ export default function Home() {
        * eventos" -- tal como se acordó, sin agregarse al nav.
        */}
       {/* Anuncio del stand de Salmos Café (17 oct 2026): para todos; textos/ubicación/logo en data/homeCards.ts. */}
-      <CafeStandCard />
+      <CafeStandCard venue={todayVenue} />
 
-      <MenuCarousel />
+      <MenuCarousel venue={todayVenue} />
 
       {/*
        * Vitrina "Mercancía oficial" (3 oct 2026, conectada a datos reales el
