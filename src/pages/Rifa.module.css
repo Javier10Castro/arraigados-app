@@ -40,3 +40,22 @@
   .reveal, .revealCard { animation: none; }
   .confetti { display: none; }
 }
+
+/* ---------- Premio y «gana la salida #N» (migración 017) ---------- */
+.prize { display: flex; align-items: center; gap: clamp(12px, 1.6vw, 22px); padding: clamp(10px, 1.4vw, 18px); border-radius: 22px; background: var(--crema); color: #1e0263; }
+.prizeArt { display: grid; place-items: center; width: clamp(64px, 8vw, 120px); height: clamp(64px, 8vw, 120px); flex: none; border-radius: 18px; background: linear-gradient(160deg, #1e0263, #3e07a6); }
+.prizeArt img { max-width: 78%; max-height: 84%; width: auto; height: auto; object-fit: contain; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.4)); }
+.prizeText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prizeText .label { color: #3e07a6; }
+.prizeText strong { font: 800 clamp(22px, 2.8vw, 44px)/1 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.prizeText em { align-self: flex-start; margin-top: 4px; padding: 2px 12px; border-radius: 999px; background: #3e07a6; color: #f2f7d7; font: 700 clamp(13px, 1.3vw, 20px) var(--font-body); font-style: normal; }
+.winners li.isMiss { opacity: 0.55; }
+.winners li.isWin { background: #f2f7d7; color: #1e0263; }
+.winners li.isWin .pos { background: #3e07a6; color: #f2f7d7; }
+.winners li.isWin em { background: #3e07a6; color: #f2f7d7; }
+.revealMiss { background: rgba(19, 4, 63, 0.9); }
+.revealMiss .rv1 { margin-top: clamp(4px, 1vw, 12px); font-size: clamp(28px, 4.6vw, 72px); color: #c0b8df; }
+.revealMiss .rv3 { margin: clamp(10px, 2vw, 24px) 0 0; }
+.revealMiss .rv4 { margin-top: clamp(10px, 1.6vw, 20px); }
+.rvPrize { display: inline-flex; align-items: center; gap: clamp(10px, 1.4vw, 20px); margin: 0 0 clamp(14px, 2.4vw, 32px); padding: clamp(8px, 1vw, 14px) clamp(16px, 2vw, 28px) clamp(8px, 1vw, 14px) clamp(8px, 1vw, 14px); border-radius: 999px; background: #f2f7d7; color: #1e0263; font: 800 clamp(20px, 2.8vw, 44px) var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.rvPrize img { width: clamp(48px, 6vw, 96px); height: clamp(48px, 6vw, 96px); object-fit: contain; padding: 6px; border-radius: 50%; background: linear-gradient(160deg, #1e0263, #3e07a6); }

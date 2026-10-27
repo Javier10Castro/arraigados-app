@@ -113,7 +113,7 @@ CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType","enti
 
 const MIGRATIONS = [
   '002_notes', '005_blocked_words', '006_announcements', '007_announcement_live', '008_package_benefits',
-  '009_attendee_profile', '010_attendee_profile_keep_all', '011_rate_limit', '013_team_discount', '014_raffles', '015_team_notes', '016_raffle_cancel',
+  '009_attendee_profile', '010_attendee_profile_keep_all', '011_rate_limit', '013_team_discount', '014_raffles', '015_team_notes', '016_raffle_cancel', '017_raffle_entries',
 ];
 export const MIGRATION_012 = '012_staff_selfredeem';
 

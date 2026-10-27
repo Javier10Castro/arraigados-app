@@ -2881,3 +2881,12 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - **Tipografía:** `src/lib/pressio.ts` (`pressioText`) quita tildes (conserva ñ) solo en los títulos que usan Pressio (`AdminShell` y el aviso del Dashboard). Pressio no trae acentos; el resto del texto no cambia.
 - **Pruebas:** `npm run test:team` (descuentos, rifas, tipografía además de lo anterior). Para aplicar en producción: `npm run db:migrar -- --only 013_team_discount.sql` y `--only 014_raffles.sql` (tras 012 si se quiere el equipo en el resumen); reversión en `docs/rollback/`.
 - **Manual PDF:** `docs/MANUAL_ADMIN.pdf` **no** se regeneró (no hay un script identificable que lo produzca en el repo); los procedimientos nuevos están en `MANUAL_USUARIO.md`.
+
+## 68. Rifa con preguntas, «gana la salida #N» y pantalla de premios (27 oct 2026)
+
+- **Migración 017** (`017_raffle_entries.sql`, aditiva/idempotente, requiere 014): tabla `RaffleEntry` (UNIQUE asistente+kit, respuestas `answerLiked/answerPlenary/answerLesson`) y `Raffle.winningPosition`. Rollback en `docs/rollback/` (aborta con inscripciones). `npm run db:estado` la reporta.
+- **Elegibilidad cambia:** `ELIGIBLE_FROM` (server/raffles.ts) ahora parte de `RaffleEntry` + pulsera ACTIVE del mismo kit. Sin inscritos no se puede sortear.
+- **Servidor:** `server/raffleEntries.ts` (inscripción solo-INSERT, kit desde la pulsera, abrir/cerrar como `Setting` `raffleEntriesOpen` en `AuditLog`, lista para Admin, resultado para el asistente). Funciones `raffle-entry.mts` y `admin-raffle-entries.mts`. Reglas `att_raffle_r`/`att_raffle_w`.
+- **Compartido:** `shared/raffle.ts` (premios por kit, preguntas, plenarias desde `SATURDAY_PROGRAM`, validación). Imágenes en `src/data/rafflePrizes.ts` + `src/assets/premios/` (recortadas de Premios.pdf, fondo transparente).
+- **Frontend:** `/rifa` (`pages/MiRifa.tsx`), `/premios` (`pages/Premios.tsx`, público), tarjeta en Home (`home/RaffleHomeCard.tsx`), enlaces en Más y accesos rápidos. Admin → Rifas: sección Inscritos (pestañas por kit, buscador, CSV, abrir/cerrar), «Gana la salida #», botón **Sorteo**, columna Resultado. Proyector: premio, «Salida #k · No gana…» vs «¡Tenemos ganador!».
+- **Pruebas:** `tests/team-pulse/raffleentry.test.mts` (12) + ajustes en `raffle.test.mts` (los asistentes de prueba se inscriben). `npm run test:team` 162/162 en PostgreSQL local.

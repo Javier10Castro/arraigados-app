@@ -6,7 +6,8 @@ import type { UpdateRaffleRequest } from '../../shared/api';
 
 /**
  * GET   /api/admin/raffles/:id -> rifa + historial completo de ganadores. Solo ADMIN con cuenta autorizada (403 para otros Admin).
- * PATCH /api/admin/raffles/:id -> cambia el número de ganadores buscado (solo abierta y por encima de los ya sorteados).
+ * PATCH /api/admin/raffles/:id -> { winningPosition } cambia qué salida gana, o { targetWinners } cuántas salidas se buscan
+ *                                  (solo abierta y por encima de lo ya sorteado).
  * No existe DELETE ni «reiniciar»: los resultados no se borran.
  */
 export default handler(async (req: Request, context: Context) => {
@@ -28,7 +29,7 @@ export default handler(async (req: Request, context: Context) => {
     } catch {
       return apiError('Solicitud inválida.');
     }
-    return json(await updateTarget(auth.user.id, id, body?.targetWinners));
+    return json(await updateTarget(auth.user.id, id, { targetWinners: body?.targetWinners, winningPosition: body?.winningPosition }));
   } catch (err) {
     if (err instanceof RaffleError) return apiError(err.message, err.status);
     throw err;

@@ -333,7 +333,7 @@ Presbiterios y zonas son **fijos** (no hay endpoints para modificarlos).
 - `GET /api/admin/raffles/:id` (con historial) · `PATCH` `{ targetWinners }` (solo abierta y por encima de los ya sorteados). No existe `DELETE`.
 - `POST /api/admin/raffles/:id/draw` `{ drawKey (8-64 [A-Za-z0-9_-]), extra? }` → un ganador, elegido en el servidor con `crypto.randomInt` dentro de una transacción con la rifa bloqueada. Mismo `drawKey` ⇒ mismo ganador (`replay:true`), nunca otro. `extra:true` solo con la rifa completada. `409` sin elegibles o rifa completada. Todo es solo Admin.
 - `POST /api/admin/raffles/:id/cancel` → cancela una rifa **abierta** (migración 016; estado `CANCELLED`, `cancelledAt`, `cancelledById`, auditoría `raffle.cancel`). No borra ganadores ni historial. Una rifa cancelada no se sortea, edita ni reabre (`409`). `409` si ya estaba cancelada o completada, o si falta la 016. Solo Admin autorizado (403 para otros). Tras cancelar se puede abrir otra edición del mismo kit.
-- `GET /api/raffle/:id` (**público**, solo lectura, con límite por IP) → `{ id, name, kitName, edition, status, targetWinners, winnersCount, remaining, winners:[{position,name,extra}] }`. Sin ids de personas, correos ni lista de participantes.
+- `GET /api/raffle/:id` (**público**, solo lectura, con límite por IP) → `{ id, name, kitName, edition, status, targetWinners, winningPosition, winnersCount, remaining, winners:[{position,name,extra,winner}] }`. Sin ids de personas, correos ni lista de participantes.
 
 ### 4.10 Usuarios
 
@@ -404,3 +404,12 @@ Al agregar o cambiar un endpoint:
 2. Agrega los tipos en `shared/*.ts` y la función en `src/lib/api.ts`.
 3. Si es una acción del equipo, regístrala en la bitácora (`shared/audit.ts` define su etiqueta).
 4. Actualiza esta página y la tabla de la sección 10 del [`README`](../README.md), y deja constancia en `docs/CLAUDE_HANDOFF.md`.
+
+## Inscripción a la rifa (migración 017, 27 oct 2026)
+
+- `GET /api/raffle-entry` (asistente, `x-pulse-token`, regla `att_raffle_r`) → `MyRaffleResponse`: `{ available, kitName, hasRaffle, entriesOpen, entry: null | {createdAt, liked, plenary, lesson}, result: null | {raffleName, winners:[nombre público], youWon} }`. Sin token o pulsera de equipo → 401.
+- `POST /api/raffle-entry` `{ liked, plenary, lesson }` (regla `att_raffle_w`) → inscribe al dueño de la pulsera en la rifa de **su** kit (el kit sale de la pulsera). Una sola vez: repetir devuelve la inscripción existente sin cambiar respuestas. 400 respuestas inválidas (3–400 caracteres; `plenary` debe ser una de `RAFFLE_PLENARIES`), 403 kit sin rifa, 409 inscripciones cerradas o migración 017 faltante.
+- `GET /api/admin/raffle-entries` (Admin autorizado de Rifas) → `{ available, entriesOpen, kits:[{packageId, kitName, entries:[{attendeeId, fullName, churchName, createdAt, liked, plenary, lesson, eligible}]}] }`.
+- `PATCH /api/admin/raffle-entries` `{ open: boolean }` → abre/cierra inscripciones (se guarda como `Setting` `raffleEntriesOpen` en `AuditLog`; sin filas = abiertas).
+- `POST /api/admin/raffles` acepta `winningPosition` (recomendado; iguala `targetWinners`). `PATCH /api/admin/raffles/:id` acepta `{ winningPosition }` o `{ targetWinners }`. `RaffleWinnerRow.winner` indica si esa salida gana.
+- **Elegibles** para sortear = inscritos (`RaffleEntry`) del kit con pulsera ACTIVE de ese mismo kit que no hayan salido en esa rifa.

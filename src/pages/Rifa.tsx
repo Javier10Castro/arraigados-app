@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiRequestError } from '../lib/api';
 import type { PublicRaffle } from '../../shared/api';
+import { prizeWithImage } from '../data/rafflePrizes';
 import s from './Rifa.module.css';
 
 /**
@@ -10,12 +11,15 @@ import s from './Rifa.module.css';
  *  · al abrir la página NO se anima nada: se muestran los resultados ya guardados (recargar no repite nada);
  *  · cuando el servidor reporta un ganador nuevo, la ruleta gira y se detiene en un sector, y entonces se anuncia
  *    el nombre (nombre + inicial del apellido, como lo entrega el servidor) (ya confirmado y guardado). La ruleta no contiene datos de participantes.
+ *  · «Gana la salida #N» (migración 017): las salidas anteriores se anuncian como «Salida #k · no gana» (sin confeti)
+ *    y la salida N como «¡Tenemos ganador!» con el premio del kit.
  */
 const SEGMENTS = 12;
 const SEG_DEG = 360 / SEGMENTS;
 const POLL_MS = 2500;
 const SPIN_MS = 6000;
 const REVEAL_MS = 14000;
+const REVEAL_MISS_MS = 7000; // una salida que no gana se anuncia más breve
 const SEG_COLORS = ['#3e07a6', '#f2f7d7', '#7b5bff', '#c0b8df'];
 
 type Win = PublicRaffle['winners'][number];
@@ -70,7 +74,7 @@ export default function Rifa() {
     const finish = () => {
       setPhase('reveal');
       setPresented((p) => { const v = Math.max(p ?? 0, w.position); presentedRef.current = v; return v; });
-      timers.current.push(window.setTimeout(() => (queue.current.length ? next() : setPhase('idle')), REVEAL_MS));
+      timers.current.push(window.setTimeout(() => (queue.current.length ? next() : setPhase('idle')), w.winner ? REVEAL_MS : REVEAL_MISS_MS));
     };
     if (reducedMotion()) { setLanded(null); finish(); return; }
     const k = Math.floor(Math.random() * SEGMENTS);
@@ -131,6 +135,8 @@ export default function Rifa() {
   const shownList = data.winners.filter((w) => w.position <= shownWinners);
   const remaining = data.remaining + Math.max(0, data.winnersCount - shownWinners);
   const done = data.status === 'COMPLETED' && shownWinners >= data.winnersCount;
+  const winPos = data.winningPosition; // null = rifa anterior a la 017: todas las salidas ganan
+  const prize = prizeWithImage(data.kitName);
 
   return (
     <main className={s.page} data-phase={phase} data-testid="rifa-publica">
@@ -156,8 +162,22 @@ export default function Rifa() {
         </div>
 
         <aside className={s.side}>
+          {prize && (
+            <div className={s.prize}>
+              <span className={s.prizeArt}><img src={prize.image.src} alt="" width={prize.image.width} height={prize.image.height} /></span>
+              <span className={s.prizeText}>
+                <span className={s.label}>Premio</span>
+                <strong>{prize.title}</strong>
+                {prize.detail.startsWith('$') && <em>{prize.detail}</em>}
+              </span>
+            </div>
+          )}
           <div className={s.counters}>
-            <div><span className={s.big}>{shownWinners}<small> / {data.targetWinners}</small></span><span className={s.label}>Ganadores</span></div>
+            {winPos !== null ? (
+              <div><span className={s.big}>{shownWinners}<small> / {winPos}</small></span><span className={s.label}>Salidas · gana la #{winPos}</span></div>
+            ) : (
+              <div><span className={s.big}>{shownWinners}<small> / {data.targetWinners}</small></span><span className={s.label}>Ganadores</span></div>
+            )}
             <div><span className={s.big}>{remaining}</span><span className={s.label}>Participantes restantes</span></div>
           </div>
           <p className={s.status} role="status">
@@ -165,27 +185,47 @@ export default function Rifa() {
               : data.status === 'CANCELLED' ? 'Rifa cancelada'
               : done ? 'Rifa completada'
               : remaining === 0 && shownWinners < data.targetWinners ? 'No hay más participantes elegibles'
+              : winPos !== null && shownWinners < winPos ? `Esperando la salida #${shownWinners + 1}${shownWinners + 1 === winPos ? ' · ¡esta gana!' : ''}`
               : shownWinners === 0 ? 'Esperando el primer sorteo'
               : 'Esperando el siguiente sorteo'}
           </p>
           {shownList.length > 0 && (
             <ol className={s.winners} aria-label="Ganadores">
               {shownList.map((w) => (
-                <li key={w.position}><span className={s.pos}>{w.position}</span><span className={s.name}>{w.name}</span>{w.extra && <em>extra</em>}</li>
+                <li key={w.position} className={winPos !== null ? (w.winner ? s.isWin : s.isMiss) : undefined}>
+                  <span className={s.pos}>{w.position}</span><span className={s.name}>{w.name}</span>
+                  {w.extra ? <em>extra</em> : winPos !== null && w.winner ? <em>gana</em> : null}
+                </li>
               ))}
             </ol>
           )}
         </aside>
       </section>
 
-      {phase === 'reveal' && current && (
+      {phase === 'reveal' && current && current.winner && (
         <div className={s.reveal} role="alert" data-testid="rifa-ganador" data-position={current.position}>
           {!reducedMotion() && <Confetti />}
           <div className={s.revealCard}>
             <p className={s.rv1}>¡Tenemos ganador!</p>
-            <p className={s.rv2}>{data.kitName}{current.extra ? ' · sorteo extra' : ''}</p>
+            <p className={s.rv2}>{data.kitName}{current.extra ? ' · sorteo extra' : winPos !== null ? ` · salida #${current.position}` : ''}</p>
             <p className={s.rv3}>{current.name}</p>
+            {prize && (
+              <div className={s.rvPrize}>
+                <img src={prize.image.src} alt="" width={prize.image.width} height={prize.image.height} />
+                <span>{prize.title}{prize.detail.startsWith('$') ? ` ${prize.detail}` : ''}</span>
+              </div>
+            )}
             <p className={s.rv4}>¡Felicidades! Tu momento ha llegado.</p>
+          </div>
+        </div>
+      )}
+      {phase === 'reveal' && current && !current.winner && (
+        <div className={`${s.reveal} ${s.revealMiss}`} role="alert" data-testid="rifa-salida" data-position={current.position}>
+          <div className={s.revealCard}>
+            <p className={s.rv2}>Salida #{current.position}</p>
+            <p className={s.rv3}>{current.name}</p>
+            <p className={s.rv1}>No gana…</p>
+            {winPos !== null && <p className={s.rv4}>¡Gana la salida #{winPos}! Faltan {Math.max(0, winPos - current.position)}.</p>}
           </div>
         </div>
       )}

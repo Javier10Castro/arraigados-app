@@ -9,6 +9,7 @@ import LocationButton from '../../components/LocationButton';
 import DrinkCups from '../../components/DrinkCups';
 import eventCardStyles from '../../components/EventCard.module.css';
 import beneficiosStyles from '../Beneficios.module.css';
+import RaffleHomeCard from './RaffleHomeCard';
 import { DRINK_LABEL, formatPrice, packageContent, upcomingEvents } from '../../data/app';
 import { SATURDAY_PROGRAM, SATURDAY_VENUE, SUNDAY_PROGRAM, SUNDAY_VENUE_BY_ZONE, resolveZoneForDisplay, type ProgramItem } from '../../data/program';
 import { firstName, usePulseSession } from '../../context/PulseSession';
@@ -404,6 +405,9 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* Rifa (27 oct 2026, migración 017): premio de su kit y acceso a /rifa (3 preguntas). Se oculta sola si no aplica. */}
+      <RaffleHomeCard />
 
       {/*
        * "Mi kit" (3 oct 2026) -- mismo contenido que /beneficios (Beneficios.tsx),

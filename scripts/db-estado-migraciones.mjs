@@ -66,6 +66,12 @@ try {
       'CHECK raffle_cancel_consistent': await con('raffle_cancel_consistent'),
       'Raffle_status_check admite CANCELLED': await statusAllowsCancelled(),
     },
+    '017_raffle_entries (inscripción a la rifa con preguntas)': {
+      'tabla RaffleEntry': await table('RaffleEntry'),
+      'índice RaffleEntry_attendee_package_key': await idx('RaffleEntry_attendee_package_key'),
+      'Raffle.winningPosition': await col('Raffle', 'winningPosition'),
+      'CHECK raffle_winning_position_valid': await con('raffle_winning_position_valid'),
+    },
   };
   for (const [mig, items] of Object.entries(checks)) {
     const ok = Object.values(items).every(Boolean);

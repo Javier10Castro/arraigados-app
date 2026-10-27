@@ -1199,9 +1199,14 @@ export type RaffleSummary = {
   edition: number;
   name: string;
   targetWinners: number;
+  /**
+   * «Gana la persona que salga en el lugar N» (migración 017). Las salidas anteriores no ganan; un sorteo extra (rifa ya
+   * completada) sí cuenta como ganador. null = rifa anterior a la 017: todas las salidas son ganadoras.
+   */
+  winningPosition: number | null;
   status: RaffleStatus;
   winnersCount: number;
-  /** Participantes que HOY siguen siendo elegibles (se recalcula al sortear). */
+  /** Inscritos (migración 017) que HOY siguen siendo elegibles (se recalcula al sortear). */
   eligibleCount: number;
   createdAt: string;
 };
@@ -1212,16 +1217,25 @@ export type RaffleWinnerRow = {
   /** Nombre tal como era al sortear (no cambia si luego editan el perfil). */
   winnerName: string;
   extra: boolean;
+  /** ¿Esta salida gana? (posición ganadora o sorteo extra; sin posición ganadora, todas). */
+  winner: boolean;
   drawnAt: string;
   drawnById: string | null;
   drawnByName: string | null;
 };
 
 export type AdminRaffleDetail = RaffleSummary & { winners: RaffleWinnerRow[] };
-export type AdminRafflesResponse = { available: boolean; raffles: RaffleSummary[]; kits: { id: string; name: string }[] };
+export type AdminRafflesResponse = {
+  available: boolean;
+  /** Si no está disponible: qué migración falta. */
+  missing?: '014' | '017';
+  raffles: RaffleSummary[];
+  kits: { id: string; name: string }[];
+};
 
-export type CreateRaffleRequest = { packageId: string; targetWinners: number; name?: string };
-export type UpdateRaffleRequest = { targetWinners: number };
+/** Con `winningPosition` (recomendado) la rifa termina al salir esa persona: `targetWinners` se iguala a ese número. */
+export type CreateRaffleRequest = { packageId: string; targetWinners?: number; winningPosition?: number; name?: string };
+export type UpdateRaffleRequest = { targetWinners?: number; winningPosition?: number };
 export type DrawRaffleRequest = { drawKey: string; extra?: boolean };
 export type DrawRaffleResponse = { replay: boolean; winner: RaffleWinnerRow; raffle: AdminRaffleDetail };
 
@@ -1233,7 +1247,51 @@ export type PublicRaffle = {
   edition: number;
   status: RaffleStatus;
   targetWinners: number;
+  winningPosition: number | null;
   winnersCount: number;
   remaining: number;
-  winners: { position: number; name: string; extra: boolean }[];
+  winners: { position: number; name: string; extra: boolean; winner: boolean }[];
 };
+
+// ---------------------------------------------------------------------------------------------------------------
+// Inscripción a la rifa con 3 preguntas (migración 017). El asistente entra a la rifa de SU kit.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** GET /api/raffle-entry (x-pulse-token). */
+export type MyRaffleResponse = {
+  /** false = migraciones 014/017 sin aplicar: la pantalla dice «muy pronto». */
+  available: boolean;
+  kitName: string;
+  /** false = su kit no tiene rifa (p. ej. Inscripción Domingo). */
+  hasRaffle: boolean;
+  /** Las inscripciones las abre/cierra Admin → Rifas. */
+  entriesOpen: boolean;
+  entry: null | { createdAt: string; liked: string; plenary: string; lesson: string };
+  /** Resultado de la rifa más reciente (no cancelada) de su kit, cuando ya salió al menos un ganador. */
+  result: null | { raffleName: string; winners: string[]; youWon: boolean };
+};
+
+/** POST /api/raffle-entry (x-pulse-token). Una sola vez: si ya estaba inscrito devuelve la inscripción que hay. */
+export type RaffleEntryRequest = { liked: string; plenary: string; lesson: string };
+
+export type AdminRaffleEntry = {
+  attendeeId: string;
+  fullName: string;
+  churchName: string;
+  createdAt: string;
+  liked: string;
+  plenary: string;
+  lesson: string;
+  /** Pulsera ACTIVA del mismo kit: entra al sorteo. false = la pulsera se invalidó o cambió de kit. */
+  eligible: boolean;
+};
+
+/** GET /api/admin/raffle-entries (cuentas autorizadas). */
+export type AdminRaffleEntriesResponse = {
+  available: boolean;
+  entriesOpen: boolean;
+  kits: { packageId: string; kitName: string; entries: AdminRaffleEntry[] }[];
+};
+
+/** PATCH /api/admin/raffle-entries { open } -> abre o cierra las inscripciones (todas las rifas). */
+export type UpdateRaffleEntriesRequest = { open: boolean };

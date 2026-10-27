@@ -40,6 +40,7 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 - **Notas**: publica una frase de hasta 60 caracteres que dura 24 horas; da *like* a las de otros.
 - **Campana de notificaciones**: avisos del equipo y likes recibidos.
 - **Comida** (`/comida`) y **Más**. **Recursos** está **oculto** desde el 17 oct (`/recursos` redirige a `/home`; los enlaces están comentados en `AppShell.tsx` y `Mas.tsx`).
+- **Rifa** (`/rifa`, también en Home y Más): ve el premio de su kit, responde 3 preguntas (lo que más le gustó, plenaria favorita y la enseñanza que le dejó) y entra a la rifa de su kit. Ahí mismo ve el resultado del sorteo.
 - **Mi perfil** (`/perfil`, Más → Mi perfil): elige cómo aparece en notas, campana, gafete y listas: **foto** propia, **avatar** (*Default*, *Sorpréndeme* o *Custom*) o **iniciales** (qué palabras del nombre y color de fondo). Las tres opciones se conservan; solo una está activa (ver §7.4).
 
 ### Para el Staff (cuenta con correo y contraseña)
@@ -57,7 +58,7 @@ Cada asistente recibe una **pulsera con un código QR**. Con ella se registra de
 | **Kits** | Consulta de solo lectura: precio, aguas incluidas, pulseras impresas/reclamadas, uso de aguas e ingreso esperado. |
 | **Beneficios** | Administrar lo que **incluye** cada kit (agregar, renombrar, quitar, reordenar). |
 | **Canjes** | Historial de canjes con filtros; **anular** un canje (nunca se borra). |
-| **Rifas** | Solo cuentas autorizadas por el servidor (`canManageRaffles`). Sorteo **por kit** hecho en el **servidor**, historial, cancelar una rifa abierta y **proyector público** (`/rifa/:id`). Ver [`docs/MANUAL_RIFAS.md`](docs/MANUAL_RIFAS.md). |
+| **Rifas** | Solo cuentas autorizadas por el servidor (`canManageRaffles`). Sorteo **por kit** hecho en el **servidor**, historial, cancelar una rifa abierta y **proyector público** (`/rifa/:id`). Desde la 017: **solo participan los inscritos** (respondieron 3 preguntas en `/rifa`), lista de **inscritos con sus respuestas** (CSV), abrir/cerrar inscripciones y **«gana la salida #N»**. Ver [`docs/MANUAL_RIFAS.md`](docs/MANUAL_RIFAS.md). |
 | **Descuentos** | Descuento por rol del equipo e **ingresos simulados** (solo lectura para Admin; editan las cuentas autorizadas). |
 | **Menú** | CRUD de platillos con foto, precio, sede y disponibilidad. |
 | **Mercancía** | CRUD de artículos con galería de fotos y orden de la vitrina. Las fotos de **más de 3 MB se comprimen solas** en el navegador (WebP) antes de subirse (`src/lib/compressImage.ts`). |
@@ -215,6 +216,7 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `014_raffles.sql` | **Rifas** por kit con sorteo en el servidor (`Raffle`, `RaffleWinner`). |
 | `015_team_notes.sql` | Notas y «me gusta» de cuentas del equipo con pulsera, en la vista de visitante. |
 | `016_raffle_cancel.sql` | Permite **cancelar** una rifa abierta (nuevo estado `CANCELLED`). |
+| `017_raffle_entries.sql` | **Inscripción a la rifa** con 3 preguntas (`RaffleEntry`) y `Raffle.winningPosition` («gana la salida #N»). Requiere la 014. |
 
 > **Estado en Neon (verificado el 18 oct 2026):** en la base *Wild Butterfly* están aplicadas la 012–016 y **no** la 011 (antes de que ese día se le copiaran los datos de la base anterior; después no se volvió a verificar con `npm run db:estado`). Para aplicar una sola: `npm run db:migrar -- --only <archivo>.sql` (un `db:migrar` a secas aplicaría también la 011). Cada migración documenta su estado en su cabecera.
 
@@ -304,6 +306,8 @@ Detalles de seguridad:
 | `/admin/beneficios`, `/admin/canjes`, `/admin/menu`, `/admin/merch`, `/admin/notas`, `/admin/avisos`, `/admin/iglesias`, `/admin/usuarios`, `/admin/auditoria` | Admin | Resto del panel. |
 | `/admin/rifas`, `/admin/descuentos`, `/admin/configuracion` | Admin | Rifas (solo cuentas autorizadas), descuentos del equipo y autocanje. |
 | `/rifa/:id` | Público | Proyector de una rifa (se abre en la pantalla grande). |
+| `/rifa` | Asistente | **Rifa**: premio de su kit, 3 preguntas y «Entrar a rifa»; después ve el resultado. |
+| `/premios` | Público | Pantalla con los 3 premios de la rifa (proyector). |
 | `/admin/secreto` | Dueño | Listas `.txt` por kit (solo `OWNER_EMAIL`; a otro Admin no le aparece ni puede entrar). |
 | `/instantaneas`, `/inicio`, `/recursos` | — | Redirigen a `/home` (Instantáneas y Recursos están ocultos). |
 
@@ -384,7 +388,7 @@ Resumen rápido; **referencia completa con cuerpos, respuestas, códigos y ejemp
 | **Autocanje del equipo** | `GET/PATCH /api/admin/selfredeem` |
 | **Pulsera del equipo** | `GET/POST/DELETE /api/admin/staff-pulse` · `POST /api/admin/pulses/:id/release` |
 | **Descuentos del equipo** | `GET/PUT /api/admin/team-discounts` |
-| **Rifas** | `GET/POST /api/admin/raffles` · `GET/PATCH /api/admin/raffles/:id` · `POST /api/admin/raffles/:id/draw` · `POST /api/admin/raffles/:id/cancel` |
+| **Rifas** | `GET/POST /api/admin/raffles` · `GET/PATCH /api/admin/raffles/:id` · `POST /api/admin/raffles/:id/draw` · `POST /api/admin/raffles/:id/cancel` · `GET/PATCH /api/admin/raffle-entries` · asistente: `GET/POST /api/raffle-entry` |
 
 **Ejemplo (curl)** — iniciar sesión y consultar lotes:
 

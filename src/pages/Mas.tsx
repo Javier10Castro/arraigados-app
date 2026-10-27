@@ -6,6 +6,7 @@ import {
   IdCard,
   LogOut,
   MapPin,
+  Ticket,
   UserRound,
   Utensils,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ const GafeteViewer = lazy(() => import('./homev2/GafeteViewer'));
 
 const links = [
   { to: '/perfil', label: 'Mi perfil', desc: 'Foto, avatar o iniciales', Icon: UserRound },
+  { to: '/rifa', label: 'Rifa', desc: 'Responde 3 preguntas y participa', Icon: Ticket },
   { to: '/comida', label: 'Comida', desc: 'Menú de ambas sedes', Icon: Utensils },
   // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   // { to: '/instantaneas', label: 'Instantáneas', desc: 'Lo que está pasando ahora', Icon: Images },

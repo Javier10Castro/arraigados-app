@@ -32,6 +32,8 @@ import Descuentos from './admin/Descuentos';
 import Rifas from './admin/Rifas';
 import Secreto from './admin/Secreto';
 import Rifa from './pages/Rifa';
+import MiRifa from './pages/MiRifa';
+import Premios from './pages/Premios';
 import Menu from './admin/Menu';
 import Merch from './admin/Merch';
 import Notas from './admin/Notas';
@@ -147,6 +149,8 @@ export default function App() {
         <Route path="/admin/secreto" element={admin(<Secreto />)} />
         {/* Proyector de la rifa: pública (solo lectura; el id de la rifa es el enlace). */}
         <Route path="/rifa/:id" element={<Rifa />} />
+        {/* Pantalla de premios de la rifa: pública (proyector o pantalla grande). */}
+        <Route path="/premios" element={<Premios />} />
         {/* Ruta vieja (hasta el 2 oct 2026): por si queda algún enlace o marcador guardado. */}
         <Route path="/admin/resumen" element={admin(<Navigate to="/admin/dashboard" replace />)} />
         <Route path="/admin/lotes" element={admin(<Lotes />)} />
@@ -188,6 +192,8 @@ export default function App() {
         <Route path="/recursos" element={<Navigate to="/home" replace />} />
         <Route path="/perfil" element={shell(<AttendeeOnly><Perfil /></AttendeeOnly>)} />
         <Route path="/mas" element={shell(<Mas />)} />
+        {/* Rifa del asistente: 3 preguntas y entra a la rifa de su kit (migración 017). */}
+        <Route path="/rifa" element={shell(<MiRifa />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
