@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import type pg from 'pg';
 import { NOW_UTC, newId, query, withTransaction } from './db';
-import { canEditDiscounts } from './teamDiscount';
+import { DISCOUNT_EDITORS } from './teamDiscount';
 import type {
   AdminRaffleDetail,
   AdminRafflesResponse,
@@ -40,7 +40,13 @@ export class RaffleError extends Error {
  * DISCOUNT_EDITORS). Es la autorización REAL, en el servidor: ocultar el enlace del menú no protege nada por sí solo.
  * Otro Admin recibe 403 en las tres rutas /api/admin/raffle*. El proyector público (/rifa/:id) no se ve afectado.
  */
-export const canManageRaffles = (email: string | null | undefined) => canEditDiscounts(email);
+export const RAFFLE_MANAGERS: readonly string[] = [
+  ...DISCOUNT_EDITORS,
+  'arturosanchez@redjuveniltijuana.com',
+  'milcamendoza@redjuveniltijua.com',
+];
+export const canManageRaffles = (email: string | null | undefined) =>
+  typeof email === 'string' && RAFFLE_MANAGERS.includes(email.trim().toLowerCase());
 export const RAFFLE_FORBIDDEN = 'Esta sección solo está disponible para las cuentas autorizadas.';
 
 const isMissingTable = (err: unknown) => (err as { code?: string })?.code === '42P01';
