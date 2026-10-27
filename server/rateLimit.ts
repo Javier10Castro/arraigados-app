@@ -81,6 +81,8 @@ export const RULES = {
   att_note_w: rule('att_note_w', 10, 600, 'open'),
   att_profile_w: rule('att_profile_w', 10, 600, 'open'),
   att_photo: rule('att_photo', 5, 600, 'closed'), //              subir foto (almacenamiento + procesamiento)
+  att_raffle_r: rule('att_raffle_r', 30, 60, 'open'), //        ver mi rifa (/rifa y tarjeta de /home)
+  att_raffle_w: rule('att_raffle_w', 10, 600, 'open'), //       inscribirse a la rifa (una sola vez; reintentos de red)
 } as const satisfies Record<string, Rule>;
 
 /** Una "pregunta" al almacén: ¿puedo gastar `inc` de esta regla para esta identidad? `inc: 0` solo consulta. */

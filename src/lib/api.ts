@@ -49,6 +49,11 @@ import {
   type DrawRaffleRequest,
   type DrawRaffleResponse,
   type PublicRaffle,
+  type MyRaffleResponse,
+  type UpdateRaffleRequest,
+  type RaffleEntryRequest,
+  type AdminRaffleEntriesResponse,
+  type UpdateRaffleEntriesRequest,
   type UpdateTeamDiscountRequest,
   type DashboardResponse,
   type AdminRedemptionFilters,
@@ -384,11 +389,11 @@ export const api = {
   adminRaffle: (id: string) => request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}`),
   createRaffle: (body: CreateRaffleRequest) =>
     request<AdminRaffleDetail>('/api/admin/raffles', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
-  updateRaffleTarget: (id: string, targetWinners: number) =>
+  updateRaffleTarget: (id: string, change: UpdateRaffleRequest) =>
     request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ targetWinners }),
+      body: JSON.stringify(change),
     }),
   drawRaffle: (id: string, body: DrawRaffleRequest) =>
     request<DrawRaffleResponse>(`/api/admin/raffles/${encodeURIComponent(id)}/draw`, {
@@ -399,6 +404,21 @@ export const api = {
   cancelRaffle: (id: string) =>
     request<AdminRaffleDetail>(`/api/admin/raffles/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   publicRaffle: (id: string) => request<PublicRaffle>(`/api/raffle/${encodeURIComponent(id)}`),
+  // Rifa del asistente (migración 017): la identidad y el kit salen del token de la pulsera.
+  myRaffle: (token: string) => request<MyRaffleResponse>('/api/raffle-entry', { headers: { [PULSE_TOKEN_HEADER]: token } }),
+  enterRaffle: (token: string, body: RaffleEntryRequest) =>
+    request<MyRaffleResponse>('/api/raffle-entry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [PULSE_TOKEN_HEADER]: token },
+      body: JSON.stringify(body),
+    }),
+  adminRaffleEntries: () => request<AdminRaffleEntriesResponse>('/api/admin/raffle-entries'),
+  setRaffleEntriesOpen: (open: boolean) =>
+    request<{ entriesOpen: boolean }>('/api/admin/raffle-entries', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ open } satisfies UpdateRaffleEntriesRequest),
+    }),
 
   // Admin -> Dashboard (Etapa 7)
   dashboard: (f: DashboardFilters) => {

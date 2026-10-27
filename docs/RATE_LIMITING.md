@@ -90,6 +90,7 @@ Fuente única: `RULES` en `server/rateLimit.ts`. «Fallo» = qué pasa si el alm
 | `att_notes_r` · `att_note_w` | 30 / min · 10 / 10 min | `GET` · `POST`/`DELETE /api/notes` |
 | `att_feed` · `att_notif` · `att_likers` | 30 / min | `/api/notes/feed` · `/api/notifications` · `/api/notes/likers` |
 | `att_like` · `att_seen` | 40 / min · 20 / min | `POST /api/notes/:id/like` · `POST /api/notifications/seen` |
+| `att_raffle_r` · `att_raffle_w` | 30 / min · 10 / 10 min | `GET` · `POST /api/raffle-entry` (inscripción a la rifa, migración 017) |
 | `bad_token_ip` | 600 / 10 min | **Consulta** (no suma) en cada ruta del asistente; suma un fallo cuando la ruta responde 401 a un token con formato válido pero inexistente. Alto a propósito: el recinto comparte IP. |
 
 Las lecturas periódicas de la app (notas, avisos) ocurren cada 60 s, es decir 1/min frente a 30/min permitidos.

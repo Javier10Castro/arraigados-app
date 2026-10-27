@@ -23,7 +23,7 @@ export default handler(async (req: Request) => {
     return apiError('Solicitud inválida.');
   }
   try {
-    return json(await createRaffle(auth.user.id, { packageId: body?.packageId, targetWinners: body?.targetWinners, name: body?.name }), 201);
+    return json(await createRaffle(auth.user.id, { packageId: body?.packageId, targetWinners: body?.targetWinners, winningPosition: body?.winningPosition, name: body?.name }), 201);
   } catch (err) {
     if (err instanceof RaffleError) return apiError(err.message, err.status);
     throw err;

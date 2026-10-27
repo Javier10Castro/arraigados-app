@@ -67,10 +67,14 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     await db?.end();
   });
 
+  // Desde la migración 017 solo participan los INSCRITOS: aquí todos se inscriben a la rifa de su kit (las pruebas de
+  // inscripción, incluida «quien no se inscribe no participa», están en raffleentry.test.mts).
   const addAttendee = async (id: string, name: string, kit: string, status = 'ACTIVE') => {
     await q(`INSERT INTO "Attendee"(id,"fullName","ageRange","churchId","updatedAt") VALUES ($1,$2,'19-21','c1',now())`, [id, name]);
     await q(`INSERT INTO "Pulse"(id,"qrToken",status,"manualCode","packageId","batchId","attendeeId","updatedAt") VALUES ($1,$2,$3::"PulseStatus",$4,$5,'b1',$6,now())`,
       [`pl_${id}`, `TOK${id}XXXXXXXXXXXXX`, status, `AR26-${id.toUpperCase()}`, kit, id]);
+    await q(`INSERT INTO "RaffleEntry"(id,"attendeeId","packageId","pulseId","answerLiked","answerPlenary","answerLesson") VALUES ($1,$2,$3,$4,'Todo','Plenaria 1','Fe')`,
+      [`re_${id}`, id, kit, `pl_${id}`]);
   };
 
   beforeEach(async () => {
@@ -80,6 +84,7 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     await q(`DELETE FROM "Raffle"`);
     await q(`DELETE FROM "AuditLog"`);
     await q(`DELETE FROM "StaffPulse"`);
+    await q(`DELETE FROM "RaffleEntry"`);
     await q(`DELETE FROM "Pulse"`);
     await q(`DELETE FROM "Attendee"`);
     // Kit-A: 5 elegibles + 1 pulsera inválida + 1 sin reclamar; Kit-B: 3; Especial: 2; equipo en Kit-A y Kit-B
@@ -298,8 +303,8 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     assert.equal((await winnersRows(r.id)).length, 0); // cargar/recargar la pantalla NUNCA sortea
     const d = await J(await draw('admin', r.id, key()));
     const p = await J(await pub(r.id));
-    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount']);
-    assert.deepEqual(Object.keys(p.winners[0]).sort(), ['extra', 'name', 'position']);
+    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
+    assert.deepEqual(Object.keys(p.winners[0]).sort(), ['extra', 'name', 'position', 'winner']);
     assert.equal(p.winners[0].name, 'Asistente A.'); // nombre + inicial del apellido
     assert.match(d.winner.winnerName, /^Asistente A\d Apellido$/); // el Admin sí ve el completo
     assert.ok(!JSON.stringify(p).includes('Apellido'));
@@ -433,7 +438,7 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     assert.equal(p.status, 'CANCELLED');
     assert.equal(p.winners.length, 1);
     assert.match(p.winners[0].name, /^Asistente A\.$/);
-    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount']);
+    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
     assert.ok(!/Apellido|@|qrToken|TOK|attendeeId|manualCode|cancelled/.test(JSON.stringify(p)));
     assert.equal((await draw(undefined, r.id, key())).status, 401); // sin sesión, ni la vista pública ni nadie sortea
   });
@@ -493,6 +498,8 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
       }
     } finally {
       await db.query((await import('node:fs')).readFileSync('migrations/014_raffles.sql', 'utf8'));
+      await db.query((await import('node:fs')).readFileSync('migrations/016_raffle_cancel.sql', 'utf8'));
+      await db.query((await import('node:fs')).readFileSync('migrations/017_raffle_entries.sql', 'utf8'));
     }
   });
 });

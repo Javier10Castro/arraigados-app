@@ -18,8 +18,11 @@ import type {
  * - El sorteo se hace AQUÍ, en el servidor, dentro de una transacción con la fila de la rifa bloqueada (FOR UPDATE):
  *   dos sorteos simultáneos de la misma rifa se ejecutan uno tras otro, nunca a la vez.
  * - Aleatoriedad: node:crypto randomInt (CSPRNG), sobre la lista de elegibles recalculada en ese instante.
- * - Elegible = asistente (no Staff/Admin: las pulseras del equipo no tienen "attendeeId") con pulsera ACTIVE del kit
- *   de la rifa que todavía no ganó en ESA rifa. Se revalida en cada sorteo; nada se calcula al cargar la página.
+ * - Elegible (desde la migración 017) = asistente INSCRITO a la rifa de su kit ("RaffleEntry", respondió las 3 preguntas)
+ *   que sigue con pulsera ACTIVE de ese kit y que todavía no salió en ESA rifa. Staff/Admin no participan (las pulseras
+ *   del equipo no tienen "attendeeId" y no pueden inscribirse). Se revalida en cada sorteo; nada se calcula al cargar.
+ * - «Gana la salida #N» (017, "winningPosition"): cada sorteo saca a UNA persona; solo la salida N gana (y los sorteos
+ *   extra posteriores). Sin "winningPosition" (rifas anteriores) todas las salidas son ganadoras, como siempre.
  * - Idempotencia: cada sorteo lleva un `drawKey` único que genera el navegador al presionar el botón. Un reintento o
  *   doble clic con la misma llave devuelve el ganador ya guardado y NO sortea otro. Lo respalda un UNIQUE en la base.
  * - "RaffleWinner" es solo-INSERT: no existe función que actualice, reinicie ni borre ganadores. Una edición nueva es
@@ -41,14 +44,21 @@ export const canManageRaffles = (email: string | null | undefined) => canEditDis
 export const RAFFLE_FORBIDDEN = 'Esta sección solo está disponible para las cuentas autorizadas.';
 
 const isMissingTable = (err: unknown) => (err as { code?: string })?.code === '42P01';
+/** Falta la migración 017: la tabla "RaffleEntry" o la columna "winningPosition" no existen. */
+export const isMissing017 = (err: unknown) => {
+  const e = err as { code?: string; message?: string } | null;
+  return (e?.code === '42P01' && /RaffleEntry/.test(e.message ?? '')) || (e?.code === '42703' && /winningPosition/.test(e.message ?? ''));
+};
 const NO_MIGRATION = 'Las rifas aún no están habilitadas en esta base (falta la migración 014).';
+export const NO_MIGRATION_017 = 'Las rifas aún no están habilitadas en esta base (falta la migración 017: inscripción con preguntas).';
 const NO_MIGRATION_016 = 'Cancelar rifas aún no está habilitado en esta base (falta la migración 016).';
 const CANCELLED_MSG = 'La rifa fue cancelada: no se puede sortear, editar ni reabrir.';
-/** Sin la migración 014 las rutas que reciben un id responden 409 con un mensaje claro (antes: error 500). */
+/** Sin la migración 014 (o la 017) las rutas que reciben un id responden 409 con un mensaje claro (antes: error 500). */
 async function orNoMigration<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
+    if (isMissing017(err)) throw new RaffleError(NO_MIGRATION_017, 409);
     if (isMissingTable(err)) throw new RaffleError(NO_MIGRATION, 409);
     throw err;
   }
@@ -59,20 +69,28 @@ export const MAX_TARGET = 500;
 
 type Db = Pick<pg.Pool | pg.PoolClient, 'query'>;
 
-/** FROM + WHERE de los elegibles de una rifa. $1 = id del kit, $2 = id de la rifa. */
+/**
+ * FROM + WHERE de los elegibles de una rifa. $1 = id del kit, $2 = id de la rifa.
+ * Inscritos al kit (017) con pulsera ACTIVE de ese mismo kit, que no hayan salido ya en esta rifa.
+ */
 const ELIGIBLE_FROM = `
-  FROM "Pulse" p
-  JOIN "Attendee" a ON a.id = p."attendeeId"
- WHERE p.status = 'ACTIVE' AND p."packageId" = $1
+  FROM "RaffleEntry" e
+  JOIN "Attendee" a ON a.id = e."attendeeId"
+  JOIN "Pulse" p ON p."attendeeId" = a.id AND p.status = 'ACTIVE' AND p."packageId" = e."packageId"
+ WHERE e."packageId" = $1
    AND NOT EXISTS (SELECT 1 FROM "RaffleWinner" w WHERE w."raffleId" = $2 AND w."attendeeId" = a.id)`;
 
 type RaffleRow = {
   id: string; packageId: string; kitName: string; edition: number; name: string;
-  targetWinners: number; status: RaffleStatus; createdAt: string; winnersCount: number;
+  targetWinners: number; winningPosition: number | null; status: RaffleStatus; createdAt: string; winnersCount: number;
 };
 
+/** ¿Esa salida gana? Sin posición ganadora (rifas anteriores a la 017) todas ganan; con ella, la salida N y los extra. */
+export const isWinningDraw = (winningPosition: number | null, w: { position: number; extra: boolean }) =>
+  winningPosition === null || w.extra || w.position === winningPosition;
+
 const SELECT_RAFFLE = `
-  SELECT r.id, r."packageId", k.name AS "kitName", r.edition, r.name, r."targetWinners", r.status,
+  SELECT r.id, r."packageId", k.name AS "kitName", r.edition, r.name, r."targetWinners", r."winningPosition", r.status,
          to_char(r."createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
          (SELECT count(*)::int FROM "RaffleWinner" w WHERE w."raffleId" = r.id) AS "winnersCount"
     FROM "Raffle" r JOIN "Package" k ON k.id = r."packageId"`;
@@ -86,8 +104,8 @@ async function toSummary(db: Db, r: RaffleRow): Promise<RaffleSummary> {
   return { ...r, eligibleCount: await eligibleCount(db, r) };
 }
 
-async function winnersOf(db: Db, raffleId: string): Promise<RaffleWinnerRow[]> {
-  const { rows } = await db.query<RaffleWinnerRow>(
+async function winnersOf(db: Db, raffleId: string, winningPosition: number | null): Promise<RaffleWinnerRow[]> {
+  const { rows } = await db.query<Omit<RaffleWinnerRow, 'winner'>>(
     `SELECT w."position", w."attendeeId", w."winnerName", w.extra,
             to_char(w."drawnAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "drawnAt",
             w."drawnById", u.name AS "drawnByName"
@@ -95,7 +113,7 @@ async function winnersOf(db: Db, raffleId: string): Promise<RaffleWinnerRow[]> {
       WHERE w."raffleId" = $1 ORDER BY w."position"`,
     [raffleId],
   );
-  return rows;
+  return rows.map((w) => ({ ...w, winner: isWinningDraw(winningPosition, w) }));
 }
 
 async function loadRaffle(db: Db, id: string): Promise<RaffleRow | null> {
@@ -108,7 +126,7 @@ export async function getAdminRaffleDetail(id: string, db: Db = { query: (t: str
   return orNoMigration(async () => {
     const r = await loadRaffle(db, id);
     if (!r) return null;
-    return { ...(await toSummary(db, r)), winners: await winnersOf(db, id) };
+    return { ...(await toSummary(db, r)), winners: await winnersOf(db, id, r.winningPosition) };
   });
 }
 
@@ -119,7 +137,8 @@ export async function listAdminRaffles(): Promise<AdminRafflesResponse> {
     const raffles = await Promise.all(rows.map((r) => toSummary({ query } as unknown as Db, r)));
     return { available: true, raffles, kits };
   } catch (err) {
-    if (isMissingTable(err)) return { available: false, raffles: [], kits };
+    if (isMissing017(err)) return { available: false, missing: '017', raffles: [], kits };
+    if (isMissingTable(err)) return { available: false, missing: '014', raffles: [], kits };
     throw err;
   }
 }
@@ -131,8 +150,20 @@ function checkTarget(v: unknown): number {
   return v;
 }
 
-export async function createRaffle(actorId: string, input: { packageId: unknown; targetWinners: unknown; name?: unknown }): Promise<AdminRaffleDetail> {
-  const target = checkTarget(input.targetWinners);
+function checkPosition(v: unknown): number {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1 || v > MAX_TARGET) {
+    throw new RaffleError(`El lugar ganador debe ser un entero entre 1 y ${MAX_TARGET}.`);
+  }
+  return v;
+}
+
+/**
+ * Abre una rifa. Con `winningPosition` («gana la salida #N») la rifa se completa justo al salir esa persona, así que el
+ * objetivo de salidas se iguala a N. Sin él, se usa `targetWinners` como siempre (todas las salidas ganan).
+ */
+export async function createRaffle(actorId: string, input: { packageId: unknown; targetWinners?: unknown; winningPosition?: unknown; name?: unknown }): Promise<AdminRaffleDetail> {
+  const winningPosition = input.winningPosition === undefined || input.winningPosition === null ? null : checkPosition(input.winningPosition);
+  const target = winningPosition ?? checkTarget(input.targetWinners);
   if (typeof input.packageId !== 'string' || !ID_RE.test(input.packageId)) throw new RaffleError('Elige un kit válido.');
   let name = typeof input.name === 'string' ? input.name.trim() : '';
   if (name.length > 80) throw new RaffleError('El nombre es demasiado largo (máximo 80 caracteres).');
@@ -148,39 +179,49 @@ export async function createRaffle(actorId: string, input: { packageId: unknown;
       if (!name) name = `Rifa ${kit.name} · Edición ${edition}`;
       const rid = newId();
       await tx.query(
-        `INSERT INTO "Raffle" (id, "packageId", edition, name, "targetWinners", status, "createdAt", "createdById")
-         VALUES ($1, $2, $3, $4, $5, 'OPEN', ${NOW_UTC}, $6)`,
-        [rid, input.packageId, edition, name, target, actorId],
+        `INSERT INTO "Raffle" (id, "packageId", edition, name, "targetWinners", "winningPosition", status, "createdAt", "createdById")
+         VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', ${NOW_UTC}, $7)`,
+        [rid, input.packageId, edition, name, target, winningPosition, actorId],
       );
       await tx.query(
         `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
          VALUES ($1, $2, 'raffle.create', 'Raffle', $3, $4::jsonb, ${NOW_UTC})`,
-        [newId(), actorId, rid, JSON.stringify({ packageId: input.packageId, edition, targetWinners: target })],
+        [newId(), actorId, rid, JSON.stringify({ packageId: input.packageId, edition, targetWinners: target, winningPosition })],
       );
       return rid;
     });
     return (await getAdminRaffleDetail(id))!;
   } catch (err) {
+    if (isMissing017(err)) throw new RaffleError(NO_MIGRATION_017, 409);
     if (isMissingTable(err)) throw new RaffleError(NO_MIGRATION, 409);
     throw err;
   }
 }
 
-/** Cambia cuántos ganadores se buscan. Solo mientras la rifa está abierta y nunca por debajo de los ya sorteados. */
-export async function updateTarget(actorId: string, id: string, targetWinners: unknown): Promise<AdminRaffleDetail> {
-  const target = checkTarget(targetWinners);
+/**
+ * Cambia cuántas salidas se buscan (o, con `winningPosition`, qué salida gana: el objetivo se iguala a ella).
+ * Solo mientras la rifa está abierta y nunca por debajo de lo ya sorteado.
+ */
+export async function updateTarget(actorId: string, id: string, input: { targetWinners?: unknown; winningPosition?: unknown }): Promise<AdminRaffleDetail> {
+  const byPosition = input.winningPosition !== undefined;
+  const target = byPosition ? checkPosition(input.winningPosition) : checkTarget(input.targetWinners);
   await orNoMigration(() => withTransaction(async (tx) => {
     const r = (await tx.query<{ status: RaffleStatus }>(`SELECT status FROM "Raffle" WHERE id = $1 FOR UPDATE`, [id])).rows[0];
     if (!r) throw new RaffleError('Esa rifa no existe.', 404);
     if (r.status === 'CANCELLED') throw new RaffleError(CANCELLED_MSG, 409);
     if (r.status !== 'OPEN') throw new RaffleError('La rifa ya está completada. Usa un sorteo extra autorizado o abre una edición nueva.', 409);
     const won = (await tx.query<{ n: number }>(`SELECT count(*)::int AS n FROM "RaffleWinner" WHERE "raffleId" = $1`, [id])).rows[0].n;
-    if (target <= won) throw new RaffleError(`Ya hay ${won} ganador(es); el objetivo debe ser mayor para seguir sorteando.`);
-    await tx.query(`UPDATE "Raffle" SET "targetWinners" = $2 WHERE id = $1`, [id, target]);
+    if (target <= won) {
+      throw new RaffleError(byPosition
+        ? `Ya salieron ${won} persona(s); el lugar ganador debe ser mayor a ${won}.`
+        : `Ya hay ${won} ganador(es); el objetivo debe ser mayor para seguir sorteando.`);
+    }
+    if (byPosition) await tx.query(`UPDATE "Raffle" SET "targetWinners" = $2, "winningPosition" = $2 WHERE id = $1`, [id, target]);
+    else await tx.query(`UPDATE "Raffle" SET "targetWinners" = $2 WHERE id = $1`, [id, target]);
     await tx.query(
       `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
        VALUES ($1, $2, 'raffle.target', 'Raffle', $3, $4::jsonb, ${NOW_UTC})`,
-      [newId(), actorId, id, JSON.stringify({ targetWinners: target })],
+      [newId(), actorId, id, JSON.stringify(byPosition ? { targetWinners: target, winningPosition: target } : { targetWinners: target })],
     );
   }));
   return (await getAdminRaffleDetail(id))!;
@@ -289,11 +330,12 @@ export async function getPublicRaffle(id: string): Promise<PublicRaffle | null> 
   try {
     r = await loadRaffle({ query } as unknown as Db, id);
   } catch (err) {
-    if (isMissingTable(err)) return null;
+    if (isMissingTable(err) || isMissing017(err)) return null;
     throw err;
   }
   if (!r) return null;
-  const winners = (await winnersOf({ query } as unknown as Db, id)).map((w) => ({ position: w.position, name: publicWinnerName(w.winnerName), extra: w.extra }));
+  const winners = (await winnersOf({ query } as unknown as Db, id, r.winningPosition))
+    .map((w) => ({ position: w.position, name: publicWinnerName(w.winnerName), extra: w.extra, winner: w.winner }));
   return {
     id: r.id,
     name: r.name,
@@ -301,6 +343,7 @@ export async function getPublicRaffle(id: string): Promise<PublicRaffle | null> 
     edition: r.edition,
     status: r.status,
     targetWinners: r.targetWinners,
+    winningPosition: r.winningPosition,
     winnersCount: r.winnersCount,
     remaining: await eligibleCount({ query } as unknown as Db, r),
     winners,

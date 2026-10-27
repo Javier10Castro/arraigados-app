@@ -4,6 +4,8 @@ Guía para el administrador que operará las rifas durante el evento. Complement
 
 > **Estado de verificación (honesto).** Las pruebas automáticas de rifas (sorteo, concurrencia, cancelación, privacidad, migraciones) pasaron en una base PostgreSQL local desechable. **Nunca se han ejecutado contra la base real (Neon) ni se ha hecho un sorteo real.** Antes del evento haz el ensayo de la sección 12.
 
+> **Novedad 27 oct 2026 (migración 017).** Ahora **solo participan quienes entran a la rifa** desde la app: en **Rifa** (`/rifa`, también en Home y en Más) el asistente ve el premio de su kit, presiona **Entrar a rifa** y responde 3 preguntas (¿Qué fue lo que más te gustó? · ¿Cuál fue tu plenaria favorita? · ¿Qué enseñanza te dejó el congreso?). Ver la sección 13.
+
 ## 1. Requisitos previos
 Las rifas dependen de dos migraciones que **deben estar aplicadas en la base real**:
 
@@ -79,3 +81,17 @@ Tip: abre la vista pública en el proyector y opera el panel desde tu equipo.
 - [ ] Proyector probado a la resolución real y con internet estable.
 - [ ] Se acordó quién opera el panel y que **un sorteo no se puede deshacer**.
 - [ ] El responsable técnico está localizable durante el evento.
+
+## 13. Inscripción con preguntas, «gana la salida #N» y premios (migración 017)
+
+**Premios** (`shared/raffle.ts`, imágenes en `src/assets/premios/`): Especial → Amazon Echo Pop · Kit B → Owala FreeSip · Kit A → Tarjeta de regalo Amazon $300. «Inscripción Domingo» no tiene rifa. Pantalla pública para proyectar: **`/premios`**.
+
+**Asistente.** En `/rifa` presiona **Entrar a rifa**, responde las 3 preguntas (una por pantalla; la plenaria se elige entre las del programa oficial) y queda inscrito en la rifa de **su** kit. Solo una vez; no puede cambiar sus respuestas. Después del sorteo, en esa misma pantalla ve quién ganó (nombre + inicial) o «¡Ganaste!».
+
+**Admin → Rifas → Inscritos.** Pestaña por kit con cuántos entraron, nombre, iglesia, plenaria, lo que más le gustó, la enseñanza y la fecha. Buscador y **Descargar CSV** (todas las respuestas, para Excel). «Pulsera inactiva» = ya no entra al sorteo. **Cerrar inscripciones** antes de empezar a sortear para que nadie entre a medio sorteo (se puede volver a abrir).
+
+**Abrir rifa → «Gana la salida #».** Ej.: 3 = cada **Sorteo** saca a una persona; la 1.ª y la 2.ª **no ganan**, la 3.ª **gana** y la rifa queda completada. En el proyector las salidas que no ganan se anuncian «Salida #1 · No gana…» y la ganadora «¡Tenemos ganador!» con el premio. Si el ganador no está presente, usa **Sorteo extra** (también cuenta como ganador). Mientras la rifa está abierta puedes cambiar la salida ganadora (siempre mayor a las que ya salieron).
+
+**Orden sugerido el día del sorteo:** 1) Cerrar inscripciones. 2) Proyectar `/premios`. 3) Abrir la rifa de cada kit con su salida ganadora. 4) Abrir el proyector de esa rifa (`/rifa/:id`). 5) Presionar **Sorteo** las veces necesarias.
+
+**Aplicar en producción** (con respaldo): `npm run db:migrar -- --only 017_raffle_entries.sql` (requiere 014). Verificar con `npm run db:estado`. Reversión: `docs/rollback/017_raffle_entries_down.sql` (aborta si ya hay inscripciones). Sin la 017 la app dice «La rifa estará disponible muy pronto» y Admin avisa «falta la migración 017» (nunca error 500).

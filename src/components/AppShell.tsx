@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, Utensils } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, Gift, Home, LogOut, IdCard, MoreHorizontal, Ticket, Utensils } from 'lucide-react';
 import Wordmark from './Wordmark';
 import RingsMark from './RingsMark';
 import Ambient from './Ambient';
@@ -18,6 +18,7 @@ const primaryNav = [
 ];
 
 const quickLinks = [
+  { to: '/rifa', label: 'Rifa', Icon: Ticket },
   { to: '/comida', label: 'Comida', Icon: Utensils },
   // Instantáneas OCULTO (6 oct 2026). Para volver a mostrarlo: importar `Images` de lucide-react y descomentar:
   // { to: '/instantaneas', label: 'Instantáneas', Icon: Images },
@@ -132,7 +133,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) => `${styles.bottomItem} ${isActive || (to === '/mas' && ['/comida', '/instantaneas', '/recursos'].includes(pathname)) ? styles.bottomItemActive : ''}`}
+            className={({ isActive }) => `${styles.bottomItem} ${isActive || (to === '/mas' && ['/comida', '/rifa', '/instantaneas', '/recursos'].includes(pathname)) ? styles.bottomItemActive : ''}`}
           >
             <Icon size={21} strokeWidth={2.1} />
             <span className={styles.bottomLabel}>{label}</span>
