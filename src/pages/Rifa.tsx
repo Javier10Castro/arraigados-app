@@ -7,30 +7,83 @@ import s from './Rifa.module.css';
 
 /**
  * Vista PÚBLICA de una rifa para proyector (/rifa/:id). Solo lee (GET /api/raffle/:id); no tiene ningún control ni
- * llamada que sortee. El ganador lo decide y guarda el servidor cuando un Admin sortea; aquí solo se anima:
- *  · al abrir la página NO se anima nada: se muestran los resultados ya guardados (recargar no repite nada);
- *  · cuando el servidor reporta un ganador nuevo, la ruleta gira y se detiene en un sector, y entonces se anuncia
- *    el nombre (nombre + inicial del apellido, como lo entrega el servidor) (ya confirmado y guardado). La ruleta no contiene datos de participantes.
- *  · «Gana la salida #N» (migración 017): las salidas anteriores se anuncian como «Salida #k · no gana» (sin confeti)
- *    y la salida N como «¡Tenemos ganador!» con el premio del kit.
+ * llamada que sortee. Quién sale lo decide y guarda el servidor cuando un Admin presiona «Sorteo»; aquí solo se anima:
+ *  · al abrir la página NO se anima nada: se muestran las salidas ya guardadas (recargar no repite nada);
+ *  · en espera, los nombres de quienes siguen participando pasan despacio por el «carrete» (`pool`, solo «Nombre I.»);
+ *  · cuando el servidor reporta una salida nueva, los nombres pasan rápido, se frenan y se detienen en la persona que
+ *    salió (ya confirmada y guardada). Si esa salida NO gana se marca ahí mismo; la ganadora («gana la salida #N»,
+ *    migración 017) se anuncia además a pantalla completa con confeti y el premio.
  */
-const SEGMENTS = 12;
-const SEG_DEG = 360 / SEGMENTS;
 const POLL_MS = 2500;
-const SPIN_MS = 6000;
+const SPIN_MS = 6500; // los nombres pasan rápido y se frenan
+const LAND_MS = 1800; // la ganadora se queda resaltada en el carrete antes del festejo
 const REVEAL_MS = 14000;
-const REVEAL_MISS_MS = 7000; // una salida que no gana se anuncia más breve
-const SEG_COLORS = ['#3e07a6', '#f2f7d7', '#7b5bff', '#c0b8df'];
+const REVEAL_MISS_MS = 7000; // una salida que no gana se queda marcada en el carrete
+const SEG_COLORS = ['#3e07a6', '#f2f7d7', '#7b5bff', '#c0b8df']; // colores del confeti
+const VISIBLE = 7; // renglones visibles en el carrete
+const CENTER = 3; // renglón del centro (el que «sale»)
+const SPIN_ROWS = 46; // nombres que pasan antes de detenerse
 
 type Win = PublicRaffle['winners'][number];
+type Spin = { strip: string[]; target: number; go: boolean; key: number };
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-function wedge(i: number) {
-  const a0 = ((i * SEG_DEG - 90) * Math.PI) / 180;
-  const a1 = (((i + 1) * SEG_DEG - 90) * Math.PI) / 180;
-  const r = 190;
-  const p = (a: number) => `${200 + r * Math.cos(a)} ${200 + r * Math.sin(a)}`;
-  return `M200 200 L${p(a0)} A${r} ${r} 0 0 1 ${p(a1)} Z`;
+function shuffled<T>(xs: readonly T[]): T[] {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Tira de nombres para un giro: relleno al azar y, en la posición `target`, la persona que salió. */
+function buildStrip(pool: readonly string[], fallback: readonly string[], name: string): { strip: string[]; target: number } {
+  const base = pool.length ? pool : fallback.length ? fallback : ['★'];
+  const fill: string[] = [];
+  while (fill.length < SPIN_ROWS + CENTER + 1) fill.push(...shuffled(base));
+  const strip = fill.slice(0, SPIN_ROWS);
+  const target = strip.length;
+  strip.push(name, ...fill.slice(SPIN_ROWS, SPIN_ROWS + CENTER + 1));
+  return { strip, target };
+}
+
+function Reel({ pool, spin, phase, hitIsWinner }: { pool: string[]; spin: Spin | null; phase: string; hitIsWinner: boolean }) {
+  // En espera: la lista de quienes siguen participando pasa despacio, en bucle (duplicada para que no haya salto).
+  const idleList = useMemo(() => {
+    if (pool.length === 0) return [];
+    let l = shuffled(pool);
+    while (l.length < VISIBLE + 1) l = [...l, ...shuffled(pool)];
+    return l;
+  }, [pool]);
+  const showSpin = spin !== null && phase !== 'idle';
+  const landed = phase === 'landed' || phase === 'reveal';
+  const offset = showSpin ? (spin.go || landed ? CENTER - spin.target : CENTER) : 0;
+
+  return (
+    <div className={s.reelWrap} aria-hidden="true">
+      <div className={s.reel}>
+        <div className={`${s.band} ${landed ? (hitIsWinner ? s.bandWin : s.bandMiss) : ''}`} />
+        {showSpin ? (
+          <div
+            key={spin.key}
+            className={`${s.strip} ${spin.go ? s.stripGo : ''}`}
+            style={{ transform: `translateY(calc(var(--row) * ${offset}))`, transitionDuration: spin.go ? `${SPIN_MS}ms` : '0ms' }}
+          >
+            {spin.strip.map((n, i) => (
+              <div key={i} className={`${s.row} ${landed && i === spin.target ? s.rowHit : ''}`}>{n}</div>
+            ))}
+          </div>
+        ) : idleList.length ? (
+          <div className={`${s.strip} ${s.stripIdle}`} style={{ animationDuration: `${Math.max(18, idleList.length * 1.4)}s` }}>
+            {[...idleList, ...idleList].map((n, i) => <div key={i} className={s.row}>{n}</div>)}
+          </div>
+        ) : (
+          <div className={s.reelEmpty}>Esperando participantes…</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function Confetti() {
@@ -53,15 +106,15 @@ export default function Rifa() {
   const { id = '' } = useParams();
   const [data, setData] = useState<PublicRaffle | null>(null);
   const [problem, setProblem] = useState<'' | 'notfound' | 'offline'>('');
-  const [phase, setPhase] = useState<'idle' | 'spinning' | 'reveal'>('idle');
-  const [rot, setRot] = useState(0);
-  const [landed, setLanded] = useState<number | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'spinning' | 'landed' | 'reveal'>('idle');
+  const [spin, setSpin] = useState<Spin | null>(null);
   const [current, setCurrent] = useState<Win | null>(null);
   const [presented, setPresented] = useState<number | null>(null); // ganadores ya anunciados en pantalla
   const queue = useRef<Win[]>([]);
   const presentedRef = useRef<number | null>(null);
   const knownRef = useRef(0); // mayor posición ya vista (mostrada, en cola o en animación)
-  const rotRef = useRef(0);
+  const dataRef = useRef<PublicRaffle | null>(null);
+  const spinKey = useRef(0);
   const timers = useRef<number[]>([]);
 
   const clearTimers = () => { timers.current.forEach((t) => window.clearTimeout(t)); timers.current = []; };
@@ -71,21 +124,28 @@ export default function Rifa() {
     const w = queue.current.shift();
     if (!w) { setPhase('idle'); return; }
     setCurrent(w);
-    const finish = () => {
-      setPhase('reveal');
+    const after = () => (queue.current.length ? next() : setPhase('idle'));
+    const land = () => {
+      setPhase('landed');
       setPresented((p) => { const v = Math.max(p ?? 0, w.position); presentedRef.current = v; return v; });
-      timers.current.push(window.setTimeout(() => (queue.current.length ? next() : setPhase('idle')), w.winner ? REVEAL_MS : REVEAL_MISS_MS));
+      if (w.winner) {
+        timers.current.push(window.setTimeout(() => {
+          setPhase('reveal');
+          timers.current.push(window.setTimeout(after, REVEAL_MS));
+        }, LAND_MS));
+      } else {
+        timers.current.push(window.setTimeout(after, REVEAL_MISS_MS));
+      }
     };
-    if (reducedMotion()) { setLanded(null); finish(); return; }
-    const k = Math.floor(Math.random() * SEGMENTS);
-    const jitter = (Math.random() - 0.5) * (SEG_DEG * 0.6);
-    const base = Math.floor(rotRef.current / 360) * 360 + 360 * 6;
-    const target = base + (360 - (k * SEG_DEG + SEG_DEG / 2 + jitter));
-    rotRef.current = target;
-    setLanded(null);
+    const d = dataRef.current;
+    const { strip, target } = buildStrip(d?.pool ?? [], (d?.winners ?? []).map((x) => x.name), w.name);
+    const key = ++spinKey.current;
+    setSpin({ strip, target, go: false, key });
+    if (reducedMotion()) { land(); return; }
     setPhase('spinning');
-    setRot(target);
-    timers.current.push(window.setTimeout(() => { setLanded(k); finish(); }, SPIN_MS));
+    // Dos cuadros: primero se pinta la tira arriba, luego arranca la transición hasta la persona que salió.
+    requestAnimationFrame(() => requestAnimationFrame(() => setSpin((sp) => (sp && sp.key === key ? { ...sp, go: true } : sp))));
+    timers.current.push(window.setTimeout(land, SPIN_MS + 150));
   }, []);
 
   // Consulta periódica (solo lectura) mientras la pestaña está visible.
@@ -96,6 +156,7 @@ export default function Rifa() {
       try {
         const d = await api.publicRaffle(id);
         if (!alive) return;
+        dataRef.current = d;
         setData(d);
         setProblem('');
         if (presentedRef.current === null) {
@@ -146,19 +207,25 @@ export default function Rifa() {
       </header>
 
       <section className={s.stage}>
-        <div className={s.wheelWrap} aria-hidden={phase === 'reveal'}>
-          <div className={s.pointer} aria-hidden="true" />
-          <svg viewBox="0 0 400 400" className={s.wheel} style={{ transform: `rotate(${rot}deg)`, transitionDuration: phase === 'spinning' ? `${SPIN_MS}ms` : '0ms' }} role="img" aria-label="Ruleta de la rifa">
-            {Array.from({ length: SEGMENTS }, (_, i) => (
-              <path key={i} d={wedge(i)} fill={SEG_COLORS[i % 4]} stroke="#13043f" strokeWidth="3" className={landed === i ? s.hit : undefined} />
-            ))}
-            {Array.from({ length: SEGMENTS }, (_, i) => {
-              const a = ((i + 0.5) * SEG_DEG - 90) * (Math.PI / 180);
-              return <text key={i} x={200 + 140 * Math.cos(a)} y={200 + 140 * Math.sin(a)} textAnchor="middle" dominantBaseline="central" className={s.seg} fill={i % 4 === 1 || i % 4 === 3 ? '#1e0263' : '#f2f7d7'} transform={`rotate(${(i + 0.5) * SEG_DEG} ${200 + 140 * Math.cos(a)} ${200 + 140 * Math.sin(a)})`}>★</text>;
-            })}
-            <circle cx="200" cy="200" r="46" fill="#13043f" stroke="#f2f7d7" strokeWidth="5" />
-            <text x="200" y="200" textAnchor="middle" dominantBaseline="central" className={s.hub} fill="#f2f7d7">2K26</text>
-          </svg>
+        <div className={s.reelCol}>
+          <p className={s.reelHead}>
+            <span>Participantes</span>
+            <strong>{remaining}</strong>
+          </p>
+          <Reel pool={data.pool} spin={spin} phase={phase} hitIsWinner={!!current?.winner} />
+          <div className={s.landNote} role="status" aria-live="polite">
+            {phase === 'spinning' && <span className={s.landSpin}>Sorteando la salida #{current?.position}…</span>}
+            {(phase === 'landed' || phase === 'reveal') && current && (
+              current.winner ? (
+                <span className={s.landWin}>¡Salida #{current.position}{current.extra ? ' · extra' : ''}: gana!</span>
+              ) : (
+                <>
+                  <span className={s.landMiss}>Salida #{current.position} · No gana…</span>
+                  {winPos !== null && <span className={s.landSub}>¡Gana la salida #{winPos}! Faltan {Math.max(0, winPos - current.position)}.</span>}
+                </>
+              )
+            )}
+          </div>
         </div>
 
         <aside className={s.side}>
@@ -181,7 +248,7 @@ export default function Rifa() {
             <div><span className={s.big}>{remaining}</span><span className={s.label}>Participantes restantes</span></div>
           </div>
           <p className={s.status} role="status">
-            {phase === 'spinning' ? 'Girando…'
+            {phase === 'spinning' ? 'Sorteando…'
               : data.status === 'CANCELLED' ? 'Rifa cancelada'
               : done ? 'Rifa completada'
               : remaining === 0 && shownWinners < data.targetWinners ? 'No hay más participantes elegibles'
@@ -216,16 +283,6 @@ export default function Rifa() {
               </div>
             )}
             <p className={s.rv4}>¡Felicidades! Tu momento ha llegado.</p>
-          </div>
-        </div>
-      )}
-      {phase === 'reveal' && current && !current.winner && (
-        <div className={`${s.reveal} ${s.revealMiss}`} role="alert" data-testid="rifa-salida" data-position={current.position}>
-          <div className={s.revealCard}>
-            <p className={s.rv2}>Salida #{current.position}</p>
-            <p className={s.rv3}>{current.name}</p>
-            <p className={s.rv1}>No gana…</p>
-            {winPos !== null && <p className={s.rv4}>¡Gana la salida #{winPos}! Faltan {Math.max(0, winPos - current.position)}.</p>}
           </div>
         </div>
       )}

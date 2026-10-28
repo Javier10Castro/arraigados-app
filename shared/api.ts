@@ -1239,7 +1239,10 @@ export type UpdateRaffleRequest = { targetWinners?: number; winningPosition?: nu
 export type DrawRaffleRequest = { drawKey: string; extra?: boolean };
 export type DrawRaffleResponse = { replay: boolean; winner: RaffleWinnerRow; raffle: AdminRaffleDetail };
 
-/** Lo único que ve el proyector público: sin ids de asistentes, sin lista de participantes, sin datos de contacto. */
+/**
+ * Lo único que ve el proyector público: sin ids de asistentes ni datos de contacto. `pool` = quienes siguen en el sorteo,
+ * solo como «Nombre I.» (para la animación de nombres; máximo 300).
+ */
 export type PublicRaffle = {
   id: string;
   name: string;
@@ -1250,6 +1253,7 @@ export type PublicRaffle = {
   winningPosition: number | null;
   winnersCount: number;
   remaining: number;
+  pool: string[];
   winners: { position: number; name: string; extra: boolean; winner: boolean }[];
 };
 

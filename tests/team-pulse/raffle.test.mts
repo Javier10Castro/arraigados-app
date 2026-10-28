@@ -303,12 +303,15 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     assert.equal((await winnersRows(r.id)).length, 0); // cargar/recargar la pantalla NUNCA sortea
     const d = await J(await draw('admin', r.id, key()));
     const p = await J(await pub(r.id));
-    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
+    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'pool', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
     assert.deepEqual(Object.keys(p.winners[0]).sort(), ['extra', 'name', 'position', 'winner']);
     assert.equal(p.winners[0].name, 'Asistente A.'); // nombre + inicial del apellido
     assert.match(d.winner.winnerName, /^Asistente A\d Apellido$/); // el Admin sí ve el completo
     assert.ok(!JSON.stringify(p).includes('Apellido'));
     assert.equal(p.remaining, 4);
+    // pool: quienes siguen participando, solo «Nombre I.» (sin el que ya salió)
+    assert.equal(p.pool.length, 4);
+    assert.ok(p.pool.every((n: string) => /^Asistente A\.$/.test(n)));
     assert.equal(p.winnersCount, 1);
     const raw = JSON.stringify(p);
     assert.ok(!/@|qrToken|TOK|attendeeId|manualCode/.test(raw));
@@ -438,7 +441,7 @@ describe('rifas · PostgreSQL real', { skip: TEST_URL ? false : 'TEST_DATABASE_U
     assert.equal(p.status, 'CANCELLED');
     assert.equal(p.winners.length, 1);
     assert.match(p.winners[0].name, /^Asistente A\.$/);
-    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
+    assert.deepEqual(Object.keys(p).sort(), ['edition', 'id', 'kitName', 'name', 'pool', 'remaining', 'status', 'targetWinners', 'winners', 'winnersCount', 'winningPosition']);
     assert.ok(!/Apellido|@|qrToken|TOK|attendeeId|manualCode|cancelled/.test(JSON.stringify(p)));
     assert.equal((await draw(undefined, r.id, key())).status, 401); // sin sesión, ni la vista pública ni nadie sortea
   });

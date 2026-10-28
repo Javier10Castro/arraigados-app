@@ -341,7 +341,13 @@ export function publicWinnerName(fullName: string): string {
   return `${parts[0]} ${next.charAt(0).toLocaleUpperCase('es-MX')}.`;
 }
 
-/** Vista pública (proyector). Solo nombres de ganadores y conteos; nunca la lista de participantes. */
+/** Máximo de nombres que recibe el proyector para la animación (los que pasan rápido antes de cada salida). */
+export const PUBLIC_POOL_MAX = 300;
+
+/**
+ * Vista pública (proyector). Nombres de las salidas y conteos, más `pool`: los participantes que SIGUEN en el sorteo
+ * (para la animación de nombres), siempre en formato público «Nombre I.», sin ids ni apellidos. Máximo PUBLIC_POOL_MAX.
+ */
 export async function getPublicRaffle(id: string): Promise<PublicRaffle | null> {
   let r: RaffleRow | null;
   try {
@@ -363,6 +369,10 @@ export async function getPublicRaffle(id: string): Promise<PublicRaffle | null> 
     winningPosition: r.winningPosition,
     winnersCount: r.winnersCount,
     remaining: await eligibleCount({ query } as unknown as Db, r),
+    pool: (await query<{ fullName: string }>(
+      `SELECT DISTINCT ON (a.id) a."fullName" ${ELIGIBLE_FROM} ORDER BY a.id LIMIT ${PUBLIC_POOL_MAX}`,
+      [r.packageId, r.id],
+    )).rows.map((x) => publicWinnerName(x.fullName)),
     winners,
   };
 }
