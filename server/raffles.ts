@@ -36,9 +36,10 @@ export class RaffleError extends Error {
 }
 
 /**
- * Administrar y sortear rifas solo lo pueden hacer las cuentas autorizadas (las mismas dos que editan descuentos:
- * DISCOUNT_EDITORS). Es la autorización REAL, en el servidor: ocultar el enlace del menú no protege nada por sí solo.
- * Otro Admin recibe 403 en las tres rutas /api/admin/raffle*. El proyector público (/rifa/:id) no se ve afectado.
+ * Administrar y sortear rifas solo lo pueden hacer las cuentas de RAFFLE_MANAGERS: las que editan descuentos
+ * (DISCOUNT_EDITORS) más las de coordinación agregadas aquí (27 oct 2026). Estar aquí NO da permiso de editar descuentos.
+ * Es la autorización REAL, en el servidor: ocultar el enlace del menú no protege nada por sí solo. Además la cuenta debe
+ * ser ADMIN. Otro Admin recibe 403 en las rutas /api/admin/raffle*. El proyector público (/rifa/:id) no se ve afectado.
  */
 export const RAFFLE_MANAGERS: readonly string[] = [
   ...DISCOUNT_EDITORS,
@@ -55,16 +56,23 @@ export const isMissing017 = (err: unknown) => {
   const e = err as { code?: string; message?: string } | null;
   return (e?.code === '42P01' && /RaffleEntry/.test(e.message ?? '')) || (e?.code === '42703' && /winningPosition/.test(e.message ?? ''));
 };
+/** Falta la migración 018: las columnas "removedAt"/"removedById" de "RaffleEntry" no existen. */
+export const isMissing018 = (err: unknown) => {
+  const e = err as { code?: string; message?: string } | null;
+  return e?.code === '42703' && /removedAt|removedById/.test(e.message ?? '');
+};
 const NO_MIGRATION = 'Las rifas aún no están habilitadas en esta base (falta la migración 014).';
 export const NO_MIGRATION_017 = 'Las rifas aún no están habilitadas en esta base (falta la migración 017: inscripción con preguntas).';
+export const NO_MIGRATION_018 = 'Las rifas aún no están habilitadas en esta base (falta la migración 018: quitar inscritos).';
 const NO_MIGRATION_016 = 'Cancelar rifas aún no está habilitado en esta base (falta la migración 016).';
 const CANCELLED_MSG = 'La rifa fue cancelada: no se puede sortear, editar ni reabrir.';
-/** Sin la migración 014 (o la 017) las rutas que reciben un id responden 409 con un mensaje claro (antes: error 500). */
+/** Sin la migración 014 (o la 017/018) las rutas que reciben un id responden 409 con un mensaje claro (antes: error 500). */
 async function orNoMigration<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
     if (isMissing017(err)) throw new RaffleError(NO_MIGRATION_017, 409);
+    if (isMissing018(err)) throw new RaffleError(NO_MIGRATION_018, 409);
     if (isMissingTable(err)) throw new RaffleError(NO_MIGRATION, 409);
     throw err;
   }
@@ -77,13 +85,14 @@ type Db = Pick<pg.Pool | pg.PoolClient, 'query'>;
 
 /**
  * FROM + WHERE de los elegibles de una rifa. $1 = id del kit, $2 = id de la rifa.
- * Inscritos al kit (017) con pulsera ACTIVE de ese mismo kit, que no hayan salido ya en esta rifa.
+ * Inscritos al kit (017) con pulsera ACTIVE de ese mismo kit, que el equipo no quitó (018) y que no hayan salido
+ * ya en esta rifa.
  */
 const ELIGIBLE_FROM = `
   FROM "RaffleEntry" e
   JOIN "Attendee" a ON a.id = e."attendeeId"
   JOIN "Pulse" p ON p."attendeeId" = a.id AND p.status = 'ACTIVE' AND p."packageId" = e."packageId"
- WHERE e."packageId" = $1
+ WHERE e."packageId" = $1 AND e."removedAt" IS NULL
    AND NOT EXISTS (SELECT 1 FROM "RaffleWinner" w WHERE w."raffleId" = $2 AND w."attendeeId" = a.id)`;
 
 type RaffleRow = {
@@ -144,6 +153,7 @@ export async function listAdminRaffles(): Promise<AdminRafflesResponse> {
     return { available: true, raffles, kits };
   } catch (err) {
     if (isMissing017(err)) return { available: false, missing: '017', raffles: [], kits };
+    if (isMissing018(err)) return { available: false, missing: '018', raffles: [], kits };
     if (isMissingTable(err)) return { available: false, missing: '014', raffles: [], kits };
     throw err;
   }
@@ -199,6 +209,7 @@ export async function createRaffle(actorId: string, input: { packageId: unknown;
     return (await getAdminRaffleDetail(id))!;
   } catch (err) {
     if (isMissing017(err)) throw new RaffleError(NO_MIGRATION_017, 409);
+    if (isMissing018(err)) throw new RaffleError(NO_MIGRATION_018, 409);
     if (isMissingTable(err)) throw new RaffleError(NO_MIGRATION, 409);
     throw err;
   }
@@ -336,7 +347,7 @@ export async function getPublicRaffle(id: string): Promise<PublicRaffle | null> 
   try {
     r = await loadRaffle({ query } as unknown as Db, id);
   } catch (err) {
-    if (isMissingTable(err) || isMissing017(err)) return null;
+    if (isMissingTable(err) || isMissing017(err) || isMissing018(err)) return null;
     throw err;
   }
   if (!r) return null;

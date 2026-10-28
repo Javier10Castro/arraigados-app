@@ -179,7 +179,21 @@ export default function MiRifa() {
     const d = raffle.data;
     if (!d.hasRaffle) body = <p className={s.muted}>Tu inscripción no incluye rifa. ¡Gracias por acompañarnos!</p>;
     else if (!d.available) body = <p className={s.muted}>La rifa estará disponible muy pronto.</p>;
-    else if (d.entry) {
+    else if (d.entry?.removed) {
+      // El equipo lo quitó de la rifa (018): no participa y no puede volver a inscribirse.
+      body = (
+        <div className={s.stack}>
+          {d.result && prize && <Result result={d.result} prize={prize} />}
+          <div className={s.entered}>
+            <span className={`${s.enteredIcon} ${s.enteredOff}`} aria-hidden="true"><Ticket size={20} strokeWidth={2.4} /></span>
+            <div>
+              <strong>No estás participando</strong>
+              <span>El equipo retiró tu inscripción de esta rifa. Si crees que es un error, acércate al equipo de coordinación.</span>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (d.entry) {
       body = (
         <div className={s.stack}>
           {d.result && prize && <Result result={d.result} prize={prize} />}

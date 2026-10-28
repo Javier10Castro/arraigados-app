@@ -12,6 +12,7 @@ import drawFn from '../../netlify/functions/admin-raffle-draw.mts';
 import publicFn from '../../netlify/functions/raffle-public.mts';
 import entryFn from '../../netlify/functions/raffle-entry.mts';
 import adminEntriesFn from '../../netlify/functions/admin-raffle-entries.mts';
+import adminEntryFn from '../../netlify/functions/admin-raffle-entry.mts';
 import { RAFFLE_PLENARIES, checkRaffleAnswers, prizeForKit } from '../../shared/raffle';
 
 /** Inscripción a la rifa con 3 preguntas y «gana la salida #N» (migración 017). */
@@ -61,6 +62,9 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
   const mine = (id: string) => call(entryFn, 'GET', '/api/raffle-entry', { token: tok(id) });
   const enter = (id: string, body: unknown = answers) => call(entryFn, 'POST', '/api/raffle-entry', { token: tok(id), json: body });
   const entries = (who = 'admin') => call(adminEntriesFn, 'GET', '/api/admin/raffle-entries', { who });
+  /** who: null = sin sesión. */
+  const setRemoved = (pk: string, att: string, removed: unknown, who: string | null = 'admin') =>
+    call(adminEntryFn, 'PATCH', `/api/admin/raffle-entries/${pk}/${att}`, { who: who ?? undefined, params: { packageId: pk, attendeeId: att }, json: { removed } });
   const setOpen = (open: unknown, who = 'admin') => call(adminEntriesFn, 'PATCH', '/api/admin/raffle-entries', { who, json: { open } });
   let seq = 0;
   const key = () => `entry-draw-${String(++seq).padStart(6, '0')}`;
@@ -309,7 +313,91 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
       const sql = fs.readFileSync('migrations/017_raffle_entries.sql', 'utf8');
       await db.query(sql);
       await db.query(sql); // idempotente
+      await db.query(fs.readFileSync('migrations/018_raffle_entry_remove.sql', 'utf8'));
     }
     assert.equal((await enter('a2')).status, 200);
+  });
+  /* ------------------------- quitar / restaurar (migración 018) ------------------------- */
+  it('quitar: la persona deja de participar (no sale en el sorteo), ve que fue retirada y no puede volver a inscribirse', async () => {
+    for (const id of ['a1', 'a2', 'a3']) await enter(id);
+    const r = await setRemoved('ka', 'a2', true);
+    assert.equal(r.status, 200);
+    const list = await J(r);
+    const a2 = list.kits.find((k: any) => k.packageId === 'ka').entries.find((e: any) => e.attendeeId === 'a2');
+    assert.deepEqual([a2.removed, a2.eligible, a2.removedByName], [true, false, 'Admin Rifas']);
+    assert.ok(!Number.isNaN(Date.parse(a2.removedAt)));
+    assert.equal(a2.liked, answers.liked); // las respuestas se conservan
+    const view = await J(await mine('a2'));
+    assert.equal(view.entry.removed, true);
+    const again = await J(await enter('a2', { ...answers, liked: 'Otra vez intentando' }));
+    assert.equal(again.entry.removed, true); // no se reinscribe ni cambia respuestas
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry" WHERE "attendeeId"='a2'`)).n, 1);
+    const raffle = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 2 } }));
+    assert.equal(raffle.eligibleCount, 2);
+    const out = [(await J(await draw(raffle.id))).winner.attendeeId, (await J(await draw(raffle.id))).winner.attendeeId].sort();
+    assert.deepEqual(out, ['a1', 'a3']); // a2 nunca sale
+    assert.equal((await one(`SELECT count(*)::int n FROM "AuditLog" WHERE action='raffle.entry.remove'`)).n, 1);
+  });
+
+  it('restaurar: vuelve a participar; repetir el mismo estado no escribe nada; lo ya sorteado no cambia', async () => {
+    await enter('a1');
+    await enter('a2');
+    await setRemoved('ka', 'a1', true);
+    await setRemoved('ka', 'a1', true); // idempotente
+    assert.equal((await one(`SELECT count(*)::int n FROM "AuditLog" WHERE action='raffle.entry.remove'`)).n, 1);
+    const raffle = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 3 } }));
+    assert.equal(raffle.eligibleCount, 1);
+    const first = (await J(await draw(raffle.id))).winner.attendeeId;
+    assert.equal(first, 'a2');
+    const back = await J(await setRemoved('ka', 'a1', false));
+    const a1 = back.kits.find((k: any) => k.packageId === 'ka').entries.find((e: any) => e.attendeeId === 'a1');
+    assert.deepEqual([a1.removed, a1.eligible, a1.removedAt, a1.removedByName], [false, true, null, null]);
+    assert.equal((await J(await mine('a1'))).entry.removed, false);
+    assert.equal((await J(await call(raffleFn, 'GET', `/api/admin/raffles/${raffle.id}`, { who: 'admin', params: { id: raffle.id } }))).eligibleCount, 1);
+    assert.equal((await J(await draw(raffle.id))).winner.attendeeId, 'a1');
+    // quitar a alguien que YA salió no borra su salida
+    await setRemoved('ka', 'a2', true);
+    const d = await J(await call(raffleFn, 'GET', `/api/admin/raffles/${raffle.id}`, { who: 'admin', params: { id: raffle.id } }));
+    assert.deepEqual(d.winners.map((w: any) => w.attendeeId), ['a2', 'a1']);
+    assert.equal((await one(`SELECT count(*)::int n FROM "AuditLog" WHERE action='raffle.entry.restore'`)).n, 1);
+  });
+
+  it('quitar: solo cuentas autorizadas; valores, ids y métodos inválidos se rechazan sin cambiar nada', async () => {
+    await enter('a1');
+    assert.equal((await setRemoved('ka', 'a1', true, 'admin2')).status, 403);
+    assert.equal((await setRemoved('ka', 'a1', true, 'staff')).status, 403);
+    assert.equal((await setRemoved('ka', 'a1', true, null)).status, 401);
+    for (const v of ['si', 1, null]) assert.equal((await setRemoved('ka', 'a1', v)).status, 400, String(v));
+    assert.equal((await setRemoved('ka', 'a2', true)).status, 404); // a2 no está inscrito
+    assert.equal((await setRemoved('kb', 'a1', true)).status, 404); // a1 no está en la rifa del Kit B
+    assert.equal((await setRemoved('ka', 'id con espacios', true)).status, 404);
+    for (const m of ['GET', 'DELETE', 'POST']) {
+      assert.equal((await call(adminEntryFn, m, '/api/admin/raffle-entries/ka/a1', { who: 'admin', params: { packageId: 'ka', attendeeId: 'a1' } })).status, 405);
+    }
+    assert.equal((await one(`SELECT "removedAt" FROM "RaffleEntry" WHERE "attendeeId"='a1'`)).removedAt, null);
+  });
+
+  it('sin la migración 018: avisos claros (nunca 500); el rollback aborta si hay personas quitadas', async () => {
+    await enter('a1');
+    await setRemoved('ka', 'a1', true);
+    await assert.rejects(db.query(fs.readFileSync('docs/rollback/018_raffle_entry_remove_down.sql', 'utf8')), /no se revierte la 018/);
+    await setRemoved('ka', 'a1', false);
+    await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 1 } });
+    await db.query(fs.readFileSync('docs/rollback/018_raffle_entry_remove_down.sql', 'utf8'));
+    try {
+      assert.equal((await J(await mine('a1'))).available, false);
+      assert.equal((await enter('a2')).status, 409);
+      assert.equal((await J(await entries())).available, false);
+      const list = await J(await call(rafflesFn, 'GET', '/api/admin/raffles', { who: 'admin' }));
+      assert.deepEqual([list.available, list.missing], [false, '018']);
+      const r = await setRemoved('ka', 'a1', true);
+      assert.equal(r.status, 409);
+      assert.match((await J(r)).error, /migración 018/);
+    } finally {
+      const sql = fs.readFileSync('migrations/018_raffle_entry_remove.sql', 'utf8');
+      await db.query(sql);
+      await db.query(sql); // idempotente
+    }
+    assert.equal((await J(await mine('a1'))).entry.removed, false);
   });
 });

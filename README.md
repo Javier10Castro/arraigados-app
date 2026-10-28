@@ -216,6 +216,7 @@ $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create
 | `014_raffles.sql` | **Rifas** por kit con sorteo en el servidor (`Raffle`, `RaffleWinner`). |
 | `015_team_notes.sql` | Notas y «me gusta» de cuentas del equipo con pulsera, en la vista de visitante. |
 | `016_raffle_cancel.sql` | Permite **cancelar** una rifa abierta (nuevo estado `CANCELLED`). |
+| `018_raffle_entry_remove.sql` | **Quitar / restaurar** a alguien de la rifa (`RaffleEntry.removedAt`, `removedById`). Requiere la 017. |
 | `017_raffle_entries.sql` | **Inscripción a la rifa** con 3 preguntas (`RaffleEntry`) y `Raffle.winningPosition` («gana la salida #N»). Requiere la 014. |
 
 > **Estado en Neon (verificado el 18 oct 2026):** en la base *Wild Butterfly* están aplicadas la 012–016 y **no** la 011 (antes de que ese día se le copiaran los datos de la base anterior; después no se volvió a verificar con `npm run db:estado`). Para aplicar una sola: `npm run db:migrar -- --only <archivo>.sql` (un `db:migrar` a secas aplicaría también la 011). Cada migración documenta su estado en su cabecera.

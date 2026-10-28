@@ -413,3 +413,5 @@ Al agregar o cambiar un endpoint:
 - `PATCH /api/admin/raffle-entries` `{ open: boolean }` → abre/cierra inscripciones (se guarda como `Setting` `raffleEntriesOpen` en `AuditLog`; sin filas = abiertas).
 - `POST /api/admin/raffles` acepta `winningPosition` (recomendado; iguala `targetWinners`). `PATCH /api/admin/raffles/:id` acepta `{ winningPosition }` o `{ targetWinners }`. `RaffleWinnerRow.winner` indica si esa salida gana.
 - **Elegibles** para sortear = inscritos (`RaffleEntry`) del kit con pulsera ACTIVE de ese mismo kit que no hayan salido en esa rifa.
+
+- `PATCH /api/admin/raffle-entries/:packageId/:attendeeId` `{ removed: boolean }` (migración 018, Admin autorizado de Rifas, regla `admin_danger`) → quita (`true`) o restaura (`false`) a una persona de la rifa de ese kit. No borra respuestas ni salidas ya sorteadas; quien está quitado no entra al sorteo y no puede volver a inscribirse. Devuelve la lista de inscritos actualizada. `AdminRaffleEntry` agrega `removed`, `removedAt`, `removedByName`; `MyRaffleResponse.entry` agrega `removed`. 404 si no está inscrito en ese kit, 409 sin la migración 018.

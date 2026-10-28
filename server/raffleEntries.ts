@@ -1,5 +1,5 @@
 import { NOW_UTC, newId, query, withTransaction } from './db';
-import { isMissing017, isWinningDraw, publicWinnerName } from './raffles';
+import { isMissing017, isMissing018, isWinningDraw, publicWinnerName } from './raffles';
 import { QR_TOKEN_RE, type AdminRaffleEntriesResponse, type AdminRaffleEntry, type MyRaffleResponse } from '../shared/api';
 import { checkRaffleAnswers, prizeForKit } from '../shared/raffle';
 
@@ -11,6 +11,8 @@ import { checkRaffleAnswers, prizeForKit } from '../shared/raffle';
  * - Una inscripción por asistente y kit (UNIQUE en la base). Inscribirse es solo-INSERT: si ya estaba inscrito se
  *   devuelve lo que hay y NO se cambian las respuestas (doble toque / reintento de red = sin efecto).
  * - Solo kits con premio (shared/raffle.ts). «Inscripción Domingo» no tiene rifa.
+ * - «Quitar» (migración 018) NO borra la fila: marca removedAt. Quien está quitado no entra al sorteo y no puede volver
+ *   a inscribirse (la fila sigue ahí); «Restaurar» lo regresa. Ambas acciones quedan en la auditoría.
  * - Las inscripciones se abren/cierran desde Admin → Rifas. El valor se guarda con el mismo patrón que la
  *   configuración global (server/settings.ts): la última fila de "AuditLog" con entityType 'Setting'. Sin ninguna
  *   fila = ABIERTAS. Así cada cambio queda auditado y no hace falta otra tabla.
@@ -21,7 +23,7 @@ const SETTING_ACTION = 'setting.update';
 const SETTING_ID = 'raffleEntriesOpen';
 
 const isMissingTable = (err: unknown) => (err as { code?: string })?.code === '42P01';
-const isMissing = (err: unknown) => isMissingTable(err) || isMissing017(err);
+const isMissing = (err: unknown) => isMissingTable(err) || isMissing017(err) || isMissing018(err);
 
 export class RaffleEntryError extends Error {
   constructor(message: string, public status = 400) {
@@ -97,7 +99,8 @@ async function buildMine(h: Holder): Promise<MyRaffleResponse> {
   try {
     const entriesOpen = await getEntriesOpen();
     const entry = (await query<NonNullable<MyRaffleResponse['entry']>>(
-      `SELECT ${ISO('"createdAt"')} AS "createdAt", "answerLiked" AS liked, "answerPlenary" AS plenary, "answerLesson" AS lesson
+      `SELECT ${ISO('"createdAt"')} AS "createdAt", "answerLiked" AS liked, "answerPlenary" AS plenary, "answerLesson" AS lesson,
+              ("removedAt" IS NOT NULL) AS removed
          FROM "RaffleEntry" WHERE "attendeeId" = $1 AND "packageId" = $2`,
       [h.attendeeId, h.packageId],
     )).rows[0] ?? null;
@@ -126,7 +129,8 @@ export async function submitEntry(token: string, body: unknown): Promise<MyRaffl
   const input = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
   try {
     // Ya inscrito: se devuelve lo que hay (no se reescriben respuestas), aunque las inscripciones ya estén cerradas.
-    const already = await query(`SELECT 1 FROM "RaffleEntry" WHERE "attendeeId" = $1 AND "packageId" = $2`, [h.attendeeId, h.packageId]);
+    // Si el equipo lo quitó (018) su fila sigue ahí, así que tampoco puede volver a inscribirse.
+    const already = await query(`SELECT "removedAt" FROM "RaffleEntry" WHERE "attendeeId" = $1 AND "packageId" = $2`, [h.attendeeId, h.packageId]);
     if ((already.rowCount ?? 0) > 0) return buildMine(h);
     if (!(await getEntriesOpen())) throw new RaffleEntryError('Las inscripciones a la rifa ya cerraron.', 409);
     const checked = checkRaffleAnswers(input);
@@ -155,10 +159,14 @@ export async function listEntries(): Promise<AdminRaffleEntriesResponse> {
       `SELECT e."packageId", a.id AS "attendeeId", a."fullName", COALESCE(c.name, '') AS "churchName",
               ${ISO('e."createdAt"')} AS "createdAt",
               e."answerLiked" AS liked, e."answerPlenary" AS plenary, e."answerLesson" AS lesson,
-              EXISTS (SELECT 1 FROM "Pulse" p WHERE p."attendeeId" = a.id AND p.status = 'ACTIVE' AND p."packageId" = e."packageId") AS eligible
+              (e."removedAt" IS NULL AND EXISTS (SELECT 1 FROM "Pulse" p WHERE p."attendeeId" = a.id AND p.status = 'ACTIVE' AND p."packageId" = e."packageId")) AS eligible,
+              (e."removedAt" IS NOT NULL) AS removed,
+              CASE WHEN e."removedAt" IS NULL THEN NULL ELSE ${ISO('e."removedAt"')} END AS "removedAt",
+              u.name AS "removedByName"
          FROM "RaffleEntry" e
          JOIN "Attendee" a ON a.id = e."attendeeId"
          LEFT JOIN "Church" c ON c.id = a."churchId"
+         LEFT JOIN "User" u ON u.id = e."removedById"
         ORDER BY e."createdAt" DESC, e.id`,
     );
     return {
@@ -174,4 +182,42 @@ export async function listEntries(): Promise<AdminRaffleEntriesResponse> {
     if (isMissing(err)) return { available: false, entriesOpen: false, kits: kits.map((k) => ({ packageId: k.id, kitName: k.name, entries: [] })) };
     throw err;
   }
+}
+
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * PATCH /api/admin/raffle-entries/:packageId/:attendeeId { removed }. Quita (true) o restaura (false) a una persona de la
+ * rifa de ese kit. No borra respuestas ni toca lo ya sorteado. Idempotente: repetir el mismo estado no escribe nada.
+ * Devuelve la lista actualizada de inscritos. Solo cuentas autorizadas de Rifas (lo revisa la función).
+ */
+export async function setEntryRemoved(actorId: string, packageId: string, attendeeId: string, removed: unknown): Promise<AdminRaffleEntriesResponse> {
+  if (typeof removed !== 'boolean') throw new RaffleEntryError('Valor inválido: usa true o false.');
+  if (!ID_RE.test(packageId) || !ID_RE.test(attendeeId)) throw new RaffleEntryError('Esa inscripción no existe.', 404);
+  try {
+    await withTransaction(async (tx) => {
+      const row = (await tx.query<{ id: string; removed: boolean; fullName: string }>(
+        `SELECT e.id, (e."removedAt" IS NOT NULL) AS removed, a."fullName"
+           FROM "RaffleEntry" e JOIN "Attendee" a ON a.id = e."attendeeId"
+          WHERE e."packageId" = $1 AND e."attendeeId" = $2 FOR UPDATE OF e`,
+        [packageId, attendeeId],
+      )).rows[0];
+      if (!row) throw new RaffleEntryError('Esa inscripción no existe.', 404);
+      if (row.removed === removed) return; // ya estaba así: no se escribe nada
+      if (removed) {
+        await tx.query(`UPDATE "RaffleEntry" SET "removedAt" = ${NOW_UTC}, "removedById" = $2 WHERE id = $1`, [row.id, actorId]);
+      } else {
+        await tx.query(`UPDATE "RaffleEntry" SET "removedAt" = NULL, "removedById" = NULL WHERE id = $1`, [row.id]);
+      }
+      await tx.query(
+        `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
+         VALUES ($1, $2, $3, 'RaffleEntry', $4, $5::jsonb, ${NOW_UTC})`,
+        [newId(), actorId, removed ? 'raffle.entry.remove' : 'raffle.entry.restore', row.id, JSON.stringify({ packageId, attendeeId, fullName: row.fullName })],
+      );
+    });
+  } catch (err) {
+    if (isMissing(err)) throw new RaffleEntryError('Quitar inscritos aún no está habilitado en esta base (falta la migración 018).', 409);
+    throw err;
+  }
+  return listEntries();
 }

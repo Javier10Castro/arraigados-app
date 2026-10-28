@@ -1228,7 +1228,7 @@ export type AdminRaffleDetail = RaffleSummary & { winners: RaffleWinnerRow[] };
 export type AdminRafflesResponse = {
   available: boolean;
   /** Si no está disponible: qué migración falta. */
-  missing?: '014' | '017';
+  missing?: '014' | '017' | '018';
   raffles: RaffleSummary[];
   kits: { id: string; name: string }[];
 };
@@ -1266,7 +1266,8 @@ export type MyRaffleResponse = {
   hasRaffle: boolean;
   /** Las inscripciones las abre/cierra Admin → Rifas. */
   entriesOpen: boolean;
-  entry: null | { createdAt: string; liked: string; plenary: string; lesson: string };
+  /** removed = el equipo lo quitó de la rifa (018): no participa y no puede volver a inscribirse. */
+  entry: null | { createdAt: string; liked: string; plenary: string; lesson: string; removed: boolean };
   /** Resultado de la rifa más reciente (no cancelada) de su kit, cuando ya salió al menos un ganador. */
   result: null | { raffleName: string; winners: string[]; youWon: boolean };
 };
@@ -1282,8 +1283,12 @@ export type AdminRaffleEntry = {
   liked: string;
   plenary: string;
   lesson: string;
-  /** Pulsera ACTIVA del mismo kit: entra al sorteo. false = la pulsera se invalidó o cambió de kit. */
+  /** Entra al sorteo: pulsera ACTIVA del mismo kit y no quitado por el equipo. */
   eligible: boolean;
+  /** Quitado de la rifa por el equipo (018). Sus respuestas se conservan; «Restaurar» lo regresa. */
+  removed: boolean;
+  removedAt: string | null;
+  removedByName: string | null;
 };
 
 /** GET /api/admin/raffle-entries (cuentas autorizadas). */
@@ -1295,3 +1300,6 @@ export type AdminRaffleEntriesResponse = {
 
 /** PATCH /api/admin/raffle-entries { open } -> abre o cierra las inscripciones (todas las rifas). */
 export type UpdateRaffleEntriesRequest = { open: boolean };
+
+/** PATCH /api/admin/raffle-entries/:packageId/:attendeeId { removed } -> quita (true) o restaura (false) a una persona. */
+export type UpdateRaffleEntryRequest = { removed: boolean };

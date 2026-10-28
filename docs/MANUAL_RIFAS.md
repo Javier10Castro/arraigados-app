@@ -95,3 +95,9 @@ Tip: abre la vista pública en el proyector y opera el panel desde tu equipo.
 **Orden sugerido el día del sorteo:** 1) Cerrar inscripciones. 2) Proyectar `/premios`. 3) Abrir la rifa de cada kit con su salida ganadora. 4) Abrir el proyector de esa rifa (`/rifa/:id`). 5) Presionar **Sorteo** las veces necesarias.
 
 **Aplicar en producción** (con respaldo): `npm run db:migrar -- --only 017_raffle_entries.sql` (requiere 014). Verificar con `npm run db:estado`. Reversión: `docs/rollback/017_raffle_entries_down.sql` (aborta si ya hay inscripciones). Sin la 017 la app dice «La rifa estará disponible muy pronto» y Admin avisa «falta la migración 017» (nunca error 500).
+
+## 14. Quitar a alguien de la rifa (migración 018)
+
+En **Admin → Rifas → Inscritos**, cada fila tiene **Quitar**. Al confirmar, esa persona **no entra al sorteo** y **no puede volver a inscribirse**; en su celular ve «No estás participando». Sus respuestas **no se borran** (siguen en el CSV con «No (quitado por …)»). Si fue un error, **Restaurar** la regresa. Lo que ya se sorteó no cambia: si alguien ya había salido, su salida se queda en el historial.
+
+Aplicar en producción (antes de publicar el código): `npm run db:migrar -- --only 018_raffle_entry_remove.sql`. Sin la 018 la app avisa «falta la migración 018» (nunca error 500). Reversión: `docs/rollback/018_raffle_entry_remove_down.sql` (aborta si hay personas quitadas).
