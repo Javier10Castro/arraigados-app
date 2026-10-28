@@ -101,3 +101,13 @@ Tip: abre la vista pública en el proyector y opera el panel desde tu equipo.
 En **Admin → Rifas → Inscritos**, cada fila tiene **Quitar**. Al confirmar, esa persona **no entra al sorteo** y **no puede volver a inscribirse**; en su celular ve «No estás participando». Sus respuestas **no se borran** (siguen en el CSV con «No (quitado por …)»). Si fue un error, **Restaurar** la regresa. Lo que ya se sorteó no cambia: si alguien ya había salido, su salida se queda en el historial.
 
 Aplicar en producción (antes de publicar el código): `npm run db:migrar -- --only 018_raffle_entry_remove.sql`. Sin la 018 la app avisa «falta la migración 018» (nunca error 500). Reversión: `docs/rollback/018_raffle_entry_remove_down.sql` (aborta si hay personas quitadas).
+
+## 15. Proyector con nombres pasando (28 oct 2026)
+
+La ruleta del proyector (`/rifa/:id`) se cambió por un **carrete de nombres**:
+- **En espera**, los nombres de quienes siguen participando pasan despacio.
+- Al presionar **Sorteo** en el Admin, los nombres pasan rápido, se frenan y se detienen en la persona que salió. Esa persona ya la eligió y guardó el servidor; la animación solo la muestra.
+- **Si esa salida no gana**, se marca en el carrete: «Salida #1 · No gana… ¡Gana la salida #3! Faltan 2.».
+- **La ganadora** se ilumina y luego sale la pantalla de «¡Tenemos ganador!» con el premio.
+
+Privacidad: el proyector recibe los nombres de quienes siguen participando, siempre como **nombre + inicial del apellido** («Ana A.»), máximo 300. Nunca apellidos completos, iglesias, ids ni datos de contacto.

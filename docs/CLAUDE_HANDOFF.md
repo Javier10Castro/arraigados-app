@@ -2897,3 +2897,9 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - `ELIGIBLE_FROM` excluye `removedAt IS NOT NULL`. `isMissing018` → 409 «falta la migración 018» / `missing: '018'`.
 - `server/raffleEntries.ts` → `setEntryRemoved` (FOR UPDATE, idempotente, auditoría `raffle.entry.remove` / `raffle.entry.restore`). Función `admin-raffle-entry.mts` (PATCH). Admin → Rifas → Inscritos: Quitar (con confirmación) / Restaurar; CSV con estado. Asistente: «No estás participando».
 - Pruebas: 4 nuevas en `raffleentry.test.mts`; `npm run test:team` 166/166.
+
+## 70. Proyector: carrete de nombres en lugar de ruleta (28 oct 2026)
+
+- `PublicRaffle.pool` (server `getPublicRaffle`): elegibles actuales como `publicWinnerName`, máx. `PUBLIC_POOL_MAX` = 300. Cambio deliberado: antes el proyector no recibía participantes; ahora sí, solo «Nombre I.».
+- `src/pages/Rifa.tsx`: componente `Reel` (7 renglones, franja central). Fases idle → spinning (6.5 s, transición CSS con cubic-bezier) → landed (salida que no gana: 7 s; ganadora: 1.8 s y luego reveal a pantalla completa 14 s). Se quitaron la ruleta SVG y el aviso a pantalla completa de «no gana».
+- Pruebas: llaves de la vista pública incluyen `pool`; se verifica que solo trae «Nombre I.».
