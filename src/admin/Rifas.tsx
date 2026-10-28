@@ -43,6 +43,9 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null); // attendeeId con la confirmación abierta
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [rowMsg, setRowMsg] = useState('');
 
   const load = useCallback(() => {
     api.adminRaffleEntries().then((d) => { setData(d); setError(''); }).catch((e: Error) => setError(e.message));
@@ -72,10 +75,29 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
     }
   };
 
+  /** Quitar (true) o restaurar (false). El servidor responde con la lista ya actualizada. */
+  const setRemoved = async (attendeeId: string, fullName: string, removed: boolean) => {
+    if (!kit) return;
+    setRowBusy(attendeeId);
+    setRowMsg('');
+    try {
+      setData(await api.setRaffleEntryRemoved(kit.packageId, attendeeId, removed));
+      setConfirmRemove(null);
+      setRowMsg(removed ? `${fullName} ya no participa en la rifa del ${kit.kitName}.` : `${fullName} vuelve a participar en la rifa del ${kit.kitName}.`);
+      onChanged(); // el número de elegibles de las rifas cambia
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRowBusy(null);
+    }
+  };
+
   const exportCsv = () => {
     if (!data) return;
     const out = [['Kit', 'Nombre', 'Iglesia', 'Fecha', RAFFLE_QUESTIONS.liked, RAFFLE_QUESTIONS.plenary, RAFFLE_QUESTIONS.lesson, 'Participa en el sorteo']];
-    for (const k of data.kits) for (const e of k.entries) out.push([k.kitName, e.fullName, e.churchName, when(e.createdAt), e.liked, e.plenary, e.lesson, e.eligible ? 'Sí' : 'No (pulsera inactiva)']);
+    const estado = (e: (typeof data.kits)[number]['entries'][number]) =>
+      e.removed ? `No (quitado${e.removedByName ? ` por ${e.removedByName}` : ''})` : e.eligible ? 'Sí' : 'No (pulsera inactiva)';
+    for (const k of data.kits) for (const e of k.entries) out.push([k.kitName, e.fullName, e.churchName, when(e.createdAt), e.liked, e.plenary, e.lesson, estado(e)]);
     downloadCsv(`rifa-inscritos-${new Date().toISOString().slice(0, 10)}.csv`, out);
   };
 
@@ -108,7 +130,7 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
         )}
       </div>
       {error && <p className={c.bad} role="alert">{error}</p>}
-      {data && !data.available && <p className={c.warn}>La inscripción con preguntas aún no está habilitada en esta base (falta aplicar la migración 017).</p>}
+      {data && !data.available && <p className={c.warn}>La inscripción con preguntas aún no está habilitada en esta base (falta aplicar la migración 017 o 018).</p>}
       {data?.available && (
         <>
           <div className={c.tabs} role="tablist" aria-label="Kits">
@@ -118,11 +140,12 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
                 <button key={k.packageId} type="button" role="tab" aria-selected={tab === k.packageId} className={tab === k.packageId ? c.tabOn : c.tab} onClick={() => setTab(k.packageId)}>
                   {p && <img src={p.image.src} alt="" width={p.image.width} height={p.image.height} />}
                   <span>{k.kitName}</span>
-                  <strong>{k.entries.length}</strong>
+                  <strong title="Participan (sin contar quitados)">{k.entries.filter((e) => !e.removed).length}</strong>
                 </button>
               );
             })}
           </div>
+          {rowMsg && <p className={c.ok} role="status">{rowMsg}</p>}
           <div className={c.tools}>
             <input type="search" placeholder="Buscar por nombre o iglesia" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar inscrito" />
             <button type="button" className={c.ghost} onClick={() => { load(); onChanged(); }}>Actualizar</button>
@@ -134,19 +157,41 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
             <div className={c.history}>
               <table className={`${c.table} ${c.entriesTable}`}>
                 <thead>
-                  <tr><th>Nombre</th><th>Plenaria favorita</th><th>Lo que más le gustó</th><th>Enseñanza</th><th>Fecha</th></tr>
+                  <tr><th>Nombre</th><th>Plenaria favorita</th><th>Lo que más le gustó</th><th>Enseñanza</th><th>Fecha</th><th><span className="sr-only">Acciones</span></th></tr>
                 </thead>
                 <tbody>
                   {rows.map((e) => (
                     <tr key={e.attendeeId} className={e.eligible ? undefined : c.inactive}>
-                      <td><strong>{e.fullName}</strong><span className={c.cellSub}>{e.churchName}</span>{!e.eligible && <em className={c.tagOff}>pulsera inactiva</em>}</td>
+                      <td>
+                        <strong>{e.fullName}</strong><span className={c.cellSub}>{e.churchName}</span>
+                        {e.removed
+                          ? <em className={c.tagOff} title={e.removedAt ? when(e.removedAt) : undefined}>quitado{e.removedByName ? ` por ${e.removedByName}` : ''}</em>
+                          : !e.eligible && <em className={c.tagOff}>pulsera inactiva</em>}
+                      </td>
                       <td>{e.plenary.replace(/ — .*/, '')}<span className={c.cellSub}>{e.plenary.split(' — ')[1] ?? ''}</span></td>
                       <td>{e.liked}</td>
                       <td>{e.lesson}</td>
                       <td className={c.nowrap}>{when(e.createdAt)}</td>
+                      <td className={c.rowActions}>
+                        {e.removed ? (
+                          <button type="button" className={c.ghost} disabled={rowBusy !== null} onClick={() => void setRemoved(e.attendeeId, e.fullName, false)}>
+                            {rowBusy === e.attendeeId ? 'Restaurando…' : 'Restaurar'}
+                          </button>
+                        ) : confirmRemove === e.attendeeId ? (
+                          <span className={c.confirm} role="alertdialog" aria-label={`Confirmar quitar a ${e.fullName}`}>
+                            ¿Quitar a {e.fullName}? No entrará al sorteo ni podrá volver a inscribirse.
+                            <button type="button" className={c.danger} disabled={rowBusy !== null} onClick={() => void setRemoved(e.attendeeId, e.fullName, true)}>
+                              {rowBusy === e.attendeeId ? 'Quitando…' : 'Sí, quitar'}
+                            </button>
+                            <button type="button" className={c.ghost} disabled={rowBusy !== null} onClick={() => setConfirmRemove(null)}>No</button>
+                          </span>
+                        ) : (
+                          <button type="button" className={c.ghost} disabled={rowBusy !== null} onClick={() => { setConfirmRemove(e.attendeeId); setRowMsg(''); }}>Quitar</button>
+                        )}
+                      </td>
                     </tr>
                   ))}
-                  {rows.length === 0 && <tr><td colSpan={5} className={c.note}>Sin resultados para «{search}».</td></tr>}
+                  {rows.length === 0 && <tr><td colSpan={6} className={c.note}>Sin resultados para «{search}».</td></tr>}
                 </tbody>
               </table>
             </div>

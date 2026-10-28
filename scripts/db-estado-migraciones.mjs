@@ -72,6 +72,10 @@ try {
       'Raffle.winningPosition': await col('Raffle', 'winningPosition'),
       'CHECK raffle_winning_position_valid': await con('raffle_winning_position_valid'),
     },
+    '018_raffle_entry_remove (quitar inscritos de la rifa)': {
+      'RaffleEntry.removedAt': await col('RaffleEntry', 'removedAt'),
+      'RaffleEntry.removedById': await col('RaffleEntry', 'removedById'),
+    },
   };
   for (const [mig, items] of Object.entries(checks)) {
     const ok = Object.values(items).every(Boolean);

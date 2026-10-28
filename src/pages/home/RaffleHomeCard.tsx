@@ -21,10 +21,13 @@ export default function RaffleHomeCard() {
   const cta = !d ? 'Ver rifa'
     : d.result?.youWon ? '¡Ganaste! Ver'
     : d.result ? 'Ver resultado'
+    : d.entry?.removed ? 'Ver rifa'
     : d.entry ? 'Ya estás participando'
     : d.entriesOpen ? 'Entrar a rifa'
     : 'Ver premios';
-  const sub = d?.entry ? 'Ya respondiste las 3 preguntas. ¡Suerte!' : 'Responde 3 preguntas sobre el congreso y participa.';
+  const sub = d?.entry?.removed ? 'Tu inscripción fue retirada por el equipo.'
+    : d?.entry ? 'Ya respondiste las 3 preguntas. ¡Suerte!'
+    : 'Responde 3 preguntas sobre el congreso y participa.';
 
   return (
     <section className={`${homeStyles.section} ${homeStyles.current}`} aria-labelledby="rifa-title">
@@ -38,7 +41,7 @@ export default function RaffleHomeCard() {
           <strong className={styles.title}>{prize.title}</strong>
           <span className={styles.sub}>{prize.detail ? `${prize.detail} · ` : ''}{sub}</span>
         </span>
-        <span className={`${styles.cta} ${d?.entry && !d.result ? styles.ctaDone : ''}`}>
+        <span className={`${styles.cta} ${d?.entry && !d.entry.removed && !d.result ? styles.ctaDone : ''}`}>
           {cta}
           <ChevronRight size={15} strokeWidth={2.6} aria-hidden="true" />
         </span>

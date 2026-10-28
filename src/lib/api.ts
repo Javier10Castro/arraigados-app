@@ -413,6 +413,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
   adminRaffleEntries: () => request<AdminRaffleEntriesResponse>('/api/admin/raffle-entries'),
+  /** Quitar (true) o restaurar (false) a una persona de la rifa de un kit. Devuelve la lista actualizada. */
+  setRaffleEntryRemoved: (packageId: string, attendeeId: string, removed: boolean) =>
+    request<AdminRaffleEntriesResponse>(`/api/admin/raffle-entries/${encodeURIComponent(packageId)}/${encodeURIComponent(attendeeId)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ removed }),
+    }),
   setRaffleEntriesOpen: (open: boolean) =>
     request<{ entriesOpen: boolean }>('/api/admin/raffle-entries', {
       method: 'PATCH',

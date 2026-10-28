@@ -2890,3 +2890,10 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - **Compartido:** `shared/raffle.ts` (premios por kit, preguntas, plenarias desde `SATURDAY_PROGRAM`, validación). Imágenes en `src/data/rafflePrizes.ts` + `src/assets/premios/` (recortadas de Premios.pdf, fondo transparente).
 - **Frontend:** `/rifa` (`pages/MiRifa.tsx`), `/premios` (`pages/Premios.tsx`, público), tarjeta en Home (`home/RaffleHomeCard.tsx`), enlaces en Más y accesos rápidos. Admin → Rifas: sección Inscritos (pestañas por kit, buscador, CSV, abrir/cerrar), «Gana la salida #», botón **Sorteo**, columna Resultado. Proyector: premio, «Salida #k · No gana…» vs «¡Tenemos ganador!».
 - **Pruebas:** `tests/team-pulse/raffleentry.test.mts` (12) + ajustes en `raffle.test.mts` (los asistentes de prueba se inscriben). `npm run test:team` 162/162 en PostgreSQL local.
+
+## 69. Quitar / restaurar inscritos de la rifa (28 oct 2026)
+
+- **Migración 018** (`018_raffle_entry_remove.sql`): columnas `RaffleEntry.removedAt` / `removedById`. Quitar = marcar, no borrar (las respuestas se conservan y la persona no puede reinscribirse por el UNIQUE).
+- `ELIGIBLE_FROM` excluye `removedAt IS NOT NULL`. `isMissing018` → 409 «falta la migración 018» / `missing: '018'`.
+- `server/raffleEntries.ts` → `setEntryRemoved` (FOR UPDATE, idempotente, auditoría `raffle.entry.remove` / `raffle.entry.restore`). Función `admin-raffle-entry.mts` (PATCH). Admin → Rifas → Inscritos: Quitar (con confirmación) / Restaurar; CSV con estado. Asistente: «No estás participando».
+- Pruebas: 4 nuevas en `raffleentry.test.mts`; `npm run test:team` 166/166.

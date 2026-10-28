@@ -63,3 +63,10 @@
 .headText { flex: 1; min-width: 0; }
 .winRow td { background: rgba(62, 7, 166, 0.07); }
 .winTag { padding: 2px 9px; border-radius: 999px; background: var(--morado); color: var(--crema); font-size: 11.5px; }
+
+/* ---------- Quitar / restaurar inscritos (migración 018) ---------- */
+.rowActions { width: 1%; white-space: nowrap; text-align: right; }
+.rowActions .confirm { white-space: normal; justify-content: flex-end; min-width: 230px; max-width: 280px; text-align: left; }
+.danger { padding: 8px 14px; border: 0; border-radius: 999px; background: #a1262c; color: #fff; font: 700 13px inherit; cursor: pointer; }
+.danger:disabled { opacity: 0.45; cursor: default; }
+.inactive td.rowActions { opacity: 1; }

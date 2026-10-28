@@ -106,6 +106,7 @@
 .entered strong { font: 700 20px/1.05 var(--font-display); text-transform: uppercase; }
 .entered span { font-size: 13px; color: var(--text-2); }
 .enteredIcon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--morado); color: var(--crema); }
+.enteredOff { background: rgba(62, 7, 166, 0.14); color: var(--morado); }
 .enteredPop { animation: pop 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
 @keyframes pop { from { opacity: 0; transform: scale(0.92); } }
 
