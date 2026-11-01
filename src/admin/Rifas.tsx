@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AdminShell from './AdminShell';
+import ConfirmTypeModal from './ConfirmTypeModal';
 import { api, ApiRequestError } from '../lib/api';
 import type { AdminRaffleDetail, AdminRaffleEntriesResponse, AdminRafflesResponse, RaffleSummary } from '../../shared/api';
 import { RAFFLE_QUESTIONS } from '../../shared/raffle';
@@ -404,6 +405,10 @@ export default function Rifas() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
+  const [inscritosKey, setInscritosKey] = useState(0); // al reiniciar, la sección Inscritos se vuelve a cargar
+  const [resetKit, setResetKit] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
 
   const load = useCallback(() => {
     api.adminRaffles().then((d) => { setData(d); setError(''); }).catch((e: Error) => setError(e.message));
@@ -417,6 +422,16 @@ export default function Rifas() {
   useEffect(() => {
     if (raffleKits.length && !raffleKits.some((k) => k.id === kit)) setKit(raffleKits[0].id);
   }, [raffleKits, kit]);
+
+  const resetLabel = resetKit === 'ALL' ? 'de todos los kits' : `del ${raffleKits.find((k) => k.id === resetKit)?.name ?? 'kit'}`;
+  const resetRafflesCount = data?.raffles.filter((r) => resetKit === 'ALL' || r.packageId === resetKit).length ?? 0;
+  const doReset = async () => {
+    const r = await api.resetRaffles({ packageId: resetKit, confirm: 'BORRAR' });
+    setResetOpen(false);
+    setResetMsg(`Listo: se borraron ${r.raffles} rifa(s), ${r.winners} salida(s) y ${r.entries} inscripción(es) ${resetLabel}. Ya pueden volver a entrar.`);
+    setInscritosKey((k) => k + 1);
+    load();
+  };
 
   const create = async () => {
     setBusy(true);
@@ -437,13 +452,13 @@ export default function Rifas() {
       <p className={c.lead}>
         Una rifa por kit. Participan solo los asistentes que <strong>entraron a la rifa</strong> respondiendo las 3 preguntas (Staff y Admin no participan).
         Cada <strong>Sorteo</strong> saca a una persona al azar en el <strong>servidor</strong> y queda guardada; gana la que salga en el lugar que elijas.
-        Los resultados no se borran; una edición nueva es una rifa nueva.{' '}
+        Los resultados se guardan; una edición nueva es una rifa nueva. Para empezar de cero usa «Reiniciar rifa» (abajo).{' '}
         <a className={c.link} href="/premios" target="_blank" rel="noreferrer">Pantalla de premios ↗</a>
       </p>
       {error && <p className={c.bad} role="alert">{error}</p>}
       {data && !data.available && <p className={c.warn}>Las rifas aún no están habilitadas en esta base (falta aplicar la migración {data.missing ?? '014'}).</p>}
 
-      {data && <Inscritos onChanged={load} />}
+      {data && <Inscritos key={inscritosKey} onChanged={load} />}
 
       {data?.available && (
         <section className={c.create} aria-label="Abrir rifa">
@@ -476,6 +491,34 @@ export default function Rifas() {
       <div className={c.list}>
         {data?.raffles.map((r) => <RaffleCard key={r.id} r={r} onChanged={load} />)}
       </div>
+
+      {data?.available && (
+        <section className={`${c.create} ${c.dangerZone}`} aria-label="Reiniciar rifa">
+          <h2 className={c.h2}>Reiniciar rifa</h2>
+          <p className={c.note}>
+            Borra <strong>las rifas</strong> (con sus salidas y ganadores) y <strong>todas las inscripciones con sus respuestas</strong> del kit que elijas,
+            para que todos puedan volver a entrar desde cero. <strong>No se puede deshacer</strong>: descarga antes el CSV de Inscritos si quieres conservar las respuestas.
+          </p>
+          <div className={c.form}>
+            <label><span>Kit</span>
+              <select value={resetKit} onChange={(e) => { setResetKit(e.target.value); setResetMsg(''); }}>
+                <option value="">Elige un kit…</option>
+                {raffleKits.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+                <option value="ALL">Todos los kits</option>
+              </select>
+            </label>
+            <button type="button" className={c.danger} disabled={!resetKit} onClick={() => { setResetMsg(''); setResetOpen(true); }}>Reiniciar…</button>
+          </div>
+          {resetMsg && <p className={c.ok} role="status">{resetMsg}</p>}
+        </section>
+      )}
+
+      {resetOpen && (
+        <ConfirmTypeModal title="Reiniciar rifa" word="BORRAR" actionLabel="Sí, borrar todo" onConfirm={doReset} onClose={() => setResetOpen(false)}>
+          Vas a borrar <strong>{resetLabel}</strong>: {resetRafflesCount} rifa(s) con todas sus salidas y ganadores, y <strong>todas las inscripciones con sus respuestas</strong>.
+          Las personas podrán volver a entrar respondiendo las 3 preguntas. Esto <strong>no se puede deshacer</strong>.
+        </ConfirmTypeModal>
+      )}
     </AdminShell>
   );
 }

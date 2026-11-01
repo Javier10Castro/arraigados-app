@@ -1305,5 +1305,9 @@ export type AdminRaffleEntriesResponse = {
 /** PATCH /api/admin/raffle-entries { open } -> abre o cierra las inscripciones (todas las rifas). */
 export type UpdateRaffleEntriesRequest = { open: boolean };
 
+/** POST /api/admin/raffle-reset: borra rifas, salidas e inscripciones de un kit ('ALL' = todos). Exige confirm = 'BORRAR'. */
+export type ResetRafflesRequest = { packageId: string; confirm: string };
+export type ResetRafflesResponse = { raffles: number; winners: number; entries: number };
+
 /** PATCH /api/admin/raffle-entries/:packageId/:attendeeId { removed } -> quita (true) o restaura (false) a una persona. */
 export type UpdateRaffleEntryRequest = { removed: boolean };

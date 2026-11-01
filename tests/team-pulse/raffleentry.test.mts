@@ -13,6 +13,7 @@ import publicFn from '../../netlify/functions/raffle-public.mts';
 import entryFn from '../../netlify/functions/raffle-entry.mts';
 import adminEntriesFn from '../../netlify/functions/admin-raffle-entries.mts';
 import adminEntryFn from '../../netlify/functions/admin-raffle-entry.mts';
+import resetFn from '../../netlify/functions/admin-raffle-reset.mts';
 import { RAFFLE_PLENARIES, checkRaffleAnswers, prizeForKit } from '../../shared/raffle';
 
 /** Inscripción a la rifa con 3 preguntas y «gana la salida #N» (migración 017). */
@@ -62,6 +63,8 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
   const mine = (id: string) => call(entryFn, 'GET', '/api/raffle-entry', { token: tok(id) });
   const enter = (id: string, body: unknown = answers) => call(entryFn, 'POST', '/api/raffle-entry', { token: tok(id), json: body });
   const entries = (who = 'admin') => call(adminEntriesFn, 'GET', '/api/admin/raffle-entries', { who });
+  const reset = (packageId: unknown, confirm: unknown, who: string | null = 'admin') =>
+    call(resetFn, 'POST', '/api/admin/raffle-reset', { who: who ?? undefined, json: { packageId, confirm } });
   /** who: null = sin sesión. */
   const setRemoved = (pk: string, att: string, removed: unknown, who: string | null = 'admin') =>
     call(adminEntryFn, 'PATCH', `/api/admin/raffle-entries/${pk}/${att}`, { who: who ?? undefined, params: { packageId: pk, attendeeId: att }, json: { removed } });
@@ -399,5 +402,70 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
       await db.query(sql); // idempotente
     }
     assert.equal((await J(await mine('a1'))).entry.removed, false);
+  });
+  /* ------------------------- reiniciar rifa ------------------------- */
+  it('reiniciar un kit: borra sus rifas, salidas e inscripciones; los demás kits no cambian; todos pueden volver a entrar', async () => {
+    for (const id of ['a1', 'a2', 'a3', 'b1']) await enter(id);
+    await setRemoved('ka', 'a3', true);
+    const ra = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 1 } }));
+    await draw(ra.id); // Kit A completada
+    const rb = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'kb', winningPosition: 1 } }));
+    await draw(rb.id);
+    const res = await reset('ka', ' borrar ');
+    assert.equal(res.status, 200);
+    assert.deepEqual(await J(res), { raffles: 1, winners: 1, entries: 3 });
+    assert.equal((await one(`SELECT count(*)::int n FROM "Raffle" WHERE "packageId"='ka'`)).n, 0);
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry" WHERE "packageId"='ka'`)).n, 0);
+    // Kit B intacto
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleWinner" WHERE "raffleId"=$1`, [rb.id])).n, 1);
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry" WHERE "packageId"='kb'`)).n, 1);
+    // la persona quitada y las demás pueden volver a entrar; el resultado viejo ya no aparece
+    for (const id of ['a1', 'a3']) {
+      const v = await J(await mine(id));
+      assert.deepEqual([v.entry, v.result], [null, null]);
+      assert.equal((await enter(id)).status, 200);
+    }
+    assert.equal((await call(publicFn, 'GET', `/api/raffle/${ra.id}`, { params: { id: ra.id } })).status, 404);
+    // se puede abrir una rifa nueva del kit (vuelve a la edición 1) y sortear con los nuevos inscritos
+    const again = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 1 } }));
+    assert.deepEqual([again.edition, again.eligibleCount], [1, 2]);
+    const au = await one(`SELECT "entityId", metadata FROM "AuditLog" WHERE action='raffle.reset'`);
+    assert.equal(au.entityId, 'ka');
+    assert.deepEqual([au.metadata.raffles, au.metadata.winners, au.metadata.entries], [1, 1, 3]);
+  });
+
+  it('reiniciar todos: borra rifas e inscripciones de todos los kits', async () => {
+    for (const id of ['a1', 'b1', 'e1']) await enter(id);
+    const re = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ke', winningPosition: 1 } }));
+    await draw(re.id);
+    const res = await J(await reset('ALL', 'BORRAR'));
+    assert.deepEqual(res, { raffles: 1, winners: 1, entries: 3 });
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry"`)).n, 0);
+    assert.equal((await one(`SELECT count(*)::int n FROM "Raffle"`)).n, 0);
+    assert.equal((await one(`SELECT "entityId" FROM "AuditLog" WHERE action='raffle.reset'`)).entityId, 'ALL');
+  });
+
+  it('reiniciar: sin la palabra BORRAR, sin permiso o con kit inválido no borra nada', async () => {
+    await enter('a1');
+    for (const c of ['', 'borra', 'SI', null, 1]) assert.equal((await reset('ka', c)).status, 400, String(c));
+    assert.equal((await reset('ka', 'BORRAR', 'admin2')).status, 403);
+    assert.equal((await reset('ka', 'BORRAR', 'staff')).status, 403);
+    assert.equal((await reset('ka', 'BORRAR', null)).status, 401);
+    assert.equal((await reset('no-existe', 'BORRAR')).status, 404);
+    assert.equal((await reset('id con espacios', 'BORRAR')).status, 400);
+    assert.equal((await reset(undefined, 'BORRAR')).status, 400);
+    for (const m of ['GET', 'DELETE', 'PATCH']) assert.equal((await call(resetFn, m, '/api/admin/raffle-reset', { who: 'admin' })).status, 405);
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry"`)).n, 1);
+    assert.equal((await one(`SELECT count(*)::int n FROM "AuditLog" WHERE action='raffle.reset'`)).n, 0);
+  });
+
+  it('reiniciar mientras se sortea: nunca queda una salida sin su rifa ni una rifa a medias', async () => {
+    for (const id of ['a1', 'a2', 'a3', 'a4']) await enter(id);
+    const r = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'ka', winningPosition: 4 } }));
+    const results = await Promise.all([reset('ka', 'BORRAR'), draw(r.id), draw(r.id), draw(r.id)]);
+    assert.equal(results[0].status, 200);
+    for (const x of results.slice(1)) assert.ok([200, 404, 409].includes(x.status), String(x.status));
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleWinner" w LEFT JOIN "Raffle" r ON r.id = w."raffleId" WHERE r.id IS NULL`)).n, 0);
+    assert.equal((await one(`SELECT count(*)::int n FROM "Raffle" WHERE "packageId"='ka'`)).n, 0);
   });
 });

@@ -50,6 +50,8 @@ import {
   type DrawRaffleResponse,
   type PublicRaffle,
   type MyRaffleResponse,
+  type ResetRafflesRequest,
+  type ResetRafflesResponse,
   type UpdateRaffleRequest,
   type RaffleEntryRequest,
   type AdminRaffleEntriesResponse,
@@ -413,6 +415,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
   adminRaffleEntries: () => request<AdminRaffleEntriesResponse>('/api/admin/raffle-entries'),
+  /** Reiniciar: borra rifas, salidas e inscripciones de un kit ('ALL' = todos). No se puede deshacer. */
+  resetRaffles: (body: ResetRafflesRequest) =>
+    request<ResetRafflesResponse>('/api/admin/raffle-reset', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   /** Quitar (true) o restaurar (false) a una persona de la rifa de un kit. Devuelve la lista actualizada. */
   setRaffleEntryRemoved: (packageId: string, attendeeId: string, removed: boolean) =>
     request<AdminRaffleEntriesResponse>(`/api/admin/raffle-entries/${encodeURIComponent(packageId)}/${encodeURIComponent(attendeeId)}`, {
