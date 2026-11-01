@@ -70,3 +70,8 @@
 .danger { padding: 8px 14px; border: 0; border-radius: 999px; background: #a1262c; color: #fff; font: 700 13px inherit; cursor: pointer; }
 .danger:disabled { opacity: 0.45; cursor: default; }
 .inactive td.rowActions { opacity: 1; }
+
+/* ---------- Reiniciar rifa ---------- */
+.dangerZone { margin-top: 18px; border: 1.6px solid rgba(161, 38, 44, 0.35); }
+.dangerZone .h2 { color: #a1262c; }
+.dangerZone .note { margin-bottom: 10px; line-height: 1.45; }

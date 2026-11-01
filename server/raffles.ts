@@ -25,8 +25,9 @@ import type {
  *   extra posteriores). Sin "winningPosition" (rifas anteriores) todas las salidas son ganadoras, como siempre.
  * - Idempotencia: cada sorteo lleva un `drawKey` único que genera el navegador al presionar el botón. Un reintento o
  *   doble clic con la misma llave devuelve el ganador ya guardado y NO sortea otro. Lo respalda un UNIQUE en la base.
- * - "RaffleWinner" es solo-INSERT: no existe función que actualice, reinicie ni borre ganadores. Una edición nueva es
- *   una fila nueva en "Raffle", y la anterior queda como historial.
+ * - "RaffleWinner" es solo-INSERT: ningún sorteo actualiza ni borra ganadores. Una edición nueva es una fila nueva en
+ *   "Raffle", y la anterior queda como historial. La ÚNICA excepción es «Reiniciar rifa» (server/raffleReset.ts):
+ *   borra todo lo de un kit a pedido de una cuenta autorizada, con la palabra BORRAR y registro en la auditoría.
  */
 
 export class RaffleError extends Error {

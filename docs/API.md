@@ -415,3 +415,5 @@ Al agregar o cambiar un endpoint:
 - **Elegibles** para sortear = inscritos (`RaffleEntry`) del kit con pulsera ACTIVE de ese mismo kit que no hayan salido en esa rifa.
 
 - `PATCH /api/admin/raffle-entries/:packageId/:attendeeId` `{ removed: boolean }` (migración 018, Admin autorizado de Rifas, regla `admin_danger`) → quita (`true`) o restaura (`false`) a una persona de la rifa de ese kit. No borra respuestas ni salidas ya sorteadas; quien está quitado no entra al sorteo y no puede volver a inscribirse. Devuelve la lista de inscritos actualizada. `AdminRaffleEntry` agrega `removed`, `removedAt`, `removedByName`; `MyRaffleResponse.entry` agrega `removed`. 404 si no está inscrito en ese kit, 409 sin la migración 018.
+
+- `POST /api/admin/raffle-reset` `{ packageId: '<id>' | 'ALL', confirm: 'BORRAR' }` (Admin autorizado de Rifas, regla `admin_danger`) → `{ raffles, winners, entries }`. Borra las rifas (y sus `RaffleWinner`) y las `RaffleEntry` de ese kit o de todos, en una transacción con los mismos candados que crear/sortear. 400 sin la palabra, 404 kit inexistente. Única forma de borrar rifas; queda en la auditoría (`raffle.reset`).

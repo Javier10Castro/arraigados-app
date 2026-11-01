@@ -111,3 +111,11 @@ La ruleta del proyector (`/rifa/:id`) se cambió por un **carrete de nombres**:
 - **La ganadora** se ilumina y luego sale la pantalla de «¡Tenemos ganador!» con el premio.
 
 Privacidad: el proyector recibe los nombres de quienes siguen participando, siempre como **nombre + inicial del apellido** («Ana A.»), máximo 300. Nunca apellidos completos, iglesias, ids ni datos de contacto.
+
+## 16. Reiniciar rifa (empezar de cero)
+
+Al final de **Admin → Rifas** está **«Reiniciar rifa»**. Eliges un kit (o **Todos los kits**), presionas **Reiniciar…** y escribes **BORRAR**. Se borra de ese kit:
+- las rifas, abiertas, completadas o canceladas, con todas sus salidas y ganadores;
+- **todas las inscripciones con sus respuestas**, incluidas las de personas quitadas.
+
+Después, todos pueden volver a entrar respondiendo las 3 preguntas, y la siguiente rifa del kit empieza otra vez en la Edición 1. **No se puede deshacer**: descarga antes el CSV de Inscritos si quieres conservar las respuestas. El reinicio no cambia si las inscripciones están abiertas o cerradas; revisa ese botón. Queda registrado en Auditoría como `raffle.reset`, con cuántas filas se borraron. No necesita migración.

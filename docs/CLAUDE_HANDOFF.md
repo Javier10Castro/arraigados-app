@@ -2903,3 +2903,9 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - `PublicRaffle.pool` (server `getPublicRaffle`): elegibles actuales como `publicWinnerName`, máx. `PUBLIC_POOL_MAX` = 300. Cambio deliberado: antes el proyector no recibía participantes; ahora sí, solo «Nombre I.».
 - `src/pages/Rifa.tsx`: componente `Reel` (7 renglones, franja central). Fases idle → spinning (6.5 s, transición CSS con cubic-bezier) → landed (salida que no gana: 7 s; ganadora: 1.8 s y luego reveal a pantalla completa 14 s). Se quitaron la ruleta SVG y el aviso a pantalla completa de «no gana».
 - Pruebas: llaves de la vista pública incluyen `pool`; se verifica que solo trae «Nombre I.».
+
+## 71. Reiniciar rifa (1 nov 2026)
+
+- `server/raffleReset.ts` + `admin-raffle-reset.mts` (POST, palabra BORRAR validada en el servidor). Borra `RaffleWinner` → `Raffle` → `RaffleEntry` del kit (o 'ALL') con `pg_advisory_xact_lock('raffle:<kit>')` + `FOR UPDATE` sobre "Raffle". Auditoría `raffle.reset`. Excepción explícita a «RaffleWinner solo-INSERT» (documentada en server/raffles.ts).
+- UI: sección «Reiniciar rifa» al final de Admin → Rifas, con `ConfirmTypeModal`. Sin migración.
+- Pruebas: 4 nuevas en `raffleentry.test.mts` (por kit, todos, permisos/confirmación, en pleno sorteo). `npm run test:team` 170/170.
