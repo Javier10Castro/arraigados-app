@@ -1,7 +1,7 @@
 import { NOW_UTC, newId, query, withTransaction } from './db';
 import { isMissing017, isMissing018, isWinningDraw, publicWinnerName } from './raffles';
-import { QR_TOKEN_RE, type AdminRaffleEntriesResponse, type AdminRaffleEntry, type MyRaffleResponse } from '../shared/api';
-import { checkRaffleAnswers, prizeForKit } from '../shared/raffle';
+import { QR_TOKEN_RE, type AdminRaffleEntriesResponse, type AdminRaffleEntry, type MyRaffleResponse, type RaffleCandidate } from '../shared/api';
+import { RAFFLE_ANSWER_MAX, RAFFLE_PLENARIES, checkRaffleAnswers, cleanAnswer, prizeForKit } from '../shared/raffle';
 
 /**
  * Inscripción a la rifa con 3 preguntas (migración 017).
@@ -13,6 +13,8 @@ import { checkRaffleAnswers, prizeForKit } from '../shared/raffle';
  * - Solo kits con premio (shared/raffle.ts). «Inscripción Domingo» no tiene rifa.
  * - «Quitar» (migración 018) NO borra la fila: marca removedAt. Quien está quitado no entra al sorteo y no puede volver
  *   a inscribirse (la fila sigue ahí); «Restaurar» lo regresa. Ambas acciones quedan en la auditoría.
+ * - «Agregar persona» (migración 019): el equipo inscribe a un asistente registrado; el kit sale de SU pulsera activa.
+ *   Queda marcado manual = true y quién lo agregó. No depende de que las inscripciones estén abiertas.
  * - Las inscripciones se abren/cierran desde Admin → Rifas. El valor se guarda con el mismo patrón que la
  *   configuración global (server/settings.ts): la última fila de "AuditLog" con entityType 'Setting'. Sin ninguna
  *   fila = ABIERTAS. Así cada cambio queda auditado y no hace falta otra tabla.
@@ -23,7 +25,12 @@ const SETTING_ACTION = 'setting.update';
 const SETTING_ID = 'raffleEntriesOpen';
 
 const isMissingTable = (err: unknown) => (err as { code?: string })?.code === '42P01';
-const isMissing = (err: unknown) => isMissingTable(err) || isMissing017(err) || isMissing018(err);
+/** Falta la migración 019: las columnas "manual"/"addedById" de "RaffleEntry" no existen. */
+const isMissing019 = (err: unknown) => {
+  const e = err as { code?: string; message?: string } | null;
+  return e?.code === '42703' && /"?manual"?|addedById/.test(e.message ?? '');
+};
+const isMissing = (err: unknown) => isMissingTable(err) || isMissing017(err) || isMissing018(err) || isMissing019(err);
 
 export class RaffleEntryError extends Error {
   constructor(message: string, public status = 400) {
@@ -100,7 +107,7 @@ async function buildMine(h: Holder): Promise<MyRaffleResponse> {
     const entriesOpen = await getEntriesOpen();
     const entry = (await query<NonNullable<MyRaffleResponse['entry']>>(
       `SELECT ${ISO('"createdAt"')} AS "createdAt", "answerLiked" AS liked, "answerPlenary" AS plenary, "answerLesson" AS lesson,
-              ("removedAt" IS NOT NULL) AS removed
+              ("removedAt" IS NOT NULL) AS removed, manual
          FROM "RaffleEntry" WHERE "attendeeId" = $1 AND "packageId" = $2`,
       [h.attendeeId, h.packageId],
     )).rows[0] ?? null;
@@ -162,11 +169,13 @@ export async function listEntries(): Promise<AdminRaffleEntriesResponse> {
               (e."removedAt" IS NULL AND EXISTS (SELECT 1 FROM "Pulse" p WHERE p."attendeeId" = a.id AND p.status = 'ACTIVE' AND p."packageId" = e."packageId")) AS eligible,
               (e."removedAt" IS NOT NULL) AS removed,
               CASE WHEN e."removedAt" IS NULL THEN NULL ELSE ${ISO('e."removedAt"')} END AS "removedAt",
-              u.name AS "removedByName"
+              u.name AS "removedByName",
+              e.manual, ua.name AS "addedByName"
          FROM "RaffleEntry" e
          JOIN "Attendee" a ON a.id = e."attendeeId"
          LEFT JOIN "Church" c ON c.id = a."churchId"
          LEFT JOIN "User" u ON u.id = e."removedById"
+         LEFT JOIN "User" ua ON ua.id = e."addedById"
         ORDER BY e."createdAt" DESC, e.id`,
     );
     return {
@@ -217,6 +226,112 @@ export async function setEntryRemoved(actorId: string, packageId: string, attend
     });
   } catch (err) {
     if (isMissing(err)) throw new RaffleEntryError('Quitar inscritos aún no está habilitado en esta base (falta la migración 018).', 409);
+    throw err;
+  }
+  return listEntries();
+}
+
+/* ------------------------------------------------------------------ */
+/* Agregar a mano (migración 019)                                      */
+/* ------------------------------------------------------------------ */
+
+const unaccent = (expr: string) => `translate(lower(${expr}), 'áéíóúüñ', 'aeiouun')`;
+const NO_ANSWER = '—';
+
+/**
+ * GET /api/admin/raffle-candidates?q=. Asistentes registrados (pulsera ACTIVE de asistente) que coinciden por nombre o
+ * iglesia, con el kit de su pulsera y si ya están en la rifa. Máximo 20. Sin acentos ni mayúsculas.
+ */
+export async function searchCandidates(q: unknown): Promise<RaffleCandidate[]> {
+  const words = (typeof q === 'string' ? q : '').replace(/[%_\\]/g, ' ').trim().split(/\s+/).filter((w) => w.length >= 2).slice(0, 5);
+  if (words.length === 0) return [];
+  const params: string[] = [];
+  const where = words.map((w) => {
+    params.push(`%${w}%`);
+    const n = `$${params.length}`;
+    return `(${unaccent('a."fullName"')} LIKE ${unaccent(n)} OR ${unaccent('COALESCE(c.name, \'\')')} LIKE ${unaccent(n)})`;
+  }).join(' AND ');
+  try {
+    const { rows } = await query<{ attendeeId: string; fullName: string; churchName: string; packageId: string; kitName: string; removedAt: string | null; entryId: string | null }>(
+      `SELECT a.id AS "attendeeId", a."fullName", COALESCE(c.name, '') AS "churchName", p."packageId", k.name AS "kitName",
+              e.id AS "entryId", e."removedAt"
+         FROM "Pulse" p
+         JOIN "Attendee" a ON a.id = p."attendeeId"
+         JOIN "Package" k ON k.id = p."packageId"
+         LEFT JOIN "Church" c ON c.id = a."churchId"
+         LEFT JOIN "RaffleEntry" e ON e."attendeeId" = a.id AND e."packageId" = p."packageId"
+        WHERE p.status = 'ACTIVE' AND ${where}
+        ORDER BY a."fullName", a.id
+        LIMIT 20`,
+      params,
+    );
+    return rows.map((r) => ({
+      attendeeId: r.attendeeId,
+      fullName: r.fullName,
+      churchName: r.churchName,
+      packageId: r.packageId,
+      kitName: r.kitName,
+      status: !prizeForKit(r.kitName) ? 'no_raffle' : !r.entryId ? 'available' : r.removedAt ? 'removed' : 'entered',
+    }));
+  } catch (err) {
+    if (isMissing(err)) throw new RaffleEntryError('Agregar inscritos aún no está habilitado en esta base (falta la migración 017, 018 o 019).', 409);
+    throw err;
+  }
+}
+
+/** Respuesta opcional que escribe el equipo: limpia, recortada al máximo; vacía = «—». */
+function optionalAnswer(v: unknown): string {
+  const t = cleanAnswer(v);
+  return t ? [...t].slice(0, RAFFLE_ANSWER_MAX).join('') : NO_ANSWER;
+}
+
+/**
+ * POST /api/admin/raffle-entries { attendeeId, liked?, plenary?, lesson? }. El equipo inscribe a un asistente en la rifa
+ * del kit de SU pulsera activa (nunca uno que elija el navegador). Respuestas opcionales («—» si no se escriben).
+ * 404 sin pulsera activa de asistente · 400 kit sin rifa · 409 ya inscrito (o quitado: usar «Restaurar»).
+ */
+export async function addEntryManual(actorId: string, body: unknown): Promise<AdminRaffleEntriesResponse> {
+  const input = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const attendeeId = typeof input.attendeeId === 'string' ? input.attendeeId : '';
+  if (!ID_RE.test(attendeeId)) throw new RaffleEntryError('Elige a un asistente de la lista.');
+  const plenary = cleanAnswer(input.plenary);
+  if (plenary && !RAFFLE_PLENARIES.includes(plenary)) throw new RaffleEntryError('Esa plenaria no existe.');
+  try {
+    await withTransaction(async (tx) => {
+      const p = (await tx.query<{ pulseId: string; packageId: string; kitName: string; fullName: string }>(
+        `SELECT p.id AS "pulseId", p."packageId", k.name AS "kitName", a."fullName"
+           FROM "Pulse" p JOIN "Attendee" a ON a.id = p."attendeeId" JOIN "Package" k ON k.id = p."packageId"
+          WHERE p."attendeeId" = $1 AND p.status = 'ACTIVE'
+          LIMIT 1`,
+        [attendeeId],
+      )).rows[0];
+      if (!p) throw new RaffleEntryError('Esa persona no tiene una pulsera activa.', 404);
+      if (!prizeForKit(p.kitName)) throw new RaffleEntryError(`El ${p.kitName} no tiene rifa.`);
+      const prev = (await tx.query<{ removed: boolean }>(
+        `SELECT ("removedAt" IS NOT NULL) AS removed FROM "RaffleEntry" WHERE "attendeeId" = $1 AND "packageId" = $2 FOR UPDATE`,
+        [attendeeId, p.packageId],
+      )).rows[0];
+      if (prev) {
+        throw new RaffleEntryError(prev.removed
+          ? `${p.fullName} fue quitado de la rifa del ${p.kitName}. Usa «Restaurar» en su fila.`
+          : `${p.fullName} ya está en la rifa del ${p.kitName}.`, 409);
+      }
+      const id = newId();
+      const ins = await tx.query(
+        `INSERT INTO "RaffleEntry" (id, "attendeeId", "packageId", "pulseId", "answerLiked", "answerPlenary", "answerLesson", "createdAt", manual, "addedById")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, ${NOW_UTC}, true, $8)
+         ON CONFLICT ("attendeeId", "packageId") DO NOTHING`,
+        [id, attendeeId, p.packageId, p.pulseId, optionalAnswer(input.liked), plenary || NO_ANSWER, optionalAnswer(input.lesson), actorId],
+      );
+      if ((ins.rowCount ?? 0) === 0) throw new RaffleEntryError(`${p.fullName} ya está en la rifa del ${p.kitName}.`, 409);
+      await tx.query(
+        `INSERT INTO "AuditLog" (id, "actorId", action, "entityType", "entityId", metadata, "createdAt")
+         VALUES ($1, $2, 'raffle.entry.add', 'RaffleEntry', $3, $4::jsonb, ${NOW_UTC})`,
+        [newId(), actorId, id, JSON.stringify({ packageId: p.packageId, attendeeId, fullName: p.fullName })],
+      );
+    });
+  } catch (err) {
+    if (isMissing(err)) throw new RaffleEntryError('Agregar inscritos aún no está habilitado en esta base (falta la migración 019).', 409);
     throw err;
   }
   return listEntries();

@@ -129,3 +129,15 @@ En cada rifa con al menos una salida aparece **«Imagen para Instagram»**. Ahí
 - eliges **Publicación (4:5, 1080×1350)** o **Historia (9:16, 1080×1920)**.
 
 **Descargar PNG** guarda la imagen. En el celular, **Compartir** la manda directo a Instagram u otra app. La imagen se genera en el navegador con el arte del congreso (fondo «26», logo Arraigados, cita bíblica y logo RJDT), la rifa y el premio con su foto; no se sube a ningún lado. Archivos: `src/admin/winnerImage.ts` (dibujo) y `src/admin/WinnerImageModal.tsx` (ventana).
+
+## 18. Agregar personas a mano (migración 019)
+
+En **Admin → Rifas → Inscritos**, el botón **«Agregar persona»** abre un buscador de **asistentes registrados**, por nombre o iglesia, sin importar acentos ni mayúsculas. Al presionar **Agregar**:
+- la persona entra a la rifa del **kit de su pulsera activa**; no se elige el kit, lo decide el sistema;
+- queda marcada **«agregado por …»**, con respuestas «—»;
+- funciona **aunque las inscripciones estén cerradas**;
+- en su celular verá «El equipo te inscribió a la rifa».
+
+El buscador avisa si la persona **ya está en la rifa**, si **fue quitada** (en ese caso usa «Restaurar» en su fila) o si **su kit no tiene rifa** (Inscripción Domingo). En el CSV, la columna **Origen** dice «App» o «Agregado por el equipo (nombre)». Queda en Auditoría como `raffle.entry.add`.
+
+Aplicar en producción **antes** de publicar el código: `npm run db:migrar -- --only 019_raffle_entry_manual.sql`. Sin la 019 la app avisa «falta la migración 019» (nunca error 500). Reversión: `docs/rollback/019_raffle_entry_manual_down.sql` (aborta si hay personas agregadas por el equipo).

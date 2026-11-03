@@ -1,21 +1,41 @@
 import type { Config } from '@netlify/functions';
 import { authorize } from '../../server/auth';
 import { RAFFLE_FORBIDDEN, canManageRaffles } from '../../server/raffles';
-import { RaffleEntryError, listEntries, setEntriesOpen } from '../../server/raffleEntries';
+import { RaffleEntryError, addEntryManual, listEntries, setEntriesOpen } from '../../server/raffleEntries';
+import { RULES, guardUser } from '../../server/rateLimit';
 import { apiError, handler, json, methodNotAllowed } from '../../server/http';
 import type { UpdateRaffleEntriesRequest } from '../../shared/api';
 
 /**
  * GET   /api/admin/raffle-entries -> quién entró a cada rifa (por kit) con sus 3 respuestas, y si las inscripciones están abiertas.
  * PATCH /api/admin/raffle-entries { open } -> abre o cierra las inscripciones (queda en la auditoría).
+ * POST  /api/admin/raffle-entries { attendeeId, liked?, plenary?, lesson? } -> el equipo inscribe a un asistente en la rifa
+ *       del kit de SU pulsera activa (migración 019). Devuelve la lista actualizada.
  * Solo ADMIN con cuenta autorizada de Rifas (las mismas que sortean). No existe DELETE: las inscripciones no se borran.
  */
 export default handler(async (req: Request) => {
-  if (req.method !== 'GET' && req.method !== 'PATCH') return methodNotAllowed('GET, PATCH');
+  if (req.method !== 'GET' && req.method !== 'PATCH' && req.method !== 'POST') return methodNotAllowed('GET, PATCH, POST');
   const auth = await authorize(req, ['ADMIN']);
   if ('response' in auth) return auth.response;
   if (!canManageRaffles(auth.user.email)) return apiError(RAFFLE_FORBIDDEN, 403);
   if (req.method === 'GET') return json(await listEntries(), 200, { 'cache-control': 'no-store' });
+
+  if (req.method === 'POST') {
+    const blocked = await guardUser(RULES.raffle_add, auth.user.id);
+    if (blocked) return blocked;
+    let add: unknown;
+    try {
+      add = await req.json();
+    } catch {
+      return apiError('Solicitud inválida.');
+    }
+    try {
+      return json(await addEntryManual(auth.user.id, add), 201);
+    } catch (err) {
+      if (err instanceof RaffleEntryError) return apiError(err.message, err.status);
+      throw err;
+    }
+  }
 
   let body: Partial<UpdateRaffleEntriesRequest>;
   try {

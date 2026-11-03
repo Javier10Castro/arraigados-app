@@ -76,6 +76,10 @@ try {
       'RaffleEntry.removedAt': await col('RaffleEntry', 'removedAt'),
       'RaffleEntry.removedById': await col('RaffleEntry', 'removedById'),
     },
+    '019_raffle_entry_manual (agregar personas a la rifa desde Admin)': {
+      'RaffleEntry.manual': await col('RaffleEntry', 'manual'),
+      'RaffleEntry.addedById': await col('RaffleEntry', 'addedById'),
+    },
   };
   for (const [mig, items] of Object.entries(checks)) {
     const ok = Object.values(items).every(Boolean);

@@ -201,9 +201,13 @@ export default function MiRifa() {
             <span className={s.enteredIcon} aria-hidden="true">{justEntered ? <PartyPopper size={22} strokeWidth={2.2} /> : <Check size={22} strokeWidth={3} />}</span>
             <div>
               <strong>{justEntered ? '¡Listo, ya estás en la rifa!' : 'Ya estás participando'}</strong>
-              <span>{d.result ? `Te inscribiste el ${when(d.entry.createdAt)}` : 'El resultado aparecerá aquí cuando se haga el sorteo.'}</span>
+              <span>
+                {d.entry.manual ? 'El equipo te inscribió a la rifa. ' : ''}
+                {d.result ? `${d.entry.manual ? 'Fecha' : 'Te inscribiste el'} ${when(d.entry.createdAt)}` : 'El resultado aparecerá aquí cuando se haga el sorteo.'}
+              </span>
             </div>
           </div>
+          {!d.entry.manual && (
           <details className={s.answers}>
             <summary>Tus respuestas</summary>
             <dl>
@@ -212,6 +216,7 @@ export default function MiRifa() {
               <dt>{RAFFLE_QUESTIONS.lesson}</dt><dd>{d.entry.lesson}</dd>
             </dl>
           </details>
+          )}
         </div>
       );
     } else if (d.result && prize) body = <div className={s.stack}><Result result={d.result} prize={prize} /></div>;

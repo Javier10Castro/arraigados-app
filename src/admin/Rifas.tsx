@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AdminShell from './AdminShell';
 import ConfirmTypeModal from './ConfirmTypeModal';
 import WinnerImageModal from './WinnerImageModal';
+import AddRaffleEntryModal from './AddRaffleEntryModal';
 import { api, ApiRequestError } from '../lib/api';
 import type { AdminRaffleDetail, AdminRaffleEntriesResponse, AdminRafflesResponse, RaffleSummary } from '../../shared/api';
 import { RAFFLE_QUESTIONS } from '../../shared/raffle';
@@ -48,6 +49,7 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null); // attendeeId con la confirmación abierta
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [rowMsg, setRowMsg] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   const load = useCallback(() => {
     api.adminRaffleEntries().then((d) => { setData(d); setError(''); }).catch((e: Error) => setError(e.message));
@@ -96,10 +98,11 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
 
   const exportCsv = () => {
     if (!data) return;
-    const out = [['Kit', 'Nombre', 'Iglesia', 'Fecha', RAFFLE_QUESTIONS.liked, RAFFLE_QUESTIONS.plenary, RAFFLE_QUESTIONS.lesson, 'Participa en el sorteo']];
+    const out = [['Kit', 'Nombre', 'Iglesia', 'Fecha', RAFFLE_QUESTIONS.liked, RAFFLE_QUESTIONS.plenary, RAFFLE_QUESTIONS.lesson, 'Participa en el sorteo', 'Origen']];
     const estado = (e: (typeof data.kits)[number]['entries'][number]) =>
       e.removed ? `No (quitado${e.removedByName ? ` por ${e.removedByName}` : ''})` : e.eligible ? 'Sí' : 'No (pulsera inactiva)';
-    for (const k of data.kits) for (const e of k.entries) out.push([k.kitName, e.fullName, e.churchName, when(e.createdAt), e.liked, e.plenary, e.lesson, estado(e)]);
+    const origen = (e: (typeof data.kits)[number]['entries'][number]) => (e.manual ? `Agregado por el equipo${e.addedByName ? ` (${e.addedByName})` : ''}` : 'App');
+    for (const k of data.kits) for (const e of k.entries) out.push([k.kitName, e.fullName, e.churchName, when(e.createdAt), e.liked, e.plenary, e.lesson, estado(e), origen(e)]);
     downloadCsv(`rifa-inscritos-${new Date().toISOString().slice(0, 10)}.csv`, out);
   };
 
@@ -110,7 +113,7 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
       <div className={c.sectionHead}>
         <div>
           <h2 className={c.h2}>Inscritos</h2>
-          <p className={c.note}>Quienes respondieron las 3 preguntas en la app. Solo ellos entran al sorteo de su kit.</p>
+          <p className={c.note}>Quienes respondieron las 3 preguntas en la app o agregó el equipo. Solo ellos entran al sorteo de su kit.</p>
         </div>
         {data?.available && (
           <div className={c.entriesSwitch}>
@@ -132,7 +135,18 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
         )}
       </div>
       {error && <p className={c.bad} role="alert">{error}</p>}
-      {data && !data.available && <p className={c.warn}>La inscripción con preguntas aún no está habilitada en esta base (falta aplicar la migración 017 o 018).</p>}
+      {data && !data.available && <p className={c.warn}>La inscripción con preguntas aún no está habilitada en esta base (falta aplicar la migración 017, 018 o 019).</p>}
+      {addOpen && (
+        <AddRaffleEntryModal
+          onClose={() => setAddOpen(false)}
+          onAdded={(d, who) => {
+            setData(d);
+            setTab(who.packageId);
+            setRowMsg(`${who.fullName} se agregó a la rifa del ${who.kitName}.`);
+            onChanged();
+          }}
+        />
+      )}
       {data?.available && (
         <>
           <div className={c.tabs} role="tablist" aria-label="Kits">
@@ -150,6 +164,7 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
           {rowMsg && <p className={c.ok} role="status">{rowMsg}</p>}
           <div className={c.tools}>
             <input type="search" placeholder="Buscar por nombre o iglesia" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar inscrito" />
+            <button type="button" className={c.spin} onClick={() => { setRowMsg(''); setAddOpen(true); }}>Agregar persona</button>
             <button type="button" className={c.ghost} onClick={() => { load(); onChanged(); }}>Actualizar</button>
             <button type="button" className={c.ghost} disabled={total === 0} onClick={exportCsv}>Descargar CSV ({total})</button>
           </div>
@@ -166,6 +181,7 @@ function Inscritos({ onChanged }: { onChanged: () => void }) {
                     <tr key={e.attendeeId} className={e.eligible ? undefined : c.inactive}>
                       <td>
                         <strong>{e.fullName}</strong><span className={c.cellSub}>{e.churchName}</span>
+                        {e.manual && <em className={c.tagMan}>agregado por {e.addedByName ?? 'el equipo'}</em>}
                         {e.removed
                           ? <em className={c.tagOff} title={e.removedAt ? when(e.removedAt) : undefined}>quitado{e.removedByName ? ` por ${e.removedByName}` : ''}</em>
                           : !e.eligible && <em className={c.tagOff}>pulsera inactiva</em>}

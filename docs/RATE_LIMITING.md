@@ -69,6 +69,7 @@ Fuente única: `RULES` en `server/rateLimit.ts`. «Fallo» = qué pasa si el alm
 | `admin_imgsearch` | 30 / 10 min | cuenta | cerrado | Búsqueda en Openverse (servicio externo). |
 | `admin_user_w` | 20 / 10 min | cuenta | cerrado | Crear/editar/borrar cuentas, restablecer contraseñas. |
 | `admin_danger` | 20 / 10 min | cuenta | cerrado | Vaciar bitácora, borrar lote, desvincular pulsera, anular canje. |
+| `raffle_add` | 120 / 10 min | cuenta | cerrado | Agregar personas a la rifa a mano (`POST /api/admin/raffle-entries`, migración 019). |
 
 ### Públicas (sin sesión)
 
