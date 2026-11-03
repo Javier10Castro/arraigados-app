@@ -420,3 +420,12 @@ Al agregar o cambiar un endpoint:
 
 - `GET /api/admin/raffle-candidates?q=` (Admin autorizado de Rifas) → hasta 20 `RaffleCandidate` `{ attendeeId, fullName, churchName, packageId, kitName, status: 'available'|'entered'|'removed'|'no_raffle' }`: asistentes con pulsera ACTIVE que coinciden por nombre o iglesia (sin acentos).
 - `POST /api/admin/raffle-entries` `{ attendeeId, liked?, plenary?, lesson? }` (migración 019, regla `raffle_add`) → 201 con la lista de inscritos. El kit sale de la pulsera ACTIVE del asistente; `manual = true`, `addedById` = la cuenta. 404 sin pulsera activa, 400 kit sin rifa o plenaria inválida, 409 ya inscrito / quitado / sin la 019. `AdminRaffleEntry` agrega `manual`, `addedByName`; `MyRaffleResponse.entry` agrega `manual`.
+
+## Admin en línea y mensajes (migración 020, 2 nov 2026)
+
+Solo ADMIN (cookie `arr_staff`).
+- `POST /api/admin/presence` `{ path }` → `AdminPresenceResponse { available, onlineSec, online[], inbox[] }`. Registra el latido
+  (una fila por cuenta) y devuelve quién está en línea (latido hace < 45 s) y mis mensajes sin leer (máx. 20). Sin la 020: `available:false`.
+- `POST /api/admin/messages` `{ toUserId, body }` → 201 `{ ok: true }`. 400 texto vacío/>300 o a uno mismo; 404 destino no Admin activo;
+  409 sin la 020; 429 límite `admin_msg` (30 / 10 min por cuenta).
+- `POST /api/admin/messages/read` `{ ids }` → `{ read }`. Solo marca mensajes dirigidos a quien llama.

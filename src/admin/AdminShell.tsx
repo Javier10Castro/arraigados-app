@@ -9,6 +9,7 @@ import { useStaffSession } from '../context/StaffSession';
 import { useTeamNav } from '../context/useTeamNav';
 import { useOwnPulseLink, type OwnPulseLink } from '../context/useOwnPulseLink';
 import { visibleSections } from './nav';
+import AdminPresenceDock from './AdminPresenceDock';
 import { pressioText } from '../lib/pressio';
 import s from './AdminShell.module.css';
 
@@ -171,6 +172,9 @@ export default function AdminShell({
           <span>Más</span>
         </NavLink>
       </nav>
+
+      {/* Esquina «Admin en línea» + mensajes (migración 020). Sin la 020 no se dibuja. */}
+      <AdminPresenceDock />
     </div>
   );
 }

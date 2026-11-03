@@ -80,6 +80,10 @@ try {
       'RaffleEntry.manual': await col('RaffleEntry', 'manual'),
       'RaffleEntry.addedById': await col('RaffleEntry', 'addedById'),
     },
+    '020_admin_presence (Admin en línea y mensajes entre Admin)': {
+      'tabla AdminPresence': await table('AdminPresence'),
+      'tabla AdminMessage': await table('AdminMessage'),
+    },
   };
   for (const [mig, items] of Object.entries(checks)) {
     const ok = Object.values(items).every(Boolean);

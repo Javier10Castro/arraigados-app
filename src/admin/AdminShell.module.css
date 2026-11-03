@@ -1,6 +1,6 @@
 .shell { position: relative; min-height: 100dvh; isolation: isolate; color: var(--crema); }
 .sidebar { display: none; }
-.main { position: relative; z-index: 1; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + 28px); }
+.main { position: relative; z-index: 1; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + 76px); } /* +48 px: deja libre la esquina «en línea» */
 
 .topbar {
   display: flex;
