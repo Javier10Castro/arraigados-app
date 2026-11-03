@@ -45,6 +45,9 @@ describe('admin en línea y mensajes · PostgreSQL real', { skip: TEST_URL ? fal
   const beat = (who: string | null, path: unknown = '/admin/dashboard') => call(presenceFn, '/api/admin/presence', who, { path });
   const send = (who: string | null, toUserId: unknown, body: unknown) => call(messagesFn, '/api/admin/messages', who, { toUserId, body });
   const read = (who: string, ids: unknown) => call(messagesFn, '/api/admin/messages/read', who, { ids }, { action: 'read' });
+  const convs = (who: string | null) => call(messagesFn, '/api/admin/messages', who, undefined, {}, 'GET');
+  const thread = (who: string | null, withId: string, before?: string) =>
+    call(messagesFn, `/api/admin/messages?with=${encodeURIComponent(withId)}${before ? `&before=${encodeURIComponent(before)}` : ''}`, who, undefined, {}, 'GET');
 
   before(async () => {
     const url = assertSafeTestDatabase(TEST_URL!);
@@ -124,7 +127,12 @@ describe('admin en línea y mensajes · PostgreSQL real', { skip: TEST_URL ? fal
   it('mensajes: llegan en el siguiente latido del destinatario y se marcan leídos (solo los míos)', async () => {
     let res = await send('a', 'u_m', '  ¿Ya   abriste la rifa\n del Kit B?  ');
     assert.equal(res.status, 201);
-    assert.deepEqual(await J(res), { ok: true });
+    const sent = await J(res);
+    assert.equal(sent.ok, true);
+    assert.equal(sent.message.fromMe, true);
+    assert.equal(sent.message.body, '¿Ya abriste la rifa del Kit B?');
+    assert.equal(sent.message.readAt, null);
+    assert.match(sent.message.createdAt, /Z$/);
     await send('j', 'u_m', 'Ya voy');
     // Al que manda no le llega nada.
     assert.deepEqual((await J(await beat('a'))).inbox, []);
@@ -140,6 +148,69 @@ describe('admin en línea y mensajes · PostgreSQL real', { skip: TEST_URL ? fal
     assert.deepEqual((await J(await beat('m'))).inbox.map((x: any) => x.body), ['Ya voy']);
     assert.deepEqual(await J(await read('m', [inbox[0].id])), { read: 0 }); // ya estaba leído
     assert.deepEqual(await J(await read('m', 'nada')), { read: 0 });
+  });
+
+  it('historial tipo chat: conversaciones por persona, hilo en orden, abrir marca leídos y «Visto» para quien manda', async () => {
+    assert.equal((await convs(null)).status, 401);
+    assert.equal((await convs('s')).status, 403);
+    assert.deepEqual(await J(await convs('a')), { available: true, conversations: [] });
+    await send('a', 'u_m', 'Hola Milca');
+    await q(`UPDATE "AdminMessage" SET "createdAt" = "createdAt" - interval '3 seconds'`);
+    await send('m', 'u_a', 'Hola Arturo');
+    await send('m', 'u_a', '¿Abro la rifa?');
+    await q(`UPDATE "AdminMessage" SET "createdAt" = "createdAt" - interval '2 seconds' WHERE "fromUserId" = 'u_m'`);
+    await send('j', 'u_a', 'Ya llegué');
+    // Conversaciones de Arturo: Javier (la más reciente) y Milca, con no leídos y último mensaje.
+    let c = (await J(await convs('a'))).conversations;
+    assert.deepEqual(c.map((x: any) => [x.name, x.lastBody, x.lastFromMe, x.unread, x.canSend]), [
+      ['Javier Castro', 'Ya llegué', false, 1, true],
+      ['Milca Mendoza', '¿Abro la rifa?', false, 2, true],
+    ]);
+    // Abrir el hilo con Milca: todo en orden de tiempo, desde la vista de cada quien; marca leídos SOLO los de Milca.
+    let t = await J(await thread('a', 'u_m'));
+    assert.equal(t.available, true);
+    assert.deepEqual(t.with, { userId: 'u_m', name: 'Milca Mendoza', canSend: true, online: null });
+    assert.deepEqual(t.messages.map((x: any) => [x.fromMe, x.body]), [[true, 'Hola Milca'], [false, 'Hola Arturo'], [false, '¿Abro la rifa?']]);
+    assert.equal(t.hasMore, false);
+    c = (await J(await convs('a'))).conversations;
+    assert.deepEqual(c.map((x: any) => x.unread), [1, 0]);
+    assert.deepEqual((await J(await beat('a'))).inbox.map((x: any) => x.body), ['Ya llegué']);
+    // Milca ve su lado: su mensaje ya «visto» por Arturo; el de Arturo aún sin leer hasta que ella abre el hilo.
+    t = await J(await thread('m', 'u_a'));
+    assert.deepEqual(t.messages.map((x: any) => [x.fromMe, x.body, x.readAt !== null]), [[false, 'Hola Milca', true], [true, 'Hola Arturo', true], [true, '¿Abro la rifa?', true]]);
+    // En línea: el hilo dice dónde está la otra persona.
+    t = await J(await thread('m', 'u_a'));
+    assert.deepEqual(t.with.online.path, '/admin/dashboard');
+    // Javier no ve la conversación entre Arturo y Milca.
+    assert.deepEqual((await J(await convs('j'))).conversations.map((x: any) => x.name), ['Arturo Sánchez']);
+    assert.deepEqual((await J(await thread('j', 'u_m'))).messages, []);
+    // Hilo inválido o con uno mismo.
+    assert.equal((await thread('a', 'u_a')).status, 400);
+    assert.equal((await thread('a', 'u_nadie')).status, 404);
+    assert.equal((await thread('a', 'u_m', 'ayer')).status, 400);
+    // Con una cuenta que ya no es Admin: se ve el historial pero no se puede escribir.
+    await q(`UPDATE "User" SET role = 'STAFF' WHERE id = 'u_j'`);
+    t = await J(await thread('a', 'u_j'));
+    assert.equal(t.with.canSend, false);
+    assert.deepEqual(t.messages.map((x: any) => x.body), ['Ya llegué']);
+    assert.equal((await J(await convs('a'))).conversations[0].canSend, false);
+    await q(`UPDATE "User" SET role = 'ADMIN' WHERE id = 'u_j'`);
+  });
+
+  it('historial largo: páginas de 60 con «ver anteriores» (before)', async () => {
+    await q(`INSERT INTO "AdminMessage"(id,"fromUserId","fromName","toUserId",body,"createdAt")
+             SELECT 'h' || lpad(i::text, 3, '0'), CASE WHEN i % 2 = 0 THEN 'u_a' ELSE 'u_m' END, 'x',
+                    CASE WHEN i % 2 = 0 THEN 'u_m' ELSE 'u_a' END, 'msg ' || i, (now() AT TIME ZONE 'utc') - make_interval(secs => 200 - i)
+               FROM generate_series(1, 130) i`);
+    const p1 = await J(await thread('a', 'u_m'));
+    assert.equal(p1.messages.length, 60);
+    assert.equal(p1.hasMore, true);
+    assert.equal(p1.messages[0].body, 'msg 71');
+    assert.equal(p1.messages[59].body, 'msg 130');
+    const p2 = await J(await thread('a', 'u_m', p1.messages[0].createdAt));
+    assert.deepEqual([p2.messages[0].body, p2.messages[59].body, p2.hasMore], ['msg 11', 'msg 70', true]);
+    const p3 = await J(await thread('a', 'u_m', p2.messages[0].createdAt));
+    assert.deepEqual([p3.messages.length, p3.messages[0].body, p3.hasMore], [10, 'msg 1', false]);
   });
 
   it('mensajes inválidos: a mí mismo, vacío, muy largo, a Staff, a cuenta inactiva o inexistente', async () => {
@@ -185,6 +256,8 @@ describe('admin en línea y mensajes · PostgreSQL real', { skip: TEST_URL ? fal
     assert.equal(res.status, 409);
     assert.match((await J(res)).error, /migración 020/);
     assert.deepEqual(await J(await read('a', ['x'])), { read: 0 });
+    assert.deepEqual(await J(await convs('a')), { available: false, conversations: [] });
+    assert.equal((await thread('a', 'u_m')).status, 409);
     // Reaplicar dos veces (idempotente).
     const up = fs.readFileSync('migrations/020_admin_presence.sql', 'utf8');
     await q(up);

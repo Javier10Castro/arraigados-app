@@ -46,6 +46,8 @@ export const RAFFLE_MANAGERS: readonly string[] = [
   ...DISCOUNT_EDITORS,
   'arturosanchez@redjuveniltijuana.com',
   'milcamendoza@redjuveniltijuana.com',
+  // La cuenta real de Milca quedó registrada así (sin «na»): 2 nov 2026. Se dejan ambas.
+  'milcamendoza@redjuveniltijua.com',
 ];
 export const canManageRaffles = (email: string | null | undefined) =>
   typeof email === 'string' && RAFFLE_MANAGERS.includes(email.trim().toLowerCase());
@@ -325,8 +327,10 @@ export async function drawWinner(actorId: string, id: string, input: { drawKey: 
     return { replay: false, position };
   }));
 
-  const detail = (await getAdminRaffleDetail(id))!;
-  const winner = detail.winners.find((w) => w.position === out.position)!;
+  // Si alguien reinició la rifa justo después de este sorteo (Reiniciar rifa), la rifa ya no existe: aviso claro, nunca 500.
+  const detail = await getAdminRaffleDetail(id);
+  const winner = detail?.winners.find((w) => w.position === out.position);
+  if (!detail || !winner) throw new RaffleError('Esta rifa se reinició mientras se sorteaba. Recarga la página.', 404);
   return { replay: out.replay, winner, raffle: detail };
 }
 
