@@ -1329,3 +1329,16 @@ export type ResetRafflesResponse = { raffles: number; winners: number; entries: 
 
 /** PATCH /api/admin/raffle-entries/:packageId/:attendeeId { removed } -> quita (true) o restaura (false) a una persona. */
 export type UpdateRaffleEntryRequest = { removed: boolean };
+
+// ---------------------------------------------------------------------------------------------------------------
+// «En línea» y mensajes entre Admin (migración 020). POST /api/admin/presence { path }.
+// ---------------------------------------------------------------------------------------------------------------
+export type AdminPresenceResponse = {
+  /** false = migración 020 sin aplicar: la esquina no se muestra. */
+  available: boolean;
+  onlineSec: number;
+  online: { userId: string; name: string; path: string; lastSeen: string; secondsAgo: number; me: boolean }[];
+  /** Mensajes sin leer para quien pregunta (los más viejos primero, máx. 20). */
+  inbox: { id: string; fromUserId: string | null; fromName: string; body: string; createdAt: string }[];
+};
+export type SendAdminMessageRequest = { toUserId: string; body: string };

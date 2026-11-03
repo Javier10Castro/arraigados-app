@@ -2921,3 +2921,16 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - `server/raffleEntries.ts`: `searchCandidates(q)` (pulseras ACTIVE de asistente, nombre o iglesia sin acentos, máx. 20, con estado) y `addEntryManual` (kit desde la pulsera ACTIVE, FOR UPDATE + ON CONFLICT, auditoría `raffle.entry.add`, ignora si las inscripciones están cerradas). Funciones: `admin-raffle-candidates.mts` (GET) y POST en `admin-raffle-entries.mts` (regla nueva `raffle_add` 120/10 min).
 - UI: `src/admin/AddRaffleEntryModal.tsx`; etiqueta «agregado por …» en Inscritos; columna Origen en el CSV; el asistente ve «El equipo te inscribió» (sin «Tus respuestas»).
 - Pruebas: 4 nuevas en `raffleentry.test.mts`. `npm run test:team` 174/174.
+
+## 74. Admin en línea y mensajes entre Admin (2 nov 2026)
+
+Pedido: «ver en la esquina los admin activos y qué página están viendo, y poder mandarles un mensaje».
+- Migración `020_admin_presence.sql` (tablas nuevas `AdminPresence`, `AdminMessage`; reversión en `docs/rollback/020_admin_presence_down.sql`).
+- `server/adminPresence.ts` + funciones `admin-presence.mts` (`POST /api/admin/presence { path }`) y `admin-messages.mts`
+  (`POST /api/admin/messages { toUserId, body }`, `POST /api/admin/messages/read { ids }`). Solo ADMIN; límite `admin_msg` 30/10 min.
+- Cliente: `src/admin/AdminPresenceDock.tsx` montado en `AdminShell` (abajo a la derecha; en celular encima de la barra inferior).
+  Latido cada 15 s solo con la pestaña visible y al cambiar de pantalla; «en línea» = latido hace < 45 s. La ruta se traduce a la
+  sección con `ADMIN_SECTIONS` (las secciones solo-propietario se ven como «Panel» para los demás). Se guarda solo la ruta, sin consulta.
+- Mensajes: 1–300 caracteres, solo a cuentas Admin activas y nunca a uno mismo. Llegan en el siguiente latido como tarjeta
+  (Responder / Listo → leído). Sin la 020: la esquina no aparece y mandar da 409; nunca 500.
+- Pruebas: `tests/team-pulse/adminpresence.test.mts` (9).

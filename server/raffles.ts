@@ -45,7 +45,7 @@ export class RaffleError extends Error {
 export const RAFFLE_MANAGERS: readonly string[] = [
   ...DISCOUNT_EDITORS,
   'arturosanchez@redjuveniltijuana.com',
-  'milcamendoza@redjuveniltijua.com',
+  'milcamendoza@redjuveniltijuana.com',
 ];
 export const canManageRaffles = (email: string | null | undefined) =>
   typeof email === 'string' && RAFFLE_MANAGERS.includes(email.trim().toLowerCase());

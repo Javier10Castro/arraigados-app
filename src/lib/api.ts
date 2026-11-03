@@ -50,6 +50,8 @@ import {
   type DrawRaffleResponse,
   type PublicRaffle,
   type MyRaffleResponse,
+  type AdminPresenceResponse,
+  type SendAdminMessageRequest,
   type RaffleCandidate,
   type AddRaffleEntryRequest,
   type ResetRafflesRequest,
@@ -387,6 +389,14 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  // «En línea» y mensajes entre Admin (migración 020).
+  adminPresence: (path: string) =>
+    request<AdminPresenceResponse>('/api/admin/presence', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }),
+  sendAdminMessage: (body: SendAdminMessageRequest) =>
+    request<{ ok: true }>('/api/admin/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+  readAdminMessages: (ids: string[]) =>
+    request<{ read: number }>('/api/admin/messages/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids }) }),
 
   // Rifas (Bloque 4). El sorteo ocurre en el servidor; el proyector solo lee.
   adminRaffles: () => request<AdminRafflesResponse>('/api/admin/raffles'),
