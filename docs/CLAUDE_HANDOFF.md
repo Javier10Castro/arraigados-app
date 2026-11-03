@@ -2914,3 +2914,10 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 
 - `src/admin/winnerImage.ts`: dibuja en `<canvas>` (sin dependencias). Fuente Antarctican cargada con `FontFace` (cubre ¡, acentos y ñ; Pressio y Degular NO). Fondo `flyer-contours.webp` + `flyer-texture.webp` en modo screen + velo; `LogoBage.svg` recortado con el viewBox de `brand.ts`; `Cita_Beige.svg` y `RJDT_CIRCLES_LOGO.svg`. Layout en bloques con el espacio sobrante repartido (sirve para 4:5 y 9:16); el nombre se ajusta de tamaño y pasa a 2 renglones si es largo.
 - `src/admin/WinnerImageModal.tsx`: elegir ganador, editar nombre, formato, vista previa, Descargar PNG / Compartir (Web Share con archivos). Botón en cada tarjeta de rifa con `winnersCount > 0`. Solo frontend; sin migración.
+
+## 73. Agregar personas a la rifa desde Admin (2 nov 2026)
+
+- **Migración 019** (`019_raffle_entry_manual.sql`): `RaffleEntry.manual` (bool, default false) y `addedById`. `isMissing019` (local en raffleEntries.ts) → available:false / 409 «falta la migración 019».
+- `server/raffleEntries.ts`: `searchCandidates(q)` (pulseras ACTIVE de asistente, nombre o iglesia sin acentos, máx. 20, con estado) y `addEntryManual` (kit desde la pulsera ACTIVE, FOR UPDATE + ON CONFLICT, auditoría `raffle.entry.add`, ignora si las inscripciones están cerradas). Funciones: `admin-raffle-candidates.mts` (GET) y POST en `admin-raffle-entries.mts` (regla nueva `raffle_add` 120/10 min).
+- UI: `src/admin/AddRaffleEntryModal.tsx`; etiqueta «agregado por …» en Inscritos; columna Origen en el CSV; el asistente ve «El equipo te inscribió» (sin «Tus respuestas»).
+- Pruebas: 4 nuevas en `raffleentry.test.mts`. `npm run test:team` 174/174.

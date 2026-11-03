@@ -62,6 +62,7 @@ export const RULES = {
   admin_user_w: rule('admin_user_w', 20, 600, 'closed'), //       crear/editar/borrar cuentas y contraseñas
   admin_danger: rule('admin_danger', 20, 600, 'closed'), //       purgar auditoría, borrar lote, desvincular, anular
   raffle_draw: rule('raffle_draw', 30, 60, 'closed'), //         sorteos (rifas) por cuenta de Admin
+  raffle_add: rule('raffle_add', 120, 600, 'closed'), //        agregar personas a la rifa a mano (Admin)
   // --- Públicas (sin sesión) ---
   raffle_public: rule('raffle_public', 240, 60, 'open'), //      proyector de la rifa (consulta periódica), por IP
   claim_ip: rule('claim_ip', 1200, 600, 'closed'), //             registros por IP (recinto compartido: ~2/s)

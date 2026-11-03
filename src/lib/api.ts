@@ -50,6 +50,8 @@ import {
   type DrawRaffleResponse,
   type PublicRaffle,
   type MyRaffleResponse,
+  type RaffleCandidate,
+  type AddRaffleEntryRequest,
   type ResetRafflesRequest,
   type ResetRafflesResponse,
   type UpdateRaffleRequest,
@@ -415,6 +417,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
   adminRaffleEntries: () => request<AdminRaffleEntriesResponse>('/api/admin/raffle-entries'),
+  /** «Agregar persona»: buscar asistentes registrados y agregarlos a la rifa del kit de su pulsera. */
+  raffleCandidates: (q: string) => request<RaffleCandidate[]>(`/api/admin/raffle-candidates?q=${encodeURIComponent(q)}`),
+  addRaffleEntry: (body: AddRaffleEntryRequest) =>
+    request<AdminRaffleEntriesResponse>('/api/admin/raffle-entries', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   /** Reiniciar: borra rifas, salidas e inscripciones de un kit ('ALL' = todos). No se puede deshacer. */
   resetRaffles: (body: ResetRafflesRequest) =>
     request<ResetRafflesResponse>('/api/admin/raffle-reset', {

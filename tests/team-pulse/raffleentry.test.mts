@@ -14,6 +14,7 @@ import entryFn from '../../netlify/functions/raffle-entry.mts';
 import adminEntriesFn from '../../netlify/functions/admin-raffle-entries.mts';
 import adminEntryFn from '../../netlify/functions/admin-raffle-entry.mts';
 import resetFn from '../../netlify/functions/admin-raffle-reset.mts';
+import candidatesFn from '../../netlify/functions/admin-raffle-candidates.mts';
 import { RAFFLE_PLENARIES, checkRaffleAnswers, prizeForKit } from '../../shared/raffle';
 
 /** Inscripción a la rifa con 3 preguntas y «gana la salida #N» (migración 017). */
@@ -65,6 +66,10 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
   const entries = (who = 'admin') => call(adminEntriesFn, 'GET', '/api/admin/raffle-entries', { who });
   const reset = (packageId: unknown, confirm: unknown, who: string | null = 'admin') =>
     call(resetFn, 'POST', '/api/admin/raffle-reset', { who: who ?? undefined, json: { packageId, confirm } });
+  const candidates = (q: string, who: string | null = 'admin') =>
+    call(candidatesFn, 'GET', `/api/admin/raffle-candidates?q=${encodeURIComponent(q)}`, { who: who ?? undefined });
+  const addManual = (body: unknown, who: string | null = 'admin') =>
+    call(adminEntriesFn, 'POST', '/api/admin/raffle-entries', { who: who ?? undefined, json: body });
   /** who: null = sin sesión. */
   const setRemoved = (pk: string, att: string, removed: unknown, who: string | null = 'admin') =>
     call(adminEntryFn, 'PATCH', `/api/admin/raffle-entries/${pk}/${att}`, { who: who ?? undefined, params: { packageId: pk, attendeeId: att }, json: { removed } });
@@ -317,6 +322,7 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
       await db.query(sql);
       await db.query(sql); // idempotente
       await db.query(fs.readFileSync('migrations/018_raffle_entry_remove.sql', 'utf8'));
+      await db.query(fs.readFileSync('migrations/019_raffle_entry_manual.sql', 'utf8'));
     }
     assert.equal((await enter('a2')).status, 200);
   });
@@ -467,5 +473,98 @@ describe('rifa · inscripción con preguntas · PostgreSQL real', { skip: TEST_U
     for (const x of results.slice(1)) assert.ok([200, 404, 409].includes(x.status), String(x.status));
     assert.equal((await one(`SELECT count(*)::int n FROM "RaffleWinner" w LEFT JOIN "Raffle" r ON r.id = w."raffleId" WHERE r.id IS NULL`)).n, 0);
     assert.equal((await one(`SELECT count(*)::int n FROM "Raffle" WHERE "packageId"='ka'`)).n, 0);
+  });
+  /* ------------------------- agregar a mano (migración 019) ------------------------- */
+  it('buscar asistentes: por nombre o iglesia, sin acentos; solo pulseras activas de asistente; dice si ya están o si su kit no tiene rifa', async () => {
+    await enter('a1');
+    await enter('a2');
+    await setRemoved('ka', 'a2', true);
+    const r = await candidates('persona');
+    assert.equal(r.status, 200);
+    const list = await J(r);
+    const by = Object.fromEntries(list.map((x: any) => [x.attendeeId, x]));
+    assert.equal(by.a1.status, 'entered');
+    assert.equal(by.a2.status, 'removed');
+    assert.equal(by.a3.status, 'available');
+    assert.equal(by.d1.status, 'no_raffle');
+    assert.deepEqual([by.b1.kitName, by.b1.packageId, by.b1.churchName], ['Kit - B', 'kb', 'Iglesia Central']);
+    assert.equal(by.x1, undefined); // pulsera invalidada
+    assert.ok(!list.some((x: any) => x.attendeeId === null)); // la pulsera del equipo no tiene asistente
+    assert.deepEqual((await J(await candidates('IGLESIA céntral'))).length, list.length); // iglesia y acentos
+    assert.equal((await J(await candidates('persona e1'))).length, 1);
+    assert.deepEqual(await J(await candidates('a')), []); // menos de 2 letras
+    assert.equal((await candidates('persona', 'admin2')).status, 403);
+    assert.equal((await candidates('persona', 'staff')).status, 403);
+    assert.equal((await candidates('persona', null)).status, 401);
+  });
+
+  it('agregar: entra a la rifa del kit de SU pulsera, marcado como del equipo, aun con inscripciones cerradas; participa en el sorteo', async () => {
+    await setOpen(false);
+    const res = await addManual({ attendeeId: 'b1', packageId: 'ke' }); // el kit del cuerpo se ignora
+    assert.equal(res.status, 201);
+    const d = await J(res);
+    const b1 = d.kits.find((k: any) => k.packageId === 'kb').entries.find((e: any) => e.attendeeId === 'b1');
+    assert.deepEqual([b1.manual, b1.addedByName, b1.eligible, b1.liked, b1.plenary, b1.lesson], [true, 'Admin Rifas', true, '—', '—', '—']);
+    assert.equal(d.kits.find((k: any) => k.packageId === 'ke').entries.length, 0);
+    const mineB1 = await J(await mine('b1'));
+    assert.deepEqual([mineB1.entry.manual, mineB1.entry.removed], [true, false]);
+    // con respuestas opcionales
+    await addManual({ attendeeId: 'a1', liked: '  La   alabanza ', plenary: RAFFLE_PLENARIES[1], lesson: '' });
+    const a1 = await one(`SELECT "answerLiked" l, "answerPlenary" p, "answerLesson" s, manual, "addedById" FROM "RaffleEntry" WHERE "attendeeId"='a1'`);
+    assert.deepEqual(a1, { l: 'La alabanza', p: RAFFLE_PLENARIES[1], s: '—', manual: true, addedById: 'u_admin' });
+    const raffle = await J(await call(rafflesFn, 'POST', '/api/admin/raffles', { who: 'admin', json: { packageId: 'kb', winningPosition: 1 } }));
+    assert.equal(raffle.eligibleCount, 1);
+    assert.equal((await J(await draw(raffle.id))).winner.attendeeId, 'b1');
+    assert.equal((await one(`SELECT count(*)::int n FROM "AuditLog" WHERE action='raffle.entry.add'`)).n, 2);
+    // la app sigue marcando las inscripciones normales como no manuales
+    await setOpen(true);
+    await enter('a2');
+    assert.equal((await J(await mine('a2'))).entry.manual, false);
+  });
+
+  it('agregar: rechaza duplicados, quitados, kits sin rifa, sin pulsera activa y datos inválidos; solo cuentas autorizadas', async () => {
+    await enter('a1');
+    await enter('a2');
+    await setRemoved('ka', 'a2', true);
+    const dup = await addManual({ attendeeId: 'a1' });
+    assert.equal(dup.status, 409);
+    assert.match((await J(dup)).error, /ya está/);
+    const rem = await addManual({ attendeeId: 'a2' });
+    assert.equal(rem.status, 409);
+    assert.match((await J(rem)).error, /Restaurar/);
+    assert.equal((await addManual({ attendeeId: 'd1' })).status, 400); // Inscripción Domingo
+    assert.equal((await addManual({ attendeeId: 'x1' })).status, 404); // pulsera invalidada
+    assert.equal((await addManual({ attendeeId: 'no-existe' })).status, 404);
+    assert.equal((await addManual({})).status, 400);
+    assert.equal((await addManual({ attendeeId: 'con espacios' })).status, 400);
+    assert.equal((await addManual({ attendeeId: 'a3', plenary: 'Plenaria 9' })).status, 400);
+    assert.equal((await addManual({ attendeeId: 'a3' }, 'admin2')).status, 403);
+    assert.equal((await addManual({ attendeeId: 'a3' }, 'staff')).status, 403);
+    assert.equal((await addManual({ attendeeId: 'a3' }, null)).status, 401);
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry" WHERE manual`)).n, 0);
+    // dos clics a la vez = una sola inscripción
+    const both = await Promise.all([addManual({ attendeeId: 'a3' }), addManual({ attendeeId: 'a3' })]);
+    assert.deepEqual(both.map((x) => x.status).sort(), [201, 409]);
+    assert.equal((await one(`SELECT count(*)::int n FROM "RaffleEntry" WHERE "attendeeId"='a3'`)).n, 1);
+  });
+
+  it('sin la migración 019: avisos claros (nunca 500); el rollback aborta si hay personas agregadas por el equipo', async () => {
+    await addManual({ attendeeId: 'a1' });
+    await assert.rejects(db.query(fs.readFileSync('docs/rollback/019_raffle_entry_manual_down.sql', 'utf8')), /no se revierte la 019/);
+    await q(`DELETE FROM "RaffleEntry"`);
+    await db.query(fs.readFileSync('docs/rollback/019_raffle_entry_manual_down.sql', 'utf8'));
+    try {
+      assert.equal((await J(await mine('a1'))).available, false);
+      assert.equal((await J(await entries())).available, false);
+      const r = await addManual({ attendeeId: 'a1' });
+      assert.equal(r.status, 409);
+      assert.match((await J(r)).error, /migración 019/);
+      assert.equal((await candidates('persona')).status, 200); // buscar no depende de la 019
+    } finally {
+      const sql = fs.readFileSync('migrations/019_raffle_entry_manual.sql', 'utf8');
+      await db.query(sql);
+      await db.query(sql); // idempotente
+    }
+    assert.equal((await addManual({ attendeeId: 'a1' })).status, 201);
   });
 });

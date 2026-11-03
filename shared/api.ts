@@ -1271,7 +1271,8 @@ export type MyRaffleResponse = {
   /** Las inscripciones las abre/cierra Admin → Rifas. */
   entriesOpen: boolean;
   /** removed = el equipo lo quitó de la rifa (018): no participa y no puede volver a inscribirse. */
-  entry: null | { createdAt: string; liked: string; plenary: string; lesson: string; removed: boolean };
+  /** manual = lo inscribió el equipo desde Admin (019), sin respuestas propias. */
+  entry: null | { createdAt: string; liked: string; plenary: string; lesson: string; removed: boolean; manual: boolean };
   /** Resultado de la rifa más reciente (no cancelada) de su kit, cuando ya salió al menos un ganador. */
   result: null | { raffleName: string; winners: string[]; youWon: boolean };
 };
@@ -1293,7 +1294,24 @@ export type AdminRaffleEntry = {
   removed: boolean;
   removedAt: string | null;
   removedByName: string | null;
+  /** Lo agregó el equipo desde Admin (019) en vez de inscribirse desde su celular. */
+  manual: boolean;
+  addedByName: string | null;
 };
+
+/** GET /api/admin/raffle-candidates?q= — asistentes registrados para «Agregar persona». */
+export type RaffleCandidate = {
+  attendeeId: string;
+  fullName: string;
+  churchName: string;
+  packageId: string;
+  kitName: string;
+  /** available = se puede agregar · entered = ya está · removed = fue quitado (usar Restaurar) · no_raffle = su kit no tiene rifa */
+  status: 'available' | 'entered' | 'removed' | 'no_raffle';
+};
+
+/** POST /api/admin/raffle-entries — el equipo inscribe a un asistente (el kit sale de su pulsera). Respuestas opcionales. */
+export type AddRaffleEntryRequest = { attendeeId: string; liked?: string; plenary?: string; lesson?: string };
 
 /** GET /api/admin/raffle-entries (cuentas autorizadas). */
 export type AdminRaffleEntriesResponse = {
