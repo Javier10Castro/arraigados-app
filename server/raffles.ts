@@ -46,6 +46,8 @@ export const RAFFLE_MANAGERS: readonly string[] = [
   ...DISCOUNT_EDITORS,
   'arturosanchez@redjuveniltijuana.com',
   'milcamendoza@redjuveniltijuana.com',
+  // La cuenta real de Milca quedó registrada así (sin «na»): 2 nov 2026. Se dejan ambas.
+  'milcamendoza@redjuveniltijua.com',
 ];
 export const canManageRaffles = (email: string | null | undefined) =>
   typeof email === 'string' && RAFFLE_MANAGERS.includes(email.trim().toLowerCase());

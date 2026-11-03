@@ -4,9 +4,13 @@ import { canManageRaffles, publicWinnerName } from '../../server/raffles';
 
 /** Rifas: solo las dos cuentas autorizadas pueden operarlas (la autorización real está en el servidor). Sin base de datos. */
 describe('autorización de Rifas · sin base de datos', () => {
-  it('solo las dos cuentas autorizadas (sin importar mayúsculas ni espacios)', () => {
+  it('solo las cuentas autorizadas (sin importar mayúsculas ni espacios)', () => {
     assert.equal(canManageRaffles('javiercastro9912@gmail.com'), true);
     assert.equal(canManageRaffles(' PerlaRivera@RedJuvenilTijuana.com '), true);
+    assert.equal(canManageRaffles('arturosanchez@redjuveniltijuana.com'), true);
+    assert.equal(canManageRaffles('milcamendoza@redjuveniltijua.com'), true); // así está registrada su cuenta
+    assert.equal(canManageRaffles(' MilcaMendoza@RedJuvenilTijua.com '), true);
+    assert.equal(canManageRaffles('MilcaMendoza@RedJuvenilTijuana.com'), true);
     assert.equal(canManageRaffles('otro@admin.com'), false);
     assert.equal(canManageRaffles(null), false);
     assert.equal(canManageRaffles(undefined), false);
