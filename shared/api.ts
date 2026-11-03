@@ -1342,3 +1342,16 @@ export type AdminPresenceResponse = {
   inbox: { id: string; fromUserId: string | null; fromName: string; body: string; createdAt: string }[];
 };
 export type SendAdminMessageRequest = { toUserId: string; body: string };
+/** Un mensaje dentro de una conversación (fromMe = lo mandé yo). readAt = cuándo lo leyó quien lo recibió. */
+export type AdminChatMessage = { id: string; fromMe: boolean; body: string; createdAt: string; readAt: string | null };
+/** GET /api/admin/messages: una fila por persona con la que he hablado. canSend=false si ya no es Admin activo. */
+export type AdminConversation = {
+  userId: string; name: string; lastBody: string; lastAt: string; lastFromMe: boolean; unread: number; canSend: boolean;
+};
+/** GET /api/admin/messages?with=<userId>[&before=<ISO>]: historial con esa persona (marca leídos sus mensajes hacia mí). */
+export type AdminThreadResponse = {
+  available: boolean;
+  with: { userId: string; name: string; canSend: boolean; online: { path: string; secondsAgo: number } | null };
+  messages: AdminChatMessage[];
+  hasMore: boolean;
+};

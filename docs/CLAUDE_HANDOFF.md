@@ -2933,4 +2933,12 @@ Pedido: «ver en la esquina los admin activos y qué página están viendo, y po
   sección con `ADMIN_SECTIONS` (las secciones solo-propietario se ven como «Panel» para los demás). Se guarda solo la ruta, sin consulta.
 - Mensajes: 1–300 caracteres, solo a cuentas Admin activas y nunca a uno mismo. Llegan en el siguiente latido como tarjeta
   (Responder / Listo → leído). Sin la 020: la esquina no aparece y mandar da 409; nunca 500.
-- Pruebas: `tests/team-pulse/adminpresence.test.mts` (9).
+- Chat con historial (3 nov 2026, pedido: «que sea tipo chat»): `GET /api/admin/messages` (conversaciones, una por persona) y
+  `GET /api/admin/messages?with=<userId>[&before=<ISO>]` (hilo, 60 por página; abrirlo marca leídos los mensajes de esa persona).
+  En la esquina: lista con en línea arriba y «Conversaciones» (gente desconectada) abajo; tocar a alguien abre el chat
+  (burbujas, separador por día, «Visto», «Ver mensajes anteriores»), que se actualiza cada 4 s mientras está abierto.
+  Con una cuenta que ya no es Admin se ve el historial pero no se puede escribir. Mandar devuelve el mensaje creado.
+- Acceso de Milca a Rifas (3 nov 2026): su cuenta está registrada como `milcamendoza@redjuveniltijua.com` (sin «na»);
+  se agregó a `RAFFLE_MANAGERS` además de la otra escritura. Para diagnosticar: con la sesión abierta, `/api/auth/me`
+  muestra `email`, `role` y `canManageRaffles` tal como los ve el servidor.
+- Pruebas: `tests/team-pulse/adminpresence.test.mts` (11).

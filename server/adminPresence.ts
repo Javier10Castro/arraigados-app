@@ -1,5 +1,5 @@
 import { NOW_UTC, newId, query } from './db';
-import type { AdminPresenceResponse, StaffUser } from '../shared/api';
+import type { AdminChatMessage, AdminConversation, AdminPresenceResponse, AdminThreadResponse, StaffUser } from '../shared/api';
 
 /**
  * «En línea» y mensajes entre cuentas Admin (migración 020).
@@ -7,7 +7,8 @@ import type { AdminPresenceResponse, StaffUser } from '../shared/api';
  * - El panel de Admin manda un «latido» cada ~15 s mientras está abierto y visible (POST /api/admin/presence { path }).
  *   Se guarda UNA fila por cuenta (upsert): sección y hora. «En línea» = latido hace menos de ONLINE_SEC.
  * - La misma respuesta trae quién está en línea y los mensajes sin leer de quien pregunta (así no hace falta otra consulta).
- * - Mensajes: solo entre cuentas Admin activas, nunca a uno mismo, 1–300 caracteres. Se marcan leídos al cerrarlos.
+ * - Mensajes: solo entre cuentas Admin activas, nunca a uno mismo, 1–300 caracteres. Se marcan leídos al cerrarlos o al
+ *   abrir la conversación con esa persona (historial tipo chat: listConversations / getThread).
  * - Sin la migración 020 (tablas inexistentes) el latido responde { available: false } y la esquina no se muestra.
  * La autorización (solo ADMIN) la hace cada función con authorize(); aquí se recibe el usuario ya verificado.
  */
@@ -64,7 +65,7 @@ export async function heartbeat(me: StaffUser, path: unknown): Promise<AdminPres
 }
 
 /** POST /api/admin/messages { toUserId, body }: manda un mensaje corto a otra cuenta Admin activa. */
-export async function sendMessage(me: StaffUser, input: { toUserId?: unknown; body?: unknown }): Promise<{ ok: true }> {
+export async function sendMessage(me: StaffUser, input: { toUserId?: unknown; body?: unknown }): Promise<{ ok: true; message: AdminChatMessage }> {
   const to = typeof input.toUserId === 'string' ? input.toUserId : '';
   const body = typeof input.body === 'string' ? input.body.replace(/\s+/g, ' ').trim() : '';
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(to)) throw new PresenceError('Elige a quién mandarle el mensaje.');
@@ -74,15 +75,94 @@ export async function sendMessage(me: StaffUser, input: { toUserId?: unknown; bo
   const target = (await query<{ id: string }>(`SELECT id FROM "User" WHERE id = $1 AND active AND role = 'ADMIN'`, [to])).rows[0];
   if (!target) throw new PresenceError('Esa cuenta no existe o no es Admin.', 404);
   try {
-    await query(
-      `INSERT INTO "AdminMessage" (id, "fromUserId", "fromName", "toUserId", body, "createdAt") VALUES ($1, $2, $3, $4, $5, ${NOW_UTC})`,
+    const message = (await query<AdminChatMessage>(
+      `INSERT INTO "AdminMessage" (id, "fromUserId", "fromName", "toUserId", body, "createdAt") VALUES ($1, $2, $3, $4, $5, ${NOW_UTC})
+       RETURNING id, true AS "fromMe", body, ${ISO('"createdAt"')} AS "createdAt", NULL::text AS "readAt"`,
       [newId(), me.id, me.name, to, body],
-    );
+    )).rows[0];
+    return { ok: true, message };
   } catch (err) {
     if (isMissingTable(err)) throw new PresenceError('Los mensajes aún no están habilitados en esta base (falta la migración 020).', 409);
     throw err;
   }
-  return { ok: true };
+}
+
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+export const THREAD_PAGE = 60;
+
+/** GET /api/admin/messages: mis conversaciones (una por persona, la más reciente primero) con el último mensaje y los no leídos. */
+export async function listConversations(me: StaffUser): Promise<{ available: boolean; conversations: AdminConversation[] }> {
+  try {
+    const rows = (await query<AdminConversation>(
+      `WITH m AS (
+         SELECT id, body, "createdAt",
+                CASE WHEN "fromUserId" = $1 THEN "toUserId" ELSE "fromUserId" END AS other,
+                ("fromUserId" = $1) AS "fromMe",
+                ("toUserId" = $1 AND "readAt" IS NULL) AS unread
+           FROM "AdminMessage" WHERE "fromUserId" = $1 OR "toUserId" = $1
+       ), last AS (
+         SELECT DISTINCT ON (other) other, body, "createdAt", "fromMe" FROM m WHERE other IS NOT NULL AND other <> $1
+          ORDER BY other, "createdAt" DESC, id DESC
+       )
+       SELECT u.id AS "userId", u.name, l.body AS "lastBody", ${ISO('l."createdAt"')} AS "lastAt", l."fromMe" AS "lastFromMe",
+              (SELECT count(*)::int FROM m WHERE m.other = u.id AND m.unread) AS unread,
+              (u.active AND u.role = 'ADMIN') AS "canSend"
+         FROM last l JOIN "User" u ON u.id = l.other
+        ORDER BY l."createdAt" DESC LIMIT 30`,
+      [me.id],
+    )).rows;
+    return { available: true, conversations: rows };
+  } catch (err) {
+    if (isMissingTable(err)) return { available: false, conversations: [] };
+    throw err;
+  }
+}
+
+/**
+ * GET /api/admin/messages?with=<userId>[&before=<ISO>]: historial con esa persona (los más recientes, THREAD_PAGE por página,
+ * en orden de tiempo). Al abrirlo se marcan como leídos los mensajes que esa persona me mandó.
+ */
+export async function getThread(me: StaffUser, withId: unknown, before?: unknown): Promise<AdminThreadResponse> {
+  const other = typeof withId === 'string' ? withId : '';
+  if (!ID_RE.test(other) || other === me.id) throw new PresenceError('Conversación inválida.');
+  const cut = typeof before === 'string' && before ? before : null;
+  if (cut && !ISO_RE.test(cut)) throw new PresenceError('Fecha inválida.');
+  const u = (await query<{ id: string; name: string; canSend: boolean }>(
+    `SELECT id, name, (active AND role = 'ADMIN') AS "canSend" FROM "User" WHERE id = $1`, [other],
+  )).rows[0];
+  if (!u) throw new PresenceError('Esa cuenta no existe.', 404);
+  try {
+    if (!cut) {
+      await query(
+        `UPDATE "AdminMessage" SET "readAt" = ${NOW_UTC} WHERE "toUserId" = $1 AND "fromUserId" = $2 AND "readAt" IS NULL`,
+        [me.id, other],
+      );
+    }
+    const rows = (await query<AdminChatMessage>(
+      `SELECT id, ("fromUserId" = $1) AS "fromMe", body, ${ISO('"createdAt"')} AS "createdAt",
+              CASE WHEN "readAt" IS NULL THEN NULL ELSE ${ISO('"readAt"')} END AS "readAt"
+         FROM "AdminMessage"
+        WHERE (("fromUserId" = $1 AND "toUserId" = $2) OR ("fromUserId" = $2 AND "toUserId" = $1))
+          AND ($3::timestamp IS NULL OR "createdAt" < $3::timestamp)
+        ORDER BY "createdAt" DESC, id DESC LIMIT ${THREAD_PAGE + 1}`,
+      [me.id, other, cut ? cut.replace('Z', '') : null],
+    )).rows;
+    const presence = (await query<{ path: string; secondsAgo: number }>(
+      `SELECT "path", GREATEST(0, EXTRACT(EPOCH FROM (${NOW_UTC} - "lastSeen")))::int AS "secondsAgo"
+         FROM "AdminPresence" WHERE "userId" = $1 AND "lastSeen" > ${NOW_UTC} - make_interval(secs => $2)`,
+      [other, ONLINE_SEC],
+    )).rows[0] ?? null;
+    return {
+      available: true,
+      with: { userId: u.id, name: u.name, canSend: u.canSend, online: presence },
+      messages: rows.slice(0, THREAD_PAGE).reverse(),
+      hasMore: rows.length > THREAD_PAGE,
+    };
+  } catch (err) {
+    if (isMissingTable(err)) throw new PresenceError('Los mensajes aún no están habilitados en esta base (falta la migración 020).', 409);
+    throw err;
+  }
 }
 
 /** POST /api/admin/messages/read { ids }: marca como leídos MIS mensajes (los de otros no se tocan). */

@@ -52,6 +52,9 @@ import {
   type MyRaffleResponse,
   type AdminPresenceResponse,
   type SendAdminMessageRequest,
+  type AdminChatMessage,
+  type AdminConversation,
+  type AdminThreadResponse,
   type RaffleCandidate,
   type AddRaffleEntryRequest,
   type ResetRafflesRequest,
@@ -394,7 +397,10 @@ export const api = {
   adminPresence: (path: string) =>
     request<AdminPresenceResponse>('/api/admin/presence', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }),
   sendAdminMessage: (body: SendAdminMessageRequest) =>
-    request<{ ok: true }>('/api/admin/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    request<{ ok: true; message: AdminChatMessage }>('/api/admin/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+  adminConversations: () => request<{ available: boolean; conversations: AdminConversation[] }>('/api/admin/messages'),
+  adminThread: (withUserId: string, before?: string) =>
+    request<AdminThreadResponse>(`/api/admin/messages?with=${encodeURIComponent(withUserId)}${before ? `&before=${encodeURIComponent(before)}` : ''}`),
   readAdminMessages: (ids: string[]) =>
     request<{ read: number }>('/api/admin/messages/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids }) }),
 

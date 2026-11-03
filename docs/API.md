@@ -429,3 +429,8 @@ Solo ADMIN (cookie `arr_staff`).
 - `POST /api/admin/messages` `{ toUserId, body }` → 201 `{ ok: true }`. 400 texto vacío/>300 o a uno mismo; 404 destino no Admin activo;
   409 sin la 020; 429 límite `admin_msg` (30 / 10 min por cuenta).
 - `POST /api/admin/messages/read` `{ ids }` → `{ read }`. Solo marca mensajes dirigidos a quien llama.
+- `GET /api/admin/messages` → `{ available, conversations: AdminConversation[] }` (una por persona, la más reciente primero, máx. 30).
+- `GET /api/admin/messages?with=<userId>[&before=<ISO>]` → `AdminThreadResponse { with, messages, hasMore }`. 60 por página en orden de
+  tiempo; `before` = `createdAt` del mensaje más viejo cargado. Sin `before` marca como leídos los mensajes de esa persona hacia mí.
+  400 hilo consigo mismo o fecha inválida; 404 cuenta inexistente; 409 sin la 020.
+- `POST /api/admin/messages` ahora responde `{ ok: true, message: AdminChatMessage }`.
