@@ -2909,3 +2909,8 @@ Implementado **solo en local** (rama `vista-visitante-equipo`); sin commit/push/
 - `server/raffleReset.ts` + `admin-raffle-reset.mts` (POST, palabra BORRAR validada en el servidor). Borra `RaffleWinner` → `Raffle` → `RaffleEntry` del kit (o 'ALL') con `pg_advisory_xact_lock('raffle:<kit>')` + `FOR UPDATE` sobre "Raffle". Auditoría `raffle.reset`. Excepción explícita a «RaffleWinner solo-INSERT» (documentada en server/raffles.ts).
 - UI: sección «Reiniciar rifa» al final de Admin → Rifas, con `ConfirmTypeModal`. Sin migración.
 - Pruebas: 4 nuevas en `raffleentry.test.mts` (por kit, todos, permisos/confirmación, en pleno sorteo). `npm run test:team` 170/170.
+
+## 72. Imagen del ganador para Instagram (2 nov 2026)
+
+- `src/admin/winnerImage.ts`: dibuja en `<canvas>` (sin dependencias). Fuente Antarctican cargada con `FontFace` (cubre ¡, acentos y ñ; Pressio y Degular NO). Fondo `flyer-contours.webp` + `flyer-texture.webp` en modo screen + velo; `LogoBage.svg` recortado con el viewBox de `brand.ts`; `Cita_Beige.svg` y `RJDT_CIRCLES_LOGO.svg`. Layout en bloques con el espacio sobrante repartido (sirve para 4:5 y 9:16); el nombre se ajusta de tamaño y pasa a 2 renglones si es largo.
+- `src/admin/WinnerImageModal.tsx`: elegir ganador, editar nombre, formato, vista previa, Descargar PNG / Compartir (Web Share con archivos). Botón en cada tarjeta de rifa con `winnersCount > 0`. Solo frontend; sin migración.

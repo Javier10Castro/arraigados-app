@@ -119,3 +119,13 @@ Al final de **Admin → Rifas** está **«Reiniciar rifa»**. Eliges un kit (o *
 - **todas las inscripciones con sus respuestas**, incluidas las de personas quitadas.
 
 Después, todos pueden volver a entrar respondiendo las 3 preguntas, y la siguiente rifa del kit empieza otra vez en la Edición 1. **No se puede deshacer**: descarga antes el CSV de Inscritos si quieres conservar las respuestas. El reinicio no cambia si las inscripciones están abiertas o cerradas; revisa ese botón. Queda registrado en Auditoría como `raffle.reset`, con cuántas filas se borraron. No necesita migración.
+
+## 17. Imagen del ganador para Instagram
+
+En cada rifa con al menos una salida aparece **«Imagen para Instagram»**. Ahí:
+- eliges el ganador, si hay más de uno (por ejemplo, por un sorteo extra);
+- **editas el nombre** como quieras que se publique, porque empieza con el nombre completo registrado;
+- **editas el aviso** que va debajo del premio. Por defecto dice «Envía un mensaje a la Red Juvenil Tijuana para recibir las indicaciones de entrega de tu premio.»; puedes agregar el @ o un número, o dejarlo vacío para quitarlo;
+- eliges **Publicación (4:5, 1080×1350)** o **Historia (9:16, 1080×1920)**.
+
+**Descargar PNG** guarda la imagen. En el celular, **Compartir** la manda directo a Instagram u otra app. La imagen se genera en el navegador con el arte del congreso (fondo «26», logo Arraigados, cita bíblica y logo RJDT), la rifa y el premio con su foto; no se sube a ningún lado. Archivos: `src/admin/winnerImage.ts` (dibujo) y `src/admin/WinnerImageModal.tsx` (ventana).

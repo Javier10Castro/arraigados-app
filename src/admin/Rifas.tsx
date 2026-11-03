@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AdminShell from './AdminShell';
 import ConfirmTypeModal from './ConfirmTypeModal';
+import WinnerImageModal from './WinnerImageModal';
 import { api, ApiRequestError } from '../lib/api';
 import type { AdminRaffleDetail, AdminRaffleEntriesResponse, AdminRafflesResponse, RaffleSummary } from '../../shared/api';
 import { RAFFLE_QUESTIONS } from '../../shared/raffle';
@@ -210,6 +211,7 @@ function RaffleCard({ r, onChanged }: { r: RaffleSummary; onChanged: () => void 
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [target, setTarget] = useState(String(r.winningPosition ?? r.targetWinners));
   const [confirm, setConfirm] = useState<null | 'normal' | 'extra' | 'cancel'>(null);
+  const [imageFor, setImageFor] = useState<AdminRaffleDetail | null>(null);
   const pending = useRef<{ key: string; extra: boolean } | null>(null);
 
   const view = detail ?? { ...r, winners: [] as AdminRaffleDetail['winners'] };
@@ -352,6 +354,18 @@ function RaffleCard({ r, onChanged }: { r: RaffleSummary; onChanged: () => void 
           </span>
         )}
         <a className={c.link} href={`/rifa/${encodeURIComponent(r.id)}`} target="_blank" rel="noreferrer">Abrir vista pública (proyector) ↗</a>
+        {view.winnersCount > 0 && (
+          <button
+            type="button"
+            className={c.ghost}
+            onClick={() => {
+              // Trae el historial completo (con quién gana) antes de abrir la ventana.
+              api.adminRaffle(r.id).then((d) => { setDetail(d); setImageFor(d); }).catch((e: Error) => setMsg({ ok: false, text: e.message }));
+            }}
+          >
+            Imagen para Instagram
+          </button>
+        )}
         <button type="button" className={c.ghost} onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
           {showHistory ? 'Ocultar historial' : 'Ver historial'}
         </button>
@@ -370,6 +384,8 @@ function RaffleCard({ r, onChanged }: { r: RaffleSummary; onChanged: () => void 
       )}
 
       {msg && <p className={msg.ok ? c.ok : c.bad} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
+
+      {imageFor && <WinnerImageModal raffle={imageFor} onClose={() => setImageFor(null)} />}
 
       {showHistory && (
         <div className={c.history}>

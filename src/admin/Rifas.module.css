@@ -75,3 +75,15 @@
 .dangerZone { margin-top: 18px; border: 1.6px solid rgba(161, 38, 44, 0.35); }
 .dangerZone .h2 { color: #a1262c; }
 .dangerZone .note { margin-bottom: 10px; line-height: 1.45; }
+
+/* ---------- Imagen para Instagram ---------- */
+.igWrap { display: grid; gap: 12px; min-width: 0; }
+.igControls { display: grid; gap: 10px; }
+.igControls label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.igControls input, .igControls select, .igControls textarea { padding: 9px 11px; border-radius: 12px; border: 1.6px solid rgba(62, 7, 166, 0.25); background: #fff; font: 600 15px inherit; color: inherit; }
+.igControls textarea { resize: vertical; font: 500 14.5px/1.35 var(--font-body); }
+.igFormats { display: flex; flex-wrap: wrap; gap: 8px; }
+.igPreview { display: grid; place-items: center; padding: 10px; border-radius: 16px; background: #13043f; }
+.igPost, .igStory { display: block; width: auto; height: auto; max-width: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+.igPost { max-height: min(52vh, 460px); }
+.igStory { max-height: min(56vh, 520px); }
